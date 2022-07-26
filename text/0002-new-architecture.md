@@ -217,6 +217,20 @@ setup but we have a few functions that are run as a kafka consumer, queue worker
 scale is quite tricky and in some situations we need to needlessly spawn more processes and containers even though they
 could be colocated.
 
+## Data Store
+
+These are abstract changes to the data store.  Largely this is not explored yet but some things are known.
+
+### High Cardinality Metrics
+
+As we are extracting metrics data from the existing transaction system we have effectively unlimited cardinality
+in the data stream coming in.  The system currently applies various different attempts of dealing with this problem
+where a lot of this is done on the Relay side.  This comes from the combination of the hard cardinality limited in
+Relay but also by attempting to not generate high cardinality data in the clients.
+
+However it's likely that we will be unable to reduce cardinality in the long run and the data model should ideally
+be able to represent this high cardinality data.
+
 ## Client Pipeline
 
 These are changes we expect in the protocl and client behavior.
