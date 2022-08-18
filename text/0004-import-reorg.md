@@ -67,8 +67,8 @@ enforcability).
 
 the proposal is to require developers to import models from the declaring model
 instead of the re-import.  that means rather than to import
-`from sentry.models import user` the developer is required to import from
-`sentry.models.user` instead.  This has a few benefits:
+`from sentry.models import User` the developer is required to import
+`from sentry.models.user import User` instead.  This has a few benefits:
 
 1. People are less likely to accidentally use imports out of the `sentry.models`
   module that exist today but were unintentional.  As an example we have seen
