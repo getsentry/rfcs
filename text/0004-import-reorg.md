@@ -82,6 +82,18 @@ instead of the re-import.  that means rather than to import
 3. We can start enforcing isolation on the module level to enable 
   compartmentalization with lints.
 
+# Rollout Plan
+
+The implementation of the migration path is a multi stage process:
+
+1. fully canonicalize all the imports from `sentry.app` and `sentry.models`
+   in `getsentry` and prevent the introduction of future through a lint.  After
+   this point all changes can be seen locally to `sentry`.
+2. fully canonicalize all the imports from `sentry.app` in `sentry`.
+3. remove the re-exports in `sentry.app`.
+4. gradually canonicalize the imports of models from the `sentry` codebase.
+5. eliminate the re-exports of models in `sentry.models`.
+
 # Drawbacks
 
 The drawback of this change is that imports become more verbose:
