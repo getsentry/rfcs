@@ -1,6 +1,6 @@
 * Start Date: 2022-07-21
 * RFC Type: informational
-* RFC PR: https://github.com/getsentry/rfcs/pulls/2
+* RFC PR: https://github.com/getsentry/rfcs/pull/2
 
 # Summary
 
