@@ -2,6 +2,7 @@
 * RFC Type: feature
 * RFC PR: https://github.com/getsentry/rfcs/pull/3
 * RFC Status: active
+* RFC Driver: [Abhijeet Prasad](https://github.com/AbhiPrasad)
 
 # Expanding Built-In Performance Metrics for Browser JavaScript.
 
@@ -42,16 +43,24 @@ In the same PR that added `connection.rtt` and `connection.downlink`, we also ad
 
 Another additional option is to move all [browser Navigator](https://developer.mozilla.org/en-US/docs/Web/API/Navigator) related fields into a brand new SDK context - that is avaliable to all events, not just performance ones.
 
-[Long Tasks](https://developer.mozilla.org/en-US/docs/Web/API/Long_Tasks_API) are JavaScript tasks that take 50ms or longer to execute. They are considered problematic because JavaScript is single threaded, so blocking the main thread is a big performance hit. In the SDK, [we track individual long task occurences as spans](https://github.com/getsentry/sentry-javascript/blob/74db5275d8d5a28cfb18c5723575ea04c5ed5f02/packages/tracing/src/browser/metrics/index.ts#L54-L59) and record them onto transactions.
+<!--  -->
 
-In Sentry, we've been recording [`longTaskCount` on transactions](https://github.com/getsentry/sentry/blob/20780a5bdd988daa44825ce3c295452c280a9add/static/app/utils/performanceForSentry.tsx#L125) as a Custom Performance Metric for the Sentry frontend. So far, tracking the `longTaskCount` has been valuable as it allows us at a high level to see the most problematic transactions when looking at CPU usage. Since we already record long task spans in the SDK, it should be fairly easy to generate the count as a measurement, and promote into a built-in measurement. Here we would use `long_task.count` as the measurement name instead of `longTaskCount` that we used for internal testing.
+## Rollout
 
-## Decisions
+Every new metric we extract increases the volume we need to ingest on the metrics pipeline. To make sure we understand the potenial impacts on the storage infrastructure, we will conduct a phased roll-out plan for these new built-in performance metrics.
 
-Below Records each proposed built-in measurement, and the decision that was taken around them:
+Step 1: Convert `connection.rtt` and `connection.downlink` into built-in measurements. The value here is is clear to see, and we are already collecting this data -> monitor the effect for 1 week
+Step 2: Add `hardware.concurrency` -> monitor the effect for 1 week
+Step 3: Add `device.memory` -> monitor the effect for 1 week
 
-- [ ] `connection.rtt`
-- [ ] `connection.downlink`
-- [ ] `device.memory`
-- [ ] `hardware.concurrency`
-- [ ] `long_task.count`
+If we consider the impact too large, we can decide not to do Step 3, as collecting `device.memory` is a little redundant with `hardware.concurrency`.
+
+# Appendix
+
+## Removed Proposals
+
+In the initial version of the proposal, a new built-in performance metric `long_task.count` was proposed. This was dropped because of the high burden of introducing too many built-in performance metrics. Below we've included the rationale for including `long_task.count` in the first place.
+
+> [Long Tasks](https://developer.mozilla.org/en-US/docs/Web/API/Long_Tasks_API) are JavaScript tasks that take 50ms or longer to execute. They are considered problematic because JavaScript is single threaded, so blocking the main thread is a big performance hit. In the SDK, [we track individual long task occurences as spans](https://github.com/getsentry/sentry-javascript/blob/74db5275d8d5a28cfb18c5723575ea04c5ed5f02/packages/tracing/src/browser/metrics/index.ts#L54-L59) and record them onto transactions.
+>
+> In Sentry, we've been recording [`longTaskCount` on transactions](https://github.com/getsentry/sentry/blob/20780a5bdd988daa44825ce3c295452c280a9add/static/app/utils/performanceForSentry.tsx#L125) as a Custom Performance Metric for the Sentry frontend. So far, tracking the `longTaskCount` has been valuable as it allows us at a high level to see the most problematic transactions when looking at CPU usage. Since we already record long task spans in the SDK, it should be fairly easy to generate the count as a measurement, and promote into a built-in measurement. Here we would use `long_task.count` as the measurement name instead of `longTaskCount` that we used for internal testing.
