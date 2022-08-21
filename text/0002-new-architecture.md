@@ -117,7 +117,7 @@ necessary to read and write from this outside of the main Python codebase.  Movi
 handling of moving such code into environments where other code wants to access it.  We already require depickling
 in the data pipeline for such cases.
 
-### Phase out Buffers were Possible
+### Phase out Buffers where Possible
 
 Buffers as they exist today could in many cases be replaced by better uses of Kafka and clickhouse.  Some buffers are
 not even as important any more for the product.  For instance the total counts for issues are already hidden from the
