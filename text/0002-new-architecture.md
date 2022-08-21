@@ -135,7 +135,7 @@ from catastrophic failures.
 
 ### Traffic Steering
 
-As we are now performing aggregations in Relay it's benefitial to be able to route traffic intelligently through the
+As we are now performing aggregations in Relay it's beneficial to be able to route traffic intelligently through the
 layers.  For instance we can achieve much better aggregations by ensuring that data from related metrics keys are
 forwarded to the same processing relays.
 
