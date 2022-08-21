@@ -21,7 +21,7 @@ architecture.
 
 ## Processing Pipeline
 
-These are long running concerns with the processing pipeline that should be adressed.
+These are long running concerns with the processing pipeline that should be addressed.
 
 ### Isolate Processing Pipeline out of Monolith
 
