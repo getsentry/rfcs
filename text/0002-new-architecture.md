@@ -233,7 +233,7 @@ be able to represent this high cardinality data.
 
 ## Client Pipeline
 
-These are changes we expect in the protocl and client behavior.
+These are changes we expect in the protocol and client behavior.
 
 ### Push Config into Clients
 
