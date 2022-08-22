@@ -93,6 +93,8 @@ The implementation of the migration path is a multi stage process:
 3. remove the re-exports in `sentry.app`.
 4. gradually canonicalize the imports of models from the `sentry` codebase.
 5. eliminate the re-exports of models in `sentry.models`.
+6. introduce a lazy-import utility into `sentry.models` for exclusive use in the
+   Sentry shell.
 
 # Drawbacks
 
