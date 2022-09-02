@@ -24,22 +24,11 @@ On the other hand we want to be confident to roll out changes that refresh cache
 
 # Current architecture
 
-TODO: maybe draft a mermaid diagram showing the control flow of how an event is processed, etc...
+The following diagram should highlight the current architecture for fetching files and computing caches based on those,
+as well as highlight all the control flow related to request coalescing.
 
-```
+```mermaid
 graph TD
-    subgraph symcache [SymCache]
-        construct-candidates[Construct Candidates list]
-        fetch-candidates[Fetch all Candidates]
-        pick-candidate[Pick best Candidate]
-
-        construct-candidates --> fetch-candidates
-
-        fetch-candidates -. for each candidate .-> get-cached-file
-
-        fetch-candidates --> pick-candidate
-    end
-
     subgraph computation [Compute Cache File]
         compute([Compute Cache File])
         run-computation[Run Computation]
@@ -91,14 +80,43 @@ graph TD
 
         load-cache([Load Cached File])
     end
+
+    subgraph get-file-graph [Get File]
+        get-file([Get File])
+
+        construct-candidates[Construct Candidates list]
+        fetch-candidates[Fetch all Candidates]
+        pick-candidate([Pick best Candidate])
+
+        get-file --> construct-candidates --> fetch-candidates
+
+        fetch-candidates -. for each candidate .-> get-cached-file
+
+        fetch-candidates --> pick-candidate
+    end
+
+    subgraph get-symcache [Get SymCache]
+        find-object[Find Object]
+
+        get-bcsymbolmap[Fetch BCSymbolMap]
+        get-il2cpp-map[Fetch Il2Cpp Mapping]
+
+        compute-symcache[Compute SymCache]
+
+        find-object --> get-bcsymbolmap --> compute-symcache
+        find-object --> get-il2cpp-map --> compute-symcache
+
+        find-object -..-> get-file
+        pick-candidate -..-> find-object
+        compute-symcache -..-> get-cached-file
+        load-cache -..-> compute-symcache
+    end
 ```
 
-# Drawbacks
+# Drawbacks of current Design
 
-Why should we not do this? What are the drawbacks of this RFC or a particular option if
-multiple options are presented.
+There is currently one main drawback in particular related to "lazy cache computation": The lazy computations have a
+concurrency limit, but no queue. This currently works well to limit the impact of cache refreshes on the infrastructure,
+but it can potentially lead to very long tails until a refresh was fully rolled out.
 
-# Unresolved questions
-
-- What parts of the design do you expect to resolve through this RFC?
-- What issues are out of scope for this RFC but are known?
+This also has customer visible impact, as we cannot say for certain when a targeted fix was indeed rolled out.
