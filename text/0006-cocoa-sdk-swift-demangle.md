@@ -15,7 +15,7 @@ is not user friendly if we don't demangled it.
 # Drawbacks
 
 - By copying the demangle logic from Swift open source project, 
-we increate the SDK binary by 46% (from 3.3MB to 4MB).
+we increate the SDK binary by 46% (from 3MB to 4.4MB).
 - We need to keep track in the Swift project to know when they
 update the logic behind demangling.
 
