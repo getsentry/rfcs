@@ -5,7 +5,7 @@
 # Summary
 
 This RFC proposes the inclusion of Swift demangle logic in the cocoa SDK, 
-the same way symbolicator do.
+the same way symbolicator does.
 
 # Motivation
 
@@ -21,7 +21,7 @@ update the logic behind demangling.
 
 # Alternatives
 
-## Implement demangle algorith ourselfs 
+## Implement demangle algorithm ourselves 
 
 We could try to create a logic ourself. The logic is a little complex, 
 and we still need to keep track on any update in the Swift language.
