@@ -18,7 +18,7 @@ The are three kinds of RFCs:
 
 * a **feature** RFC is a RFC describing a new feature to Sentry, an SDK, the protocol or something else that requires a decision to be made.
 * a **decision** RFC is a DACI style RFC that tries to capture a contended decision that requires circulation.
-* an **informational** RFC is an RFC that provides guideslines, describes an issue or states a longer term plan that does not directly turn into implementation.
+* an **informational** RFC is an RFC that provides guidelines, describes an issue or states a longer term plan that does not directly turn into implementation.
 
 # RFC Status
 
