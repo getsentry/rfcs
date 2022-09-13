@@ -1,5 +1,6 @@
 * Start Date: YYYY-MM-DD
 * RFC Type: feature / decision / informational
+* Status: draft / active
 * RFC PR: <link>
 
 # Summary
