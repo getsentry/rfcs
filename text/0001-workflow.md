@@ -31,9 +31,9 @@ There are three types of RFCs:
 
 # Workflow
 
-1. Create a new RFC document as a copy of `0000-template.md`. Name it `XXXX-short-description.md` and commit it directly to the `main` branch. Anyone can do this at any time.
-1. Modify your RFC directly on `main` or through PRs as you see fit, except that ...
-1. For non-informational RFCs, updating the RFC status to `approved` must happen in a PR, with relevant parties signing off.
+1. Create a new RFC document as a copy of `0000-template.md`. Name it `XXXX-short-description.md` and commit it directly to the `main` branch. Anyone can do this at any time. Publishing a new doc to `main` is the "request" in RFC.
+1. Modify your RFC directly on `main` until other people care about it, then switch to PRs. PRs (or Issues, etc.) are the "comments" in RFC.
+1. For non-informational RFCs, updating the RFC status to `approved` _must_ happen in a PR, with relevant parties signing off.
 
 If you are writing a DACI style RFC, read "Instructions for running this Play" (10 mins) from
 [Atlassian's Playbook](https://www.atlassian.com/team-playbook/plays/daci).  Mention informed and contributors in the RFC and have approver sign off on the `approved` PR.
