@@ -1,5 +1,5 @@
 * Start Date: YYYY-MM-DD
-* RFC Type: see below
+* RFC Type: feature / decision / informational
 * RFC PR: <link>
 
 # Summary
