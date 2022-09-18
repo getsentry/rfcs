@@ -9,7 +9,7 @@ This RFC suggests a feature which introduces additional types of exceptions next
 
 # Motivation
 
-Currently, exception which cause the running software to exit are marked as `unhandled: true`. This isn't enough for SDKs where an exception can be unhandled but at the same time doesn't cause the software to exit.
+Currently, exception which cause the running software to exit are marked as `handled: false`. This isn't enough for SDKs where an exception can be unhandled but at the same time doesn't cause the software to exit.
 
 Sentry shows exceptions which aren't caught but also do not cause the software to exit in the same way as exceptions which are manually caught by a developer. This seems rather unintuitive and makes exceptions seem less severe than they are.
 
