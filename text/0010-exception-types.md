@@ -5,7 +5,7 @@
 
 # Summary
 
-This RFC suggests a feature which introduces additional types of exceptions next to `unhandled`.
+This RFC suggests a feature which introduces additional types of exceptions next to `mechanism.handled`.
 
 # Motivation
 
