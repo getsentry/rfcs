@@ -50,7 +50,7 @@ In order to achieve backwards compatibility, in the absence of the `process_term
 As soon as the `process_terminated` flag is present the bavior is as follows:
 
 - `handled = true` and `process_terminated = true`: Software was gracefully shut down after an handled exception
-- `handled = true` and `process_terminated = false`: Exception is not handled by the user but didn't cause the software to terminate. Same as `unhandled` in the list above
+- `handled = false` and `process_terminated = false`: Exception is not handled by the user but didn't cause the software to terminate. Same as `unhandled` in the list above
 - `handled = false` and `process_terminated = true`: Software terminated after an unhandled exception. Same as `process termination` in the list above
 - `handled = true` and `process_terminated = false`: Exception was reported via `Sentry.capture*()` method. Same as `handled` in the list above.
 
