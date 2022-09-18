@@ -20,7 +20,7 @@ Currently, the session would be marked as `errored` instead of `crashed`.
 
 # Proposal
 
-Based on the problem stated above, I propose to introduce the types of `handled`, `unhandled`, `process termination` (this is the same as the current `unhandeld`, but rephrased to avoid confusion). I'm open for better phrasing of those types, but I'll stick to those names for the rest of the RFC. The meaning of those types is as follows:
+Based on the problem stated above, I propose to introduce the types of `handled`, `unhandled`, `process termination` (this is the same as the current `handled`, but rephrased to avoid confusion). I'm open for better phrasing of those types, but I'll stick to those names for the rest of the RFC. The meaning of those types is as follows:
 
 - `handled`: The exception was recorded by a developer via `Sentry.capture*` method. May or may not be visually indicated by the Sentry user interface.
 - `unhandled`: Indicates whether the exception was recorded automatically by Sentry through the use of a global exception handler or similar. This exception however didn't cause the software to exit, and the software will continue to be executed. This should be visualized in the Sentry user interface.
