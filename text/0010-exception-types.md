@@ -15,7 +15,8 @@ Sentry shows exceptions which aren't caught by the developer (unhandled) but als
 
 This issue impacts for example the [Dart/Flutter SDK](https://github.com/getsentry/sentry-dart/issues/456), the Unity SDK, the React Native SDK and possibly more.
 
-Another issue is, that excpetions which don't cause the application to exit but are uncaught, are not considered in the [`session health` metric](https://develop.sentry.dev/sdk/sessions/).
+Another issue is, that excpetions which don't cause the application to exit but are unhandled, are not considered in the [`session health` metric](https://develop.sentry.dev/sdk/sessions/).
+Currently, the session would be marked as `errored` instead of `crashed`.
 
 # Proposal
 
