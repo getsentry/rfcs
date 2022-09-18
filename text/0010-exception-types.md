@@ -24,7 +24,7 @@ Based on the problem stated above, I propose to introduce the types of `handled`
 
 - `handled`: The exception was recorded by a developer via `Sentry.capture*` method. May or may not be visually indicated by the Sentry user interface.
 - `unhandled`: Indicates whether the exception was recorded automatically by Sentry through the use of a global exception handler or similar. This exception however didn't cause the software to exit, and the software will continue to be executed. This should be visualized in the Sentry user interface.
-- `process termination`: The exception was recorded automatically by Sentry through the use of a exception handler or similar. The exception caused the software to terminate the execution. This should be visualized in the Sentry user interface. This is currently done by the `unhandled` flag in the [exception mechanism](https://develop.sentry.dev/sdk/event-payloads/exception/#exception-mechanism).
+- `process termination`: The exception was recorded automatically by Sentry through the use of a exception handler or similar. The exception caused the software to terminate the execution. This should be visualized in the Sentry user interface. This is currently done by the `handled` flag in the [exception mechanism](https://develop.sentry.dev/sdk/event-payloads/exception/#exception-mechanism).
 
 In order to propagate those exception types, the exception mechanism needs to be adapted:
 
