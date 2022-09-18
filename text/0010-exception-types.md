@@ -11,7 +11,7 @@ This RFC suggests a feature which introduces additional types of exceptions next
 
 Currently, exception which cause the running software to exit are marked as `handled: false`. This isn't enough for SDKs where an exception can be unhandled but at the same time doesn't cause the software to exit.
 
-Sentry shows exceptions which aren't caught but also do not cause the software to exit in the same way as exceptions which are manually caught by a developer. This seems rather unintuitive and makes exceptions seem less severe than they are.
+Sentry shows exceptions which aren't caught by the developer (unhandled) but also do not cause the software to exit in the same way as exceptions which are manually caught by the developer. This seems rather unintuitive and makes exceptions seem less severe than they are.
 
 This issue impacts for example the [Dart/Flutter SDK](https://github.com/getsentry/sentry-dart/issues/456), the Unity SDK, the React Native SDK and possibly more.
 
