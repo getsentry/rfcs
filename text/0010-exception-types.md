@@ -18,13 +18,21 @@ This issue impacts for example the [Dart/Flutter SDK](https://github.com/getsent
 Another issue is, that excpetions which don't cause the application to exit but are unhandled, are not considered in the [`session health` metric](https://develop.sentry.dev/sdk/sessions/).
 Currently, the session would be marked as `errored` instead of `crashed`.
 
-# Proposal
+# Option 1
 
 Based on the problem stated above, I propose to introduce the types of `handled`, `unhandled`, `process termination` (this is the same as the current `handled`, but rephrased to avoid confusion). I'm open for better phrasing of those types, but I'll stick to those names for the rest of the RFC. The meaning of those types is as follows:
 
 - `handled`: The exception was recorded by a developer via `Sentry.capture*` method. May or may not be visually indicated by the Sentry user interface.
 - `unhandled`: Indicates whether the exception was recorded automatically by Sentry through the use of a global exception handler or similar. This exception however didn't cause the software to exit, and the software will continue to be executed. This should be visualized in the Sentry user interface.
 - `process termination`: The exception was recorded automatically by Sentry through the use of a exception handler or similar. The exception caused the software to terminate the execution. This should be visualized in the Sentry user interface. This is currently done by the `handled` flag in the [exception mechanism](https://develop.sentry.dev/sdk/event-payloads/exception/#exception-mechanism).
+
+A user of Sentry should be able to 
+
+- filter events on the issues page or discover for the newly introduces exception types.
+- highlight (similar to the unhandled label) events of the type unhandled and process termination.
+- get alerted for events of the type unhandled and process termination separately.
+
+Currently, there's an unhandled label on the issue's page but it's only highlighted for process termination errors.
 
 In order to propagate those exception types, the exception mechanism needs to be adapted:
 
@@ -49,28 +57,59 @@ In order to propagate those exception types, the exception mechanism needs to be
 In order to achieve backwards compatibility, in the absence of the `process_termination` flag, the current behavior stays as is.
 As soon as the `process_terminated` flag is present the bavior is as follows:
 
-- `handled = true` and `process_terminated = true`: Software was gracefully shut down after an handled exception
+- `handled = true` and `process_terminated = true`: Software was gracefully shut down after an handled exception. This should never happen and is invalid.
 - `handled = false` and `process_terminated = false`: Exception is not handled by the user but didn't cause the software to terminate. Same as `unhandled` in the list above
 - `handled = false` and `process_terminated = true`: Software terminated after an unhandled exception. Same as `process termination` in the list above
 - `handled = true` and `process_terminated = false`: Exception was reported via `Sentry.capture*()` method. Same as `handled` in the list above.
 
-In the absence of the `handled` or its value being null, it's assumed to be `handled = true`.
-
+In the absence of the `handled` or its value being null, it's assumed to be `handled = true`. This is also the current behavior.
 
 The introduction of the `process_terminated` flag enables the consideration of such exception types in the `session health` metric.
 
-I'm guessing this affects data ingestion layer, but since I'm not familiar with that part, I can't comment on the impact theses changes would have on that.
+# Option 2
 
-# Other options considered
+This one is very similar to option 1, however instead of an additional flag, this introduces an enum for the different types.
+Once again, the mechanism needs to be adapted:
 
-Unhandled exceptions, which don't cause a process termination, are considered like exceptions which cause the process to terminate.
+```json
+{
+  "exception": {
+    "values": [
+      {
+        "type": "Error",
+        "value": "An error occurred",
+        "mechanism": {
+          "type": "generic",
+          "exception_type": "handled|unhandled|process_termination", // <--- newly introduced field
+        }
+      }
+    ]
+  }
+}
+```
+
+If the currently available `handled` flag is also present, the `exception_type` flag takes precedence. The `handled` flag however should become deprecated.
+
+The introduction of the `exception_type` flag enables the consideration of such exception types in the `session health` metric.
+
+# Option 3
+
+Unhandled exceptions, which don't cause a process termination, are considered like exceptions which cause the process to terminate and are marked `handled: false`
 That would however make it impossible to differentiate between those exception types in the `session health` metric.
 
 # Approaches taken by other monitoring tools
 
 - Crashlytics just differentiates between manually caught exceptions and unhandled exceptions, regardless of wether they cause the process to terminate.
 
+# List of SDK to which this applies
+
+This list might be incomplete
+
+- [Flutter](https://github.com/getsentry/sentry-dart/issues/456)
+- Browser SDKs
+- Unity
+- React Natice
+
 # Unresolved Questions
 
-- Which SDKs would profit from this RFC? Is it the majority, a good chunk of it, or just the minory?
 - Are there any other exception types next to the ones metioned in this RFC?
