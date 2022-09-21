@@ -47,7 +47,17 @@ To instrument `inp` in our SDK, we require the usage of the [web-vitals v3 libra
 
 ## Rollout
 
+As we are only adding two built-in performance metrics, we will not have to do a phased rollout plan. Instead the rollout is as follows:
 
+1. Add `connection.rtt` as a built-in metric to Relay/Sentry.
+
+2. Update the JS SDK to stop sending `connection.downlink`, as we are only going to send `connection.rtt` as a performance metric.
+
+3. Add `inp` as a built-in metric to Relay/Sentry.
+
+4. Update the JS SDK to web vitals v3.
+
+5. Add `inp` performance metric to all JS Browser SDK transactions.
 
 # Appendix
 
