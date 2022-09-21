@@ -1,7 +1,7 @@
 * Start Date: 2022-08-18
 * RFC Type: feature
 * RFC PR: https://github.com/getsentry/rfcs/pull/3
-* RFC Status: active
+* RFC Status: approved
 * RFC Driver: [Abhijeet Prasad](https://github.com/AbhiPrasad)
 
 # Expanding Built-In Performance Metrics for Browser JavaScript.
