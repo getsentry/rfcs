@@ -8,7 +8,7 @@
 
 # Summary
 
-This RFC details expanding list of built-in performance metrics for the browser JavaScript SDK, with additional data the Browser SDK captures. It propose adding two metrics that are already captured by the SDK: `connection.rtt` and `connection.downlink`, and three brand new metrics that are not yet captured, `device.memory`, `hardware.concurrency`, and `long_task.count`.
+This RFC details expanding list of built-in performance metrics for the browser JavaScript SDK, with additional data the Browser SDK captures. It propose adding a metric that is already captured by the SDK: `connection.rtt`, and a brand new metric that is not yet captured, `inp`.
 
 Note: References to `performance metrics` (external name) are equivalent to `measurements` (internal name) for the purpose of this document.
 
@@ -35,25 +35,19 @@ Aside from the seven built-in performance metrics the JavaScript SDKs set, the J
 
 `connection.rtt` is the [the estimated effective round-trip time of the current connection, rounded to the nearest multiple of 25 milliseconds](https://developer.mozilla.org/en-US/docs/Web/API/NetworkInformation/rtt). `connection.downlink` is the [effective bandwidth estimate in megabits per second, rounded to the nearest multiple of 25 kilobits per seconds](https://developer.mozilla.org/en-US/docs/Web/API/NetworkInformation/downlink). These were originally added to the SDK [Oct 2020](https://github.com/getsentry/sentry-javascript/pull/2966) to help grab info about network connectivity information.
 
-Either we choose to promote these two values to built-in performance metrics, or we remove them entirely if we feel like they are not high value.
+Here, we propose that we should remove the reporting of `connection.downlink` and move `connection.rtt` to be a built-in performance metrics. `connection.rtt` will help users understand the network conditons of their transactions at a high level, and help them see how using things like PoP servers or more aggressive caching maybe help their pageload times. At a high level, `connection.rtt` should help the developer understand general network conditions across their production performance data.
+
+We need to make a decision about `connection.downlink` and `connection.rtt`, as they are taking away from user's custom performance metrics quota.
 
 ## New Data
 
-In the same PR that added `connection.rtt` and `connection.downlink`, we also added support for grabbing [`deviceMemory`](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/deviceMemory) and [`hardwareConcurrency`](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/hardwareConcurrency). Currently these are set as [tags on the transaction](https://github.com/getsentry/sentry-javascript/blob/74db5275d8d5a28cfb18c5723575ea04c5ed5f02/packages/tracing/src/browser/metrics/index.ts#L405-L411). This should become performance metrics, as SDKs should not be settings tags like this one events, and there is value in seeing these numeric values on transactions. Here we would also rename `deviceMemory` -> `device.memory` and `hardwareConcurrency` -> `hardware.concurrency`.
+A new metric we would like to introduce is `inp`. `inp`, or [Interaction to Next Paint](https://web.dev/inp/) is the newest chrome web vital. We've already had some user interest in adopting this, as we already support the other web vitals (`lcp`, `fcp`, etc.). `inp` also opens the door for us to introduce [user interaction instrumentation](https://github.com/getsentry/sentry-javascript/issues/5750), like creating transactions to measure the performance of user clicks or inputs.
 
-Another additional option is to move all [browser Navigator](https://developer.mozilla.org/en-US/docs/Web/API/Navigator) related fields into a brand new SDK context - that is avaliable to all events, not just performance ones.
-
-<!--  -->
+To instrument `inp` in our SDK, we require the usage of the [web-vitals v3 library](https://github.com/getsentry/sentry-javascript/issues/5462), but we can go ahead and make it a built-in performance metrics beforehand.
 
 ## Rollout
 
-Every new metric we extract increases the volume we need to ingest on the metrics pipeline. To make sure we understand the potenial impacts on the storage infrastructure, we will conduct a phased roll-out plan for these new built-in performance metrics.
 
-Step 1: Convert `connection.rtt` and `connection.downlink` into built-in measurements. The value here is is clear to see, and we are already collecting this data -> monitor the effect for 1 week
-Step 2: Add `hardware.concurrency` -> monitor the effect for 1 week
-Step 3: Add `device.memory` -> monitor the effect for 1 week
-
-If we consider the impact too large, we can decide not to do Step 3, as collecting `device.memory` is a little redundant with `hardware.concurrency`.
 
 # Appendix
 
@@ -64,3 +58,9 @@ In the initial version of the proposal, a new built-in performance metric `long_
 > [Long Tasks](https://developer.mozilla.org/en-US/docs/Web/API/Long_Tasks_API) are JavaScript tasks that take 50ms or longer to execute. They are considered problematic because JavaScript is single threaded, so blocking the main thread is a big performance hit. In the SDK, [we track individual long task occurences as spans](https://github.com/getsentry/sentry-javascript/blob/74db5275d8d5a28cfb18c5723575ea04c5ed5f02/packages/tracing/src/browser/metrics/index.ts#L54-L59) and record them onto transactions.
 >
 > In Sentry, we've been recording [`longTaskCount` on transactions](https://github.com/getsentry/sentry/blob/20780a5bdd988daa44825ce3c295452c280a9add/static/app/utils/performanceForSentry.tsx#L125) as a Custom Performance Metric for the Sentry frontend. So far, tracking the `longTaskCount` has been valuable as it allows us at a high level to see the most problematic transactions when looking at CPU usage. Since we already record long task spans in the SDK, it should be fairly easy to generate the count as a measurement, and promote into a built-in measurement. Here we would use `long_task.count` as the measurement name instead of `longTaskCount` that we used for internal testing.
+
+In the second version of the proposal, it was proposed that [`device.memory`](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/deviceMemory) and [`hardware.concurrency`](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/hardwareConcurrency) would be inlcuded as new built-in performance metrics. This was removed because of the low value of these metrics and the fact that they are limiting in the data they provide. For `device.memory`, it seems that [WebKit won't ever support this](https://github.com/w3c/device-memory/issues/24). In addition, it's imprecise [OOB for fingerprinting reasons](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/deviceMemory). `hardware.concurrency` is valuable since it can help users decide on usage of [APIs like Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/hardwareConcurrency), but perhaps it's better suited in `processor_count` under [Device Context](https://develop.sentry.dev/sdk/event-payloads/contexts/#device-context). Below we've included the rationale for including `device.memory` and `hardware.concurrency` in the first place.
+
+> In the same PR that added `connection.rtt` and `connection.downlink`, we also added support for grabbing [`deviceMemory`](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/deviceMemory) and [`hardwareConcurrency`](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/hardwareConcurrency). Currently these are set as [tags on the transaction](https://github.com/getsentry/sentry-javascript/blob/74db5275d8d5a28cfb18c5723575ea04c5ed5f02/packages/tracing/src/browser/metrics/index.ts#L405-L411). This should become performance metrics, as SDKs should not be settings tags like this one events, and there is value in seeing these numeric values on transactions. Here we would also rename `deviceMemory` -> `device.memory` and `hardwareConcurrency` -> `hardware.concurrency`.
+>
+> Another additional option is to move all [browser Navigator](https://developer.mozilla.org/en-US/docs/Web/API/Navigator) related fields into a brand new SDK context - that is avaliable to all events, not just performance ones.
