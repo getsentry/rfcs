@@ -108,7 +108,7 @@ This list might be incomplete
 - [Flutter](https://github.com/getsentry/sentry-dart/issues/456)
 - Browser SDKs
 - Unity
-- React Natice
+- React Native
 
 # Unresolved Questions
 
