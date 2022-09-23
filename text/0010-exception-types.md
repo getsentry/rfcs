@@ -18,6 +18,8 @@ This issue impacts for example the [Dart/Flutter SDK](https://github.com/getsent
 Another issue is, that excpetions which don't cause the software to exit but are unhandled, are not considered in the [`session health` metric](https://develop.sentry.dev/sdk/sessions/).
 Currently, the session would be marked as `errored` instead of `crashed`.
 
+The attribute `thread.errored` was added in the past for similar reasons, but it got [reverted](https://github.com/getsentry/relay/pull/306) for some reasons.
+
 # Option 1 (recommended)
 
 Based on the problem stated above, I propose to introduce the types of `handled`, `unhandled`, `process termination` (this is the same as the current `handled`, but rephrased to avoid confusion). I'm open for better phrasing of those types, but I'll stick to those names for the rest of the RFC. The meaning of those types is as follows:
