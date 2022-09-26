@@ -2,7 +2,7 @@
 
 * Start Date: 2022-09-26
 * RFC Type: decision
-* RFC PR: <https://github.com/getsentry/rfcs/pull/15>
+* RFC PR: <https://github.com/getsentry/rfcs/pull/16>
 
 ## Summary
 
@@ -35,7 +35,7 @@ About 20% of repos connected to Sentry have code mappings and very few have both
 
 A code mapping allows going from a stackframe module path to a source file in the preferred source code management tool:
 
-<img src="0013-code-mapping-logic.png" width="500px" />
+<img src="0016-code-mapping-logic.png" width="500px" />
 
 The process is quite simple. Give a stacktrace frame, we look for the file name in all of the repos we have access for a customer's Github org. For instance, given the stacktrace path `sentry/integrations/gitlab/client.py` look for `integrations/gitlab/client.py` and if there is a unique match we have determined all the values for the code mapping. For the curious, a rudimentary POC (only for Python atm) can be viewed and tested [here](https://gist.github.com/armenzg/40ba48fff217815842c4fe16047d0835).
 
