@@ -31,7 +31,7 @@ There are three types of RFCs:
 
 # Workflow
 
-1. Create a new RFC document as a copy of `0000-template.md`. Name it `XXXX-short-description.md` and commit it directly to the `main` branch. Anyone can do this at any time. Publishing a new doc to `main` is the "request" in RFC.
+1. Create a new RFC document as a copy of `0000-template.md`. Name it `XXXX-short-description.md` (number it one greater than the current max) and commit it directly to the `main` branch. Anyone can do this at any time. Publishing a new doc to `main` is the "request" in RFC.
 1. Modify your RFC directly on `main` until other people care about it, then switch to PRs. PRs (or Issues, etc.) are the "comments" in RFC.
 1. For non-informational RFCs, updating the RFC status to `approved` _must_ happen in a PR, with relevant parties signing off.
 
