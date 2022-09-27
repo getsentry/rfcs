@@ -69,12 +69,12 @@ In addition to the Django related modules, celery tasks, consumers and any other
 modules can be contained within a service. If a service doesn't provide
 endpoints or use models it can still benefit from the proposed structure.
 
-## Co-located tests
+## Test location
 
-Tests for a service should be bundled with the service code. Having tests
-co-located with application code reduces the amount of file navigation that
-developers need to do in parallel trees, and makes running a subset of tests
-simpler both for developers and in CI.
+Tests for a service would continue to live inside the top-level `tests`
+directory. The `tests` tree would mirror continue to mirror the service + module
+structure of the application code. Sharing naming conventions should make
+running sub-sets of tests simpler to automate.
 
 ## Formal entry points
 
