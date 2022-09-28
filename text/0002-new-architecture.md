@@ -7,6 +7,10 @@
 This document is a living piece that is updated with some collected thoughts on what likely projects
 are over a multi year horizon to improve Sentry's underpinnings.
 
+This document is a living document representing a vision for where Sentry's architecture might
+go.  For items we actually want to work towards individual RFCs will be started and the author
+will continue updating this document with changes.
+
 # Motivation
 
 We are running into scaling limitations on our current infrastructure and as such some larger
@@ -43,6 +47,10 @@ outside of the Sentry monolith to dispatch tasks.  This is both an issue for the
 `sentry` and `sentry_pipeline` (as import paths are changing) as well as it causes problems for
 dispatching and listening to tasks from Rust and other languages.
 
+**From Discussions:** the format is not determined and there is a general feeling that we should
+think about this.  JSON might be an acceptable format for a lot of cases, but not all and we should
+come up with some general recommendations of formats.
+
 ### Remove HTTP Polling to Symbolicator
 
 The form of communication for event processing from the Python pipeline to Symbolicator (which is a
@@ -67,6 +75,11 @@ finishing within a deadline (or the code already knows that this execution can't
 dispatched to increasing slower topics.  With sufficient concurrency on the consumers this is probably
 a good enough system for running at scale and with some modifications this might also work well enough
 for single organization installations.
+
+**From Discussions:** the exact state and our satisfaction with RabbitMQ is not entirely clear right now.
+We probably want to assess when we consider RabbitMQ a good solution.  Today it's used as the go-to
+solution because of the low friction for adding new tasks vs new Kafka consumers.   See also this
+[discussion thread](https://github.com/getsentry/rfcs/pull/2#discussion_r936147407).
 
 ### Move Sourcemap Processing to Symbolicator
 
@@ -109,6 +122,8 @@ Currently quite a bit of code lives in `getsentry` for reasons of assumed conven
 the situation that it is quite easy to ship regressions because the changes in `getsentry` were not considered.
 There is likely a whole range of code that does not need to live in `getsentry` and moving it to `sentry` would
 make the testsuite more reliable, faster to run and catch more regressions early.
+
+**From Discusisons:** examples of code that could move that was called out is usage periods and usage collection.
 
 ### Remove Pickle in Database
 
@@ -198,6 +213,8 @@ tested against changes.
 In the ideal situation a change to the settings page of a project for instance does not need to run the UI tests for
 performance views etc. unless the settings are in fact related to that component.
 
+**Related RFC:** [0007](https://github.com/getsentry/rfcs/pull/7)
+
 ### Service Declarations
 
 The biggest limiting factor today in creating new services is the configuration of these services.  When an engineer adds
@@ -241,3 +258,14 @@ Certain features such as dynamic sampling benefit of being able to push settings
 on and off profiling at runtime it does not help us to discard unwanted profiles on the server, we want to selectively
 turn on profiling.  Other uses for this are turning on minidump reporting for a small subset of users optionally.  This
 requires the ability to push down config changes to clients periodically via relay.
+
+## Ownership and Self Service
+
+We have seen that we cannot live anymore in a world where ops and SnS own everything and that product teams need
+to take ownership of their system, which can include application code in the monolith but also systems (like
+kafka consumers or storage instances).  This also includes being accountable for the resources they use so that
+they can take responsibility for decisions between a short term non-scalable solution to deliver faster and a
+long term scalable solution.
+
+Potentially this goes down the path of physically separating systems by ownership or where at least product teams
+own application logic embedded on a serverless infrastructure.
