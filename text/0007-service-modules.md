@@ -59,10 +59,11 @@ src/sentry/discover
     serializers/discoverquery.py
     tasks/deduplicate_things.py
 
-    tests/__init__.py
-    tests/models/test_discoversavedquery.py
-    tests/endpoints/test_discoverquery.py
-    tests/serializers/test_discoverquery.py
+tests/discover
+    __init__.py
+    models/test_discoversavedquery.py
+    endpoints/test_discoverquery.py
+    serializers/test_discoverquery.py
 ```
 
 In addition to the Django related modules, celery tasks, consumers and any other
@@ -76,7 +77,7 @@ directory. The `tests` tree would mirror continue to mirror the service + module
 structure of the application code. Sharing naming conventions should make
 running sub-sets of tests simpler to automate.
 
-## Formal entry points
+## Formal entry points to services
 
 Service modules would use `__init__.py` to define the interface they present to
 the rest of the Sentry monolith. Having the public interface of a service
@@ -102,7 +103,7 @@ each 'kind'. Again using discover as an example:
 src/sentry
   endpoints/discover/discover_query.py
   models/discover/discoversavedquery.py
-  tests/models/discover/test_discoversavedquery.py
+  serializers/discover/discoversavedquery.py
 ```
 
 This approach dilutes the consistency benefits, and requires a significantly
@@ -116,13 +117,9 @@ around. We currently store classpaths in several locations in the database. We
 may need to use data migrations to update these paths or maintain aliases for
 compatibility.
 
-Co-locating tests with application code is a potentially contentious change.
-While co-located tests are compatible with pytest test discovery works, it is an
-[un conventional](un-conventional) approach in python projects.
-
 # Unresolved questions
 
 * What 'services' would we need to add to the application?
 * What do we do with models and logic that is shared by many endpoints/domains?
   Examples of this include rate limiting, and models like Organization, and
-  Project?
+  Project? Should these be a single 'core' service? 
