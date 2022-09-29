@@ -56,6 +56,7 @@ $transaction = startTransaction($transactionContext, [], bool $continueTrace = t
 
 Inside `TransactionContext::__contruct`, we could check for an ongoing transaction on the Hub and continue the trace automatically.
 
-# Unresolved questions
+# Drawbacks/Impact
 
-* Can we rely on `SentrySdk::getCurrentHub()->getTransaction()` to fetch the current transaction to be passed into `TransactionContext::fromParent()` ?
+- This will increase the public API surface of our SDKs
+- Depending on the option, it's either more complex or more magical.
