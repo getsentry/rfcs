@@ -18,7 +18,7 @@ This issue impacts for example the [Dart/Flutter SDK](https://github.com/getsent
 Another issue is, that excpetions which don't cause the software to exit but are unhandled, are not considered in the [`session health` metric](https://develop.sentry.dev/sdk/sessions/).
 Currently, the session would be marked as `errored` instead of `crashed`.
 
-The attribute `thread.errored` was added in the past for similar reasons, but it got [reverted](https://github.com/getsentry/relay/pull/306) for some reasons.
+The attribute `thread.errored` was added in the past for similar reasons, but it got [reverted on Relay](https://github.com/getsentry/relay/pull/306) and [Android](https://github.com/getsentry/sentry-android/pull/187).
 
 # Option 1 (recommended)
 
