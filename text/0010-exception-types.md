@@ -113,6 +113,7 @@ This list might be incomplete
 - Browser SDKs
 - Unity
 - React Native
+- .NET (UnobservedTaskException)
 
 # Unresolved Questions
 
