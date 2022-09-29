@@ -4,7 +4,7 @@
 
 # Summary
 
-Proposal to add `beforeSendTransaction` to all SDKs.
+Proposal to make `beforeSend` (or a similar method) work for transactions (and possibly other payload types in the future) in all SDKs.
 
 # Motivation
 
@@ -36,26 +36,67 @@ Issues where this has come up:
 
 # Options Considered
 
-*Proposal*
+_(Revised after preliminary discussion in https://github.com/getsentry/rfcs/pull/19)_
+
+### **Option 1**
+
+_(Original proposal, demoted to one option of several after discussion)_
 
 Add `beforeSendTransaction` to all SDKs, which (as the name implies) would work exactly the same way `beforeSend` does, but would act upon transactions.
 
-*Alternative*
+Pros:
+- Not a breaking change, so less pain for customers in the short run.
+- Not a breaking change, so no need to wait for a major release to implement it.
+
+Cons:
+- Increased API surface.
+- Code that acts on shared event properties (tags, contexts, etc) would need to be duplicated between `beforeSend` and `beforeSendTransaction`.
+- Unclear/non-parallel naming when considered alongside `beforeSend`. (`beforeSendTransaction` is a clear name, but `beforeSend` is not - it really ought to be `beforeSendError`; similar problem to current confusion with `sampleRate` and `tracesSampleRate`.)
+- Future payload types (replays, profiles, etc) would need their own methods. Where does it end?
+
+### **Option 2**
 
 In the next major of each SDK, start sending both errors and transactions through `beforeSend`.
 
-*Comparison*
+Pros:
+- `beforeSend` has a seemingly-universally-applicable name, so the most intuitive thing for users is to have it fulfill its implied role and apply universally.
+- Future payload types could  be added without introducing new init options/versions of the method.
 
-The main advantage the proposed `beforeSendTransaction` option has over the everything-goes-through-`beforeSend` option is that it's not a breaking change, and therefore doesn't need to wait for a major release to be introduced. (Non-breaking changes are also always less friction for the user, at least in the short run.)
+Cons:
+- Potentially breaking change for everyone, even people not using tracing, because old assumptions about `beforeSend` input schema would no longer hold. (We could maybe work around this by just surrounding our `beforeSend` call with a `try-catch` and returning the event untouched if things go sideways.)
 
-The advantages the everything-goes-through-`beforeSend` option would have over the proposed `beforeSendTransaction` option are 1) all user code for filtering events and changing their data could live in one spot, and 2) we wouldn't be left with an option which is only for errors but doesn't say it's only for errors (similar to the current situation with `sampleRate` and `tracesSampleRate`). [EN: Reason number 2 actually makes me wish we _could_ go with the everything-goes-through-`beforeSend` option, but I recognize that avoiding user inconvenience has already pretty much won the day for `beforeSendTransaction`.]
+### **Option 3**
+
+Like option 2, except `beforeSend` doesn't change and instead we create a new universal method to take its place.
+
+Pros:
+- Not a breaking change, so less pain for customers in the short run.
+- Not a breaking change, so no need to wait for a major release to implement it.
+
+Cons:
+- What would we call it? The most logical name given other option names (`beforeBreadcrumb`, `beforeNavigate`, etc) is already taken.
+- What would happen to `beforeSend`? Either we'd eventually either: 1) deprecate and remove it, which just kicks the breaking-change can down the road, or 2) keep it around in perpetutity, which isn't great either, because it would probably continue to confuse people (both by providing a less-functional way to do what the new method does and by _still_ not being named `beforeSendError`).
+
+### **Option 4**
+
+_(Listed for the sake of completeness, and not a bad idea in and of itself, but by general consensus probably not the right option here)_
+
+Implement lifecycle hooks for transactions (and possibly replays, profiles, etc in the future)
+
+Pros:
+- Granular control
+- Depending on how we do it, might line us up with OTel.
+
+Cons:
+- Significantly bigger footprint than other options, not only in terms of work to build it but also documentation, support, and bundle size.
+- Would act primarily on `Transaction` objects whereas we're trying to match `beforeSend`'s ability to act on finalized events.
 
 # Drawbacks
 
-Compared to doing nothing, the only drawbacks to either of the above options are the time and effort it will take to implement and document the changes.
+Compared to doing nothing, the only drawbacks to any of the above options are the time and effort it will take to implement and document the changes. (In other words, the idea of giving people `beforeSend`-like powers over transactions doesn't have any notable drawbacks on its own.)
 
 # Unresolved questions
 
-- Assuming we go with the `beforeSendTransaction` option, what all should go in the hint?
-- Once we do this, should we deprecate `addGlobalEventProcessor` as a public API method?
-- Are we happy with the `beforeSendTransaction` name, or are there better alternatives?
+- If we go with the `beforeSendTransaction` option, what all should go in the hint? Are we happy with the `beforeSendTransaction` name, or are there better alternatives?
+- If we go with a new universal method, what should we call it? What should happen to `beforeSend` afterwards?
+- Once we do this, should we deprecate `addGlobalEventProcessor` as a public API method? (Not inherently a part of this change, but something that was spoken of in the past but then backed away from because event processors were the workaround to the problem this RFC is trying to solve.)
