@@ -103,7 +103,7 @@ That would however make it impossible to differentiate between those exception t
 
 # Approaches taken by other monitoring tools
 
-- Crashlytics just differentiates between manually caught exceptions and unhandled exceptions, regardless of wether they cause the process to terminate.
+- Crashlytics just differentiates between manually caught exceptions and unhandled exceptions, regardless of whether they cause the process to terminate.
 
 # List of SDK to which this applies
 
