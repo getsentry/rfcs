@@ -54,10 +54,8 @@ $transactionContext = new TransactionContext();
 $transaction = startTransaction($transactionContext, [], bool $continueTrace = true);
 ```
 
-This would require making the SDKs aware of the current request.
-In PHP, we could rely on `$_SERVER['HTTP_SENTRY_TRACE]` and `$_SERVER['HTTP_BAGGAGE]`, but this is not possible in all languages.
+Inside `TransactionContext::__contruct`, we could check for an ongoing transaction on the Hub and continue the trace automatically.
 
 # Unresolved questions
 
 * Can we rely on `SentrySdk::getCurrentHub()->getTransaction()` to fetch the current transaction to be passed into `TransactionContext::fromParent()` ?
-* How would we make `TransactionContext::__construct()` aware of the current request?
