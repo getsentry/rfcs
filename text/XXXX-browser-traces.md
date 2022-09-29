@@ -58,7 +58,7 @@ There are multiple ways in which this problem can be addressed.
 ## Encouraged Root Trace Project and Session Long Traces
 
 In the most trivial case the recommendation to customers would be to pick one project that
-starts traces for real user sessions.  This could be *either* frontend of backend but it
+starts traces for real user sessions.  This could be *either* the frontend or backend, but it
 should attempt to be consistent about it.  In either case the client SDK should *continue the
 trace* until the browser tab naturally closes.
 
