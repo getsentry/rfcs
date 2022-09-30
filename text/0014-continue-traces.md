@@ -14,7 +14,7 @@ The current way we propagate `sentry-trace` and `baggage`, is to pass a correctl
 use Sentry\Tracing\TransactionContext;
 use function Sentry\startTransaction;
 
-$transactionContext = TransactionContext::continueFromHeaders($sentryTraceHeader, $baggageHeader);
+$transactionContext = TransactionContext::fromHeaders($sentryTraceHeader, $baggageHeader);
 $transaction = startTransaction($transactionContext);
 
 ```
