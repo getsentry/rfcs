@@ -20,6 +20,7 @@ $transaction = startTransaction($transactionContext);
 ```
 
 In case someone starts another nested transaction without passing in any context, a new trace will be started and the Dynamic Sampling Context is lost as well.
+Using transactions inside transactions was a workaround as the span summary view was not available back then.
 
 # Options Considered
 
