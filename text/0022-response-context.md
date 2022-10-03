@@ -1,6 +1,6 @@
 * Start Date: 2022-10-03
 * RFC Type: feature
-* RFC PR: [<link>](https://github.com/getsentry/rfcs/blob/rfc/response-context/text/0022-response-context.md)
+* RFC PR: https://github.com/getsentry/rfcs/blob/rfc/response-context/text/0022-response-context.md
 
 # Summary
 
