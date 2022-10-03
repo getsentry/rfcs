@@ -89,3 +89,4 @@ The [Dart Dio HTTP Client](https://docs.sentry.io/platforms/dart/configuration/i
 * Is `status_message` useful?
 * Should we rename `data` to `other` or something else to avoid confusion?
 * Are there any other fields that should be added to the `Response` interface?
+* Some fields from the `Response` should be the very same as the `Request` interface (such as `method`, `url`, ...), should we just omit them?
