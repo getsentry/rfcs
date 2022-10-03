@@ -39,17 +39,13 @@ A code mapping allows going from a stackframe module path to a source file in th
 
 The process is quite simple. Give a stacktrace frame, we look for the file name in all of the repos we have access for a customer's Github org. For instance, given the stacktrace path `sentry/integrations/gitlab/client.py` look for `integrations/gitlab/client.py` and if there is a unique match we have determined all the values for the code mapping. For the curious, a rudimentary POC (only for Python atm) can be viewed and tested [here](https://gist.github.com/armenzg/40ba48fff217815842c4fe16047d0835).
 
-Our initial thoughts are to run a **scheduled task** that will look for projects without code mappings. For each of those projects look at analyzing various stack traces and add code mappings for the modules that there are exact matches.
+Our initial thoughts are to run a **scheduled task** that will look for projects without code mappings with issues with stack traces ending in `.py`. For each of those projects look at analyzing various stack traces and add code mappings for the modules that there are exact matches.
 
 Alternatively, we could analyze stack traces when new issues are generated when there are no code mappings for a project. I believe this approach would be wasteful.
 
 NOTES:
 
-* POC for JS still need to be completed
-* POC testing of a different API approach than the Search API is still needed
-  * Rated at 30 requests per minute; not scalable
-  * Only default branch; limiting our potential options
-  * Inaccurate at times (as per @asottile-sentry)
+* POC for JS still needs to be completed
 
 ### Considerations
 
@@ -68,14 +64,14 @@ NOTES:
 * As part of the automation we will be creating Repository objects
   * If we end up adding a lot of repos for the org we may be indirectly causing UI issues when there’s no proper pagination including dropdowns
 * Available APIs
-  * Search API (proven to work in POC)
+  * Discarded ~~Search API~~
     * The [Search API](https://docs.github.com/en/rest/search#rate-limit) has a rate limit of 30 requests per minute, thus, at best we could create 30 code mappings per minute
-      * **UNKNOWN** We may be able to create multiple tokens to increase the capacity 
+      * ~~**UNKNOWN** We may be able to create multiple tokens to increase the capacity~~
   * [Repositories](https://docs.github.com/en/rest/repos/repos#list-organization-repositories) + [Trees API](https://docs.github.com/en/rest/git/trees#get-a-tree)
-    * To be investigated in current sprint (**UNKNOWN**)
     * Using the `recursive` parameter returns all objects in the repo (almost 12k)
+    * It implements the Search API for finding file path matches
 * Code map derivation has not yet been tested against JS stack traces (**UNKNOWN**)
-  * Scheduled to be tackled in current sprint
+  * Scheduled to be tackled in next sprint
 
 ## Drawbacks
 
