@@ -4,31 +4,86 @@
 
 # Summary
 
-One paragraph explanation of the feature or document purpose.
+Add `Response` interface that contains information on a HTTP response related to the event.
 
 # Motivation
 
-Why are we doing this? What use cases does it support? What is the expected outcome?
+The [Request](https://develop.sentry.dev/sdk/event-payloads/request/) interface contains information on a HTTP request related to the event. However, there is no interface that contains information on a HTTP response related to the event. This RFC proposes a new interface called `Response` that contains information on a HTTP response related to the event.
+
+The `Request` interface has a few limitations:
+* Does not accept arbitrary fields, so unknown fields are dropped during ingestion such as `status_code`.
+* Response `headers` are not dropped during data scrubbing, See [issue](https://github.com/getsentry/relay/issues/1501).
+* Adding `Response` data in the `Request` interface is semantically wrong anyways.
+
+This is necessary to implement the `Failed HTTP Client requests automatically result in Events` feature that is described in this [DACI](https://www.notion.so/sentry/Failed-HTTP-Client-requests-automatically-result-in-Events-f6c21d2a58ce4f2c889a823fd1da0044).
 
 # Background
 
-The reason this decision or document is required.  This section might not always exist.
+Since the `Response` metadata is PII sensitive, it should be properly mapped, documented and scrubbed.
 
 # Supporting Data
 
-[Metrics to help support your decision (if applicable).]
+See [Supporting data](https://www.notion.so/sentry/Failed-HTTP-Client-requests-automatically-result-in-Events-f6c21d2a58ce4f2c889a823fd1da0044#0ca951d5216742dbaab02f5fd33b8fb5) section in the [DACI](https://www.notion.so/sentry/Failed-HTTP-Client-requests-automatically-result-in-Events-f6c21d2a58ce4f2c889a823fd1da0044).
 
 # Options Considered
 
-If an RFC does not know yet what the options are, it can propose multiple options.  The
-preferred model is to propose one option and to provide alternatives.
+## Option 1 (Preferred)
+
+Adding a `Response` interface directly in the Event payload.
+
+```json
+{
+  "response": {
+    "method": "POST",
+    "url": "http://absolute.uri/foo",
+    "query_string": "query=foobar&page=2",
+    "data": { // arbitrary fields
+      "foo": "bar"
+    },
+    "cookies": "PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1;",
+    "headers": {
+      "content-type": "text/html"
+    },
+    "env": {
+      "REMOTE_ADDR": "192.168.0.1"
+    },
+    "status_code": 500,
+    "status_message": "foo bar", // is that useful?
+    "is_redirect": false,
+    "response_body_size": 1000, // bytes
+  }
+}
+```
+
+The `data` field is semantically different than the `Request#data`. The `Request#data` is the data that was sent to the server, while the `Response#data` is just arbitrary data that is attached to the response. The `Response#data` is not used for anything in the SDKs, but it is useful for the user to attach arbitrary data to the response.
+We could rename to `other` or something else to avoid confusion.
+
+## Option 2
+
+Adding a `Response` interface in the [Contexts interface](https://develop.sentry.dev/sdk/event-payloads/contexts/).
+
+```json
+{
+    "contexts": {
+        "response": {
+            "type": "response"
+            // ...
+  }
+}
+```
+
+The content is the same as in Option 1.
+
+## Must have for both options
+
+A tag should be created for `url` and `status_code` fields, people should be able to search for events with a specific `url` or `status_code`, also to alert on specific `status_code`.
 
 # Drawbacks
 
-Why should we not do this?  What are the drawbacks of this RFC or a particular option if
-multiple options are presented.
+The `Response` interface is PII sensitive, so we need to be careful about how we scrub it.
 
 # Unresolved questions
 
-* What parts of the design do you expect to resolve through this RFC?
-* What issues are out of scope for this RFC but are known?
+* Is `status_message` useful?
+* Should we rename `data` to `other` or something else to avoid confusion?
+* Are there any other fields that should be added to the `Response` interface?
