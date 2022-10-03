@@ -82,6 +82,8 @@ A tag should be created for `url` and `status_code` fields, people should be abl
 
 The `Response` interface is PII sensitive, so we need to be careful about how we scrub it.
 
+The [Dart Dio HTTP Client](https://docs.sentry.io/platforms/dart/configuration/integrations/dio/) integration already adds the `Response` field in the `Contexts` interface, so in case we go with Option 1, we'd need to migrate the data to the new `Response` interface.
+
 # Unresolved questions
 
 * Is `status_message` useful?
