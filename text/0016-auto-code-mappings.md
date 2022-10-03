@@ -72,6 +72,9 @@ NOTES:
     * It implements the Search API for finding file path matches
 * Code map derivation has not yet been tested against JS stack traces (**UNKNOWN**)
   * Scheduled to be tackled in next sprint
+* If the source code structure changes (e.g. `src` to `source`), the rate of stacktrace linking with a source file not found will increase since the code mapping will not be valid anymore.
+  * We may need an API to track when a project starts having invalid source so we can recalculate code mappings
+    * This applies for if/when we decide to use derivation for projects that have existing code mappings
 
 ## Drawbacks
 
