@@ -74,7 +74,13 @@ Adding a `Response` interface in the [Contexts interface](https://develop.sentry
 
 The content is the same as in Option 1.
 
-## Must have for both options
+## Option 3
+
+Expand the `Request` interface adding the missing fields.
+Data scrubbing should consider response headers when scrubbing.
+If we do that, the `Request` docs should be ammended that it contains the `Response` data as well otherwise it's semantically wrong.
+
+## Must have for all the options
 
 A tag should be created for `url` and `status_code` fields, people should be able to search for events with a specific `url` or `status_code`, also to alert on specific `status_code`.
 
