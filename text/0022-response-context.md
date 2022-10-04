@@ -1,6 +1,8 @@
 * Start Date: 2022-10-03
 * RFC Type: feature
 * RFC PR: https://github.com/getsentry/rfcs/blob/rfc/response-context/text/0022-response-context.md
+* RFC Status: draft
+* RFC Driver: [Manoel Aranda Neto](https://github.com/marandaneto)
 
 # Summary
 
@@ -48,9 +50,9 @@ Adding a `Response` interface directly in the Event payload.
       "REMOTE_ADDR": "192.168.0.1"
     },
     "status_code": 500,
-    "status_message": "foo bar", // is that useful?
     "is_redirect": false,
     "response_body_size": 1000, // bytes
+    "arbitrary_field": "arbitrary" // arbitrary and retained fields (either this or data)
   }
 }
 ```
@@ -92,7 +94,5 @@ The [Dart Dio HTTP Client](https://docs.sentry.io/platforms/dart/configuration/i
 
 # Unresolved questions
 
-* Is `status_message` useful?
 * Should we rename `data` to `other` or something else to avoid confusion?
-* Are there any other fields that should be added to the `Response` interface?
 * Some fields from the `Response` should be the very same as the `Request` interface (such as `method`, `url`, ...), should we just omit them?
