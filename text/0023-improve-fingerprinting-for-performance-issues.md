@@ -32,6 +32,8 @@ Example performance issue type proposals (only ideation from this list and for c
 * Degraded performance for a demographic
 * Excessive DOM size
 
+https://www.notion.so/sentry/dff3aad2a74940779c3e89d8d8af2537?v=03d1efc28741433c9a203b92fe4cef6e
+
 # Options Considered
 
 1. Client side/SDK Includes application file name in span/transaction
