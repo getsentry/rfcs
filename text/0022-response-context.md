@@ -1,6 +1,6 @@
 * Start Date: 2022-10-03
 * RFC Type: feature
-* RFC PR: https://github.com/getsentry/rfcs/blob/rfc/response-context/text/0022-response-context.md
+* RFC PR: [#22](https://github.com/getsentry/rfcs/pull/22)
 * RFC Status: draft
 * RFC Driver: [Manoel Aranda Neto](https://github.com/marandaneto)
 
