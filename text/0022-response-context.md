@@ -39,9 +39,6 @@ Adding a `Response` interface directly in the Event payload.
     "method": "POST",
     "url": "http://absolute.uri/foo",
     "query_string": "query=foobar&page=2",
-    "data": { // arbitrary fields
-      "foo": "bar"
-    },
     "cookies": "PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1;",
     "headers": {
       "content-type": "text/html"
@@ -52,13 +49,10 @@ Adding a `Response` interface directly in the Event payload.
     "status_code": 500,
     "is_redirect": false,
     "response_body_size": 1000, // bytes
-    "arbitrary_field": "arbitrary" // arbitrary and retained fields (either this or data)
+    "arbitrary_field": "arbitrary" // arbitrary and retained fields for backwards compatibility when adding new fields
   }
 }
 ```
-
-The `data` field is semantically different than the `Request#data`. The `Request#data` is the data that was sent to the server, while the `Response#data` is just arbitrary data that is attached to the response. The `Response#data` is not used for anything in the SDKs, but it is useful for the user to attach arbitrary data to the response.
-We could rename to `other` or something else to avoid confusion.
 
 ## Option 2
 
@@ -94,5 +88,4 @@ The [Dart Dio HTTP Client](https://docs.sentry.io/platforms/dart/configuration/i
 
 # Unresolved questions
 
-* Should we rename `data` to `other` or something else to avoid confusion?
 * Some fields from the `Response` should be the very same as the `Request` interface (such as `method`, `url`, ...), should we just omit them?
