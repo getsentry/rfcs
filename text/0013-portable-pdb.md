@@ -61,7 +61,9 @@ This `MetadataToken` is encodes the metadata table in its most significant byte 
 
 ### Open Questions:
 
-- How does WASM symbolication work? How is the concept of a _function index_ being used in WASM?
+- ~~How does WASM symbolication work? How is the concept of a _function index_ being used in WASM?~~
+  - WASM has the context of `function_index`, though it is not useful for symbolication as the module relative instruction offset is enough to do DWARF lookups.
+  - The WASM `function_index` would be useful to look up the function metadata in WASM format, which we do not use.
 - Should we introduce another `addr_mode` to call out "function-relative" addressing explicitly?
 - Should the `function_id` be a `HexValue`, or completely free-form?
 - Should we decode the `MetadataToken` on the client? (filter for only `MethodDef`, and mask away the table id?)
