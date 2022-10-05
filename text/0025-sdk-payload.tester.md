@@ -1,6 +1,6 @@
 * Start Date: 2022-10-05
 * RFC Type: feature
-* RFC PR: FIXME
+* RFC PR: https://github.com/getsentry/rfcs/pull/25
 
 # Summary
 
