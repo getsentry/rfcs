@@ -129,6 +129,12 @@ The details of this header do not seem to be publicly documented, but can be tra
 - Key Format: https://github.com/dotnet/symstore/blob/aa44862e5028cb7595bbd474da1d63e8c24bf718/src/Microsoft.SymbolStore/KeyGenerators/KeyGenerator.cs#L166-L177
 - `SymbolChecksum` Header: https://github.com/dotnet/symstore/blob/8a7c47ac74302510f839cc2361ca591b6f4df542/src/Microsoft.SymbolStore/SymbolStores/HttpSymbolStore.cs#L112
 
+Another example that rather fetches files from the Microsoft Symbol Server:
+
+- https://msdl.microsoft.com/download/symbols/system.reflection.metadata.dll/858257FE114000/system.reflection.metadata.dll
+- https://msdl.microsoft.com/download/symbols/system.reflection.metadata.pdb/3183ede4e1eb4d0ca6a02937d1f72463FFFFFFFF/system.reflection.metadata.pdb
+- https://msdl.microsoft.com/download/symbols/system.reflection.metadata.ni.pdb/d9f6618dd9346123c7c2459c9645cf841/system.reflection.metadata.ni.pdb
+
 </details>
 
 # Drawbacks
@@ -140,12 +146,16 @@ eventually necessary to offer symbolication for .NET stack traces based on debug
 
 The proposed fields need to be included and parsed in the following parts:
 
-- The `sentry-dotnet` SDK.
-- Relay
-- Symbolicator
+- The `sentry-dotnet` SDK, something along these lines: https://github.com/getsentry/sentry-dotnet/pull/1785
+- Relay: https://github.com/getsentry/relay/blob/95f154409f236ecc8089a4b19534997625a21735/relay-general/src/protocol/stacktrace.rs#L13
+- Sentry:
+- Symbolicator: https://github.com/getsentry/symbolicator/pull/883
 
 # Unresolved questions
 
-- Bikeshed the `method_index` naming.
-- Bikeshed the `"portable-pe"` naming.
-- What should we do for PE files that have multiple CodeView Records?
+- ~~What should we do for PE files that have multiple CodeView Records?~~
+  - Those come from Native Image (ngen) DLLs.
+  - One of those records refers to a `.ni.pdb` in MSF PDB format.
+  - The other one refers to a Portable PDB.
+  - The MSF PDB does not seem to be usable via our native SymCache conversion.
+  - The commendation is thus to simply filter for the `DebugDirectoryEntry.IsPortableCodeView` property.
