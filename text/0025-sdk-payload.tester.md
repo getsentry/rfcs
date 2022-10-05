@@ -4,7 +4,7 @@
 
 # Summary
 
-In this RFC the Quality Engineering team introduces **SDK Payload Tester** (will be referred as "**Payload Tester**" in the rest of the document) -- a new testing service to ensure better validation and integration testing of payloads produced by Sentry SDKs.
+In this RFC the Quality Engineering team introduces **SDK Payload Tester** (will be referred to as "**Payload Tester**" in the rest of the document) -- a new testing service to ensure better validation and integration testing of payloads produced by Sentry SDKs.
 
 # Motivation
 
@@ -140,10 +140,9 @@ As a tool JSON schema can be useful and might be employed as one of the validati
 
 # Drawbacks
 
-Why should we not do this?  What are the drawbacks of this RFC or a particular option if
-multiple options are presented.
+The SDK folks will have to take active part in implementing the tests and syncing with the QE team to align expectations and deliverables.
 
 # Unresolved questions
 
-* What parts of the design do you expect to resolve through this RFC?
-* What issues are out of scope for this RFC but are known?
+* Will the approach require a lot of boilerplate code to be written/generated for every SDK?
+* Does Relay's capture mode have enough capabilities to be useful enough?
