@@ -55,6 +55,12 @@ The proposed Payload Tester consists of the following components:
 
     The report generator is a component that works in collaboration with the Payload Tester and reports a summary of a test session. The summary contains information about which facilities were tested and which tests failed. Looking at the report one can tell how much of the SDK is verified by the Payload Tester and which parts fail.
 
+- Echo service for generic integration testing
+  
+    This is basically how a message that doesn't specify a test id is handled by the Payload Tester. 
+    It can be used in various integration tests to check different parts of the message including the http headers, the envelope headers, envelope item headers and item bodies. Items with known json bodies are parsed and returned as JSON objects.
+    Various variants of this are already used in SDK integration tests (e.g: [integration-test-server.py](https://github.com/getsentry/sentry-fastlane-plugin/blob/master/test/integration-test-server.py)) but this allows a single version with whatever bells and whistles we wish to add available for all SDK developers.
+
 
 In order to implement the more "in-depth" stages of the payload verifier, a set of helper utilities will be written that will facilitate common tasks. Among the tools we are considering are:
 
@@ -109,7 +115,7 @@ The workflow could look as follows: emitting events, manually verifying them to 
 **Pros:**
 
 - The process of adding new test cases (snapshots) is easy and fast, or at least can be simplified with proper tooling. Take [Jest’s approach, for example](https://jestjs.io/docs/snapshot-testing).
-- Snapshot test failures (differences) is an immediate indication that some (breaking) changes are introduced.
+- Tests that fail due to various changes in the message generation (format, new items...) can be instataneously fixed by accepting the chnanges (which sets the new message generated as the reference snapshot and fixes the failing test).
 
 **Cons**
 
