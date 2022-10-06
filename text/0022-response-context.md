@@ -92,7 +92,6 @@ Adding it as part of the `Contexts`, we get a lot for free such as retained arbi
 }
 ```
 
-The `Response` interface should be a mimic of the [Request](https://develop.sentry.dev/sdk/event-payloads/types/#typedef-Request) spec with additional fields.
 * `type`: `response` as `String`.
 * `cookies`: Can be given unparsed as `String`, as `Dictionary`, or as a `List of Tuples`.
 * `headers`: A `Dictionary` of submitted headers, this requires a special treatment in the data scrubbing rules.
