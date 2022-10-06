@@ -29,47 +29,11 @@ The [Dart Dio HTTP Client](https://docs.sentry.io/platforms/dart/configuration/i
 
 See [Supporting data](https://www.notion.so/sentry/Failed-HTTP-Client-requests-automatically-result-in-Events-f6c21d2a58ce4f2c889a823fd1da0044#0ca951d5216742dbaab02f5fd33b8fb5) section in the [DACI](https://www.notion.so/sentry/Failed-HTTP-Client-requests-automatically-result-in-Events-f6c21d2a58ce4f2c889a823fd1da0044).
 
-# Options Considered
+# Proposal (Namely Option 2)
 
-## Option 1
+The proposal is adding a `Response` interface in the [Contexts interface](https://develop.sentry.dev/sdk/event-payloads/contexts/).
 
-Adding a `Response` interface directly in the [Event payload](https://develop.sentry.dev/sdk/event-payloads/).
-
-```json
-{
-  "response": {
-    // ..
-  }
-}
-```
-
-## Option 2 (Chosen)
-
-Adding a `Response` interface in the [Contexts interface](https://develop.sentry.dev/sdk/event-payloads/contexts/).
-
-```json
-{
-    "contexts": {
-        "response": {
-            "type": "response"
-            // ...
-  }
-}
-```
-
-## Option 3
-
-Expand the `Request` interface adding the missing fields.
-
-Data scrubbing should consider response headers when scrubbing.
-
-If we do that, the `Request` docs should be ammended that it contains the `Response` data as well otherwise it's semantically wrong.
-
-# Proposal
-
-The proposal is the Option 2, adding a `Response` interface in the [Contexts interface](https://develop.sentry.dev/sdk/event-payloads/contexts/).
-
-By doing the Option 2, we can keep the `Request` interface as it is and we don't need to change the data scrubbing rules for the `Request` field.
+By doing this, we can keep the `Request` interface as it is and we don't need to change the data scrubbing rules for the `Request` field.
 
 Adding it as part of the `Contexts`, we get a lot for free such as retained arbitrary fields and back compatibility.
 
@@ -82,7 +46,6 @@ Adding it as part of the `Contexts`, we get a lot for free such as retained arbi
       "headers": {
         "content-type": "text/html"
       },
-      "inferred_content_type": "text/html",
       "status_code": 500,
       "is_redirect": false,
       "body_size": 1000,
@@ -98,15 +61,22 @@ Adding it as part of the `Contexts`, we get a lot for free such as retained arbi
 * `status_code`: The HTTP status code, `Integer`.
 * `is_redirect`: A `Boolean` indicating if the response was a redirect.
 * `body_size`: A `Number` (absolute/positive) indicating the size of the response body in bytes.
-* `inferred_content_type`: A `String` indicating the inferred content type of the response.
 
 The `url`, `method`, `query_string`, `fragment`, `env` fields are not part of the `Response` interface and they should be set under the `Request` field, even if inferred from the HTTP response in case you don't have control over the HTTP Request object.
 
 The `data` field won't be added to the `Response` interface, a phase 2 of this RFC will propose add Request and Response bodies are sent as attachments.
 
+Fields that may contain PII:
+* `cookies`
+* `headers`
+
+The PII rules should be similar to the [Request](https://develop.sentry.dev/sdk/event-payloads/request/) interface.
+
+The difference is that `headers` contain response headers, such as this [issue](https://github.com/getsentry/relay/issues/1501).
+
 ## Must have
 
-A tag should be created for `Request#url` and `Response#status_code` fields, people should be able to search for events with a specific `url` and/or `status_code`, also to alert on them.
+The fields `Request#url` and `Response#status_code` should be indexed, people should be able to search for events with a specific `url` and/or `status_code`, also to alert on them.
 
 # Drawbacks
 
