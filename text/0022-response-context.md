@@ -60,13 +60,17 @@ Adding a `Response` interface in the [Contexts interface](https://develop.sentry
 ## Option 3
 
 Expand the `Request` interface adding the missing fields.
+
 Data scrubbing should consider response headers when scrubbing.
+
 If we do that, the `Request` docs should be ammended that it contains the `Response` data as well otherwise it's semantically wrong.
 
 # Proposal
 
 The proposal is the Option 2, adding a `Response` interface in the [Contexts interface](https://develop.sentry.dev/sdk/event-payloads/contexts/).
+
 By doing the Option 2, we can keep the `Request` interface as it is and we don't need to change the data scrubbing rules for the `Request` field.
+
 Adding it as part of the `Contexts`, we get a lot for free such as retained arbitrary fields and back compatibility.
 
 ```json
@@ -89,15 +93,15 @@ Adding it as part of the `Contexts`, we get a lot for free such as retained arbi
 ```
 
 The `Response` interface should be a mimic of the [Request](https://develop.sentry.dev/sdk/event-payloads/types/#typedef-Request) spec.
-
-`cookies`: Can be given unparsed as `String`, as `Dictionary`, or as a `List of Tuples`.
-`headers`: A `Dictionary` of submitted headers, this requires a special treatment in the data scrubbing rules.
-`status_code`: The HTTP status code, `Integer`.
-`is_redirect`: A `Boolean` indicating if the response was a redirect.
-`body_size`: A `Number` indicating the size of the response body in bytes.
-`inferred_content_type`: A `String` indicating the inferred content type of the response.
+* `cookies`: Can be given unparsed as `String`, as `Dictionary`, or as a `List of Tuples`.
+* `headers`: A `Dictionary` of submitted headers, this requires a special treatment in the data scrubbing rules.
+* `status_code`: The HTTP status code, `Integer`.
+* `is_redirect`: A `Boolean` indicating if the response was a redirect.
+* `body_size`: A `Number` indicating the size of the response body in bytes.
+* `inferred_content_type`: A `String` indicating the inferred content type of the response.
 
 The `url`, `method`, `query_string`, `fragment`, `env` fields are not part of the `Response` interface and they should be set under the `Request` field, even if inferred from the HTTP response in case you don't have control over the HTTP Request object.
+
 The `data` field won't be added to the `Response` interface, a phase 2 of this RFC will propose add Request and Response bodies are sent as attachments.
 
 ## Must have
@@ -125,12 +129,16 @@ Adding a `Response` interface directly in the [Event payload](https://develop.se
 ```
 
 This option is not chosen because it's not backwards compatible and we don't get a lot for free such as retained arbitrary fields and develop docs.
+
 Also, the `Request` field may be soft deprecated in the future in favor of `Contexts#request`.
 
 ### Option 3
 
 Expand the `Request` interface adding the missing fields.
+
 Data scrubbing should consider response headers when scrubbing.
+
 If we do that, the `Request` docs should be ammended that it contains the `Response` data as well otherwise it's semantically wrong.
+
 
 This option is not chosen because PII rules would need to be changed, it's not backwards compatible and it's semantically wrong.
