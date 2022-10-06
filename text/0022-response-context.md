@@ -85,7 +85,7 @@ Adding it as part of the `Contexts`, we get a lot for free such as retained arbi
       "inferred_content_type": "text/html",
       "status_code": 500,
       "is_redirect": false,
-      "body_size": 1000, // bytes (absolute/positive number)
+      "body_size": 1000,
       "arbitrary_field": "arbitrary" // arbitrary and retained fields for backwards compatibility when adding new fields
     }
   }
@@ -98,7 +98,7 @@ The `Response` interface should be a mimic of the [Request](https://develop.sent
 * `headers`: A `Dictionary` of submitted headers, this requires a special treatment in the data scrubbing rules.
 * `status_code`: The HTTP status code, `Integer`.
 * `is_redirect`: A `Boolean` indicating if the response was a redirect.
-* `body_size`: A `Number` indicating the size of the response body in bytes.
+* `body_size`: A `Number` (absolute/positive) indicating the size of the response body in bytes.
 * `inferred_content_type`: A `String` indicating the inferred content type of the response.
 
 The `url`, `method`, `query_string`, `fragment`, `env` fields are not part of the `Response` interface and they should be set under the `Request` field, even if inferred from the HTTP response in case you don't have control over the HTTP Request object.
