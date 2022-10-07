@@ -118,3 +118,4 @@ This list might be incomplete
 # Unresolved Questions
 
 - Are there any other exception types next to the ones metioned in this RFC?
+- When there's an unhandled exception, we'd automatically finish the transaction bound to the scope, but only if the app crashes (process termination)? See [issue](https://github.com/getsentry/develop/issues/443).
