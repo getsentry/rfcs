@@ -61,6 +61,11 @@ The proposed Payload Tester consists of the following components:
     It can be used in various integration tests to check different parts of the message including the http headers, the envelope headers, envelope item headers and item bodies. Items with known json bodies are parsed and returned as JSON objects.
     Various variants of this are already used in SDK integration tests (e.g: [integration-test-server.py](https://github.com/getsentry/sentry-fastlane-plugin/blob/master/test/integration-test-server.py)) but this allows a single version with whatever bells and whistles we wish to add available for all SDK developers.
 
+Basic architecture:
+
+<img width="750" alt="image" src="https://user-images.githubusercontent.com/1120468/194636772-b8688cb0-e4b9-4a25-b2ba-9fdd0f8d73f5.png">
+
+
 
 In order to implement the more "in-depth" stages of the payload verifier, a set of helper utilities will be written that will facilitate common tasks. Among the tools we are considering are:
 
