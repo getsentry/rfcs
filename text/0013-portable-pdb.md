@@ -40,33 +40,38 @@ for each frame in the stack trace:
 
 ## Stack Trace Interface
 
-We propose to add the following to the [Stack Trace Interface Frame Attributes](https://develop.sentry.dev/sdk/event-payloads/stacktrace/#frame-attributes):
+We propose to use/add the following fields to the
+[Stack Trace Interface Frame Attributes](https://develop.sentry.dev/sdk/event-payloads/stacktrace/#frame-attributes)
+that should be used to facilitate symbolication using Portable PDB files:
 
-**`addr_mode: "rel:$idx"`**, _existing_
+**`addr_mode: "rel:$idx"`**, _existing_, _required_
 
 This re-uses the existing `addr_mode` field using relative indexing.
 The index points into `debug_meta.images` protocol field and references a debug file
 that contains the debug data necessary to symbolicate this stack frame.
 
-**`instruction_addr: HexValue`**, _existing_
+**`instruction_addr: HexValue`**, _existing_, _required_
 
 This re-uses the existing `instruction_addr` field and represents the
 function-relative IL Offset and corresponds to the .NET [`StackFrame.GetILOffset`](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.stackframe.getiloffset) method.
 
-**`function_id: HexValue`**, _new_
+**`function_id: HexValue`**, _new_, _required_
 
 A new field that represents a unique identifier for this function _inside the referenced image_.
 This is derived from the .NET [`MemberInfo.MetadataToken`](https://learn.microsoft.com/en-us/dotnet/api/system.reflection.memberinfo.metadatatoken).
 This `MetadataToken` is encodes the metadata table in its most significant byte and the index into that table as the lower 3 bytes (24 bits).
+The SDK should filter specifically for `MethodDef` tokens and only transmit the lower 3 bytes when it in fact is a `MethodDef` token.
 
 ### Open Questions:
 
 - ~~How does WASM symbolication work? How is the concept of a _function index_ being used in WASM?~~
   - WASM has the context of `function_index`, though it is not useful for symbolication as the module relative instruction offset is enough to do DWARF lookups.
   - The WASM `function_index` would be useful to look up the function metadata in WASM format, which we do not use.
+- ~~Should the `function_id` be a `HexValue`, or completely free-form?~~
+  - We will restrict this to a `HexValue ` initially. We are free to relax that to `String` in the future if needed.
+- ~~Should we decode the `MetadataToken` on the client? (filter for only `MethodDef`, and mask away the table id?)~~
+  - Yes please. Since this is the functions ID, it should validate/decode that in the SDK.
 - Should we introduce another `addr_mode` to call out "function-relative" addressing explicitly?
-- Should the `function_id` be a `HexValue`, or completely free-form?
-- Should we decode the `MetadataToken` on the client? (filter for only `MethodDef`, and mask away the table id?)
 
 ### Existing implementation
 
@@ -75,20 +80,55 @@ Currently the `SentryStackFrame` type of the `sentry-dotnet` SDK is currently us
 
 ## Debug Meta Interface
 
-We propose to add the following to the [Debug Images Interface](https://develop.sentry.dev/sdk/event-payloads/debugmeta#debug-images):
+We propose to use/add the following fields to the
+[Debug Images Interface](https://develop.sentry.dev/sdk/event-payloads/debugmeta#debug-images)
+that should be used to facilitate symbolication using Portable PDB files:
 
-- A new debug image type similar to the existing native image types.
-- It should have a `type: "portable-pe"` attribute.
-- A `debug_id: String` attribute with a `DebugId` that is parsed from the [CodeView Debug Directory Entry](https://github.com/dotnet/runtime/blob/main/docs/design/specs/PE-COFF.md#codeview-debug-directory-entry-type-2).
-- A `debug_file: String` attribute with the corresponding PDB file path parsed from the same CodeView Entry.
-- A `debug_checksum: String` attribute that is parsed from the [PDB Checksum Debug Directory Entry](https://github.com/dotnet/runtime/blob/main/docs/design/specs/PE-COFF.md#pdb-checksum-debug-directory-entry-type-19). The format for this attribute should be `${algorithm}:${hex-bytes}`, for example `SHA256:xxxx`.
+**`type: "pe_dotnet"`**, _existing_ (new variant), _required_
 
-### Alternatives
+A new _type_ of debug image that signifies a PE file that contains .NET IL and metadata, and has a .NET specific CodeView record (more below).
 
-- The proposed `"portable-pe"` spelling is modeled after the current `type: "pe"` usage.
-- The current `type: "pe"` image is referencing a PDB file via its `debug_file` and `debug_id` attributes.
-- An alternative spelling could be `"portable-pdb"`, `"portablepdb"` or `"ppdb"`.
-- The `debug_checksum` attribute name has a similar reason. It is the checksum of the referenced debug file.
+**`debug_id: DebugId`**, _existing_, _required_
+
+The `DebugId` of the debug image. This is constructed from a CodeView record similar to the `debug_id` of a normal `"pe"` image,
+with a small special case, more below.
+
+**`debug_file: String`**, _existing_, _optional_
+
+This is the filename (or full path) of the corresponding PDB debug file. This is optional when only relying on the sentry internal symbol
+source, but is required when fetching symbols from external symbol servers.
+
+**`debug_checksum: String`**, _new_, _optional_
+
+This is the checksum of PDB debug file. The format should be `"${algorithm}:${hex-bytes}"`, for example `SHA256:0011aabb...`.
+The algorithm and bytes are extracted from the
+[PDB Checksum Debug Directory Entry](https://github.com/dotnet/runtime/blob/main/docs/design/specs/PE-COFF.md#pdb-checksum-debug-directory-entry-type-19).
+
+**`code_file: String`**, _existing_, _optional_
+
+The filename (or full path) of the executable (`.exe`, `.dll`) file.
+
+**`code_id: String`**, _existing_, _optional_
+
+An identifier for the executable derived from the `Timestamp` and `SizeOfImage` header values.
+This value along with `code_file` can be used to look up the executable file on an external symbol server, however that functionality is not currently
+used for .NET symbolication.
+
+### Handling CodeView records
+
+The `debug_id` value is extracted from a [CodeView Debug Directory Entry](https://github.com/dotnet/runtime/blob/main/docs/design/specs/PE-COFF.md#codeview-debug-directory-entry-type-2),
+similar to the one that is already used for native symbolication.
+
+The difference is in a special "Version Minor" value that says that the `Age` field of the CodeView record should not be used, and instead the last 4 bytes
+of the 20 byte `debug_id` are taken from the `TimeDateStamp` field.
+
+Looking up such files on an external symbol server is also different, as the last 4 bytes are masked by `FF`, and the server may require an additional
+`SymbolChecksum` header.
+
+Some files (such as the Windows version of `System.Reflection.Metadata.dll`) may have more than one CodeView record.
+In the observed case, one record points to the Portable PDB file corresponding to the .NET portion of the file.
+The other record points to a native PDB file which presumably contains native Debug Info related to a "Native Image".
+That native PDB does not seem to be usable by our tools however. Trying to create a SymCache from it results in an empty cache.
 
 # Appendix
 
@@ -108,6 +148,10 @@ Interestingly though, the server only checks the _existence_ of the header, not 
 <summary>**Examples:**</summary>
 
 ```
+PE: https://msdl.microsoft.com/download/symbols/system.reflection.metadata.dll/858257FE114000/system.reflection.metadata.dll
+Portable PDB: https://msdl.microsoft.com/download/symbols/system.reflection.metadata.pdb/3183ede4e1eb4d0ca6a02937d1f72463FFFFFFFF/system.reflection.metadata.pdb
+NI PDB: https://msdl.microsoft.com/download/symbols/system.reflection.metadata.ni.pdb/d9f6618dd9346123c7c2459c9645cf841/system.reflection.metadata.ni.pdb
+
 > curl https://symbols.nuget.org/download/symbols/timezoneconverter.pdb/4e2ca887825e46f3968f25b41ae1b5f3FFFFFFFF/timezoneconverter.pdb -i
 HTTP/2 403
 
@@ -139,16 +183,18 @@ Another example that rather fetches files from the Microsoft Symbol Server:
 
 # Drawbacks
 
-This increases the complexity and surface area of the Event Payload Interface. However all the proposed fields are
-eventually necessary to offer symbolication for .NET stack traces based on debug data included in Portable PDB files.
+This slightly increases the complexity and surface area of the Event Payload Interface. However all the proposed fields are
+necessary to offer symbolication for .NET stack traces based on debug data included in Portable PDB files.
 
-# Implementation guidelines
+# Implementation
 
-The proposed fields need to be included and parsed in the following parts:
+Support for these fields, or Portable PDB symbolication in general is being implemented in these parts of the pipeline:
 
 - The `sentry-dotnet` SDK, something along these lines: https://github.com/getsentry/sentry-dotnet/pull/1785
-- Relay: https://github.com/getsentry/relay/blob/95f154409f236ecc8089a4b19534997625a21735/relay-general/src/protocol/stacktrace.rs#L13
-- Sentry:
+- Relay: https://github.com/getsentry/relay/pull/1518
+- Sentry-CLI: https://github.com/getsentry/sentry-cli/pull/1345
+- Sentry: https://github.com/getsentry/sentry/pull/39610
+- Symbolic: https://github.com/getsentry/symbolic/pull/696
 - Symbolicator: https://github.com/getsentry/symbolicator/pull/883
 
 # Unresolved questions
