@@ -39,7 +39,7 @@ Allow a user to set the `handled` property through the `EventHint`.
 Instead of calling `captureException()`, people can access the `handeled` property by manually creating an event and passing in the desired `mechansim` to the `EventHint`, which then gets passed to `captureEvent()`.
 
 
-```
+```php
 $hint = EventHint::fromArray([
     'exception' => $exception,
     'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, false),
