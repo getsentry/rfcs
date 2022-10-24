@@ -1,6 +1,7 @@
 * Start Date: 2022-09-26
 * RFC Type: feature
 * RFC PR: https://github.com/getsentry/rfcs/pull/15
+* RFC Status: draft
 
 # Summary
 
@@ -28,15 +29,29 @@ public function logException(
 
 This creates the problem, that all exceptions/errors are now considered `handled: true`.
 
-# Options Considered
-
-## Add `captureUnhandledException()`
-
-Add a new global method to allow a user to capture unhandled exceptions explicitly.
+# Proposal
 
 ## Expose the handled property through the  `EventHint`
 
 Allow a user to set the `handled` property through the `EventHint`.
+
+Instead of calling `captureException()`, people can access the `handeled` property by manually creating an event and passing in the desired `mechansim` to the `EventHint`, which then gets passed to `captureEvent()`.
+
+
+```
+$hint = EventHint::fromArray([
+    'exception' => $exception,
+    'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, false),
+]);
+
+captureEvent(Event::createEvent(), $hint);
+```
+
+# Other Options Considered
+
+## Add `captureUnhandledException()`
+
+Add a new global method to allow a user to capture unhandled exceptions explicitly.
 
 ## Add `bool $handled = true` as an optional parameter to `captureException()`
 
