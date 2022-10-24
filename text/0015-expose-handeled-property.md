@@ -1,7 +1,8 @@
 * Start Date: 2022-09-26
 * RFC Type: feature
 * RFC PR: https://github.com/getsentry/rfcs/pull/15
-* RFC Status: draft
+* RFC Status: approved
+* RFC Driver: [Michi Hoffmann](https://github.com/cleptric)
 
 # Summary
 
