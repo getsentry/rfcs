@@ -137,3 +137,29 @@ enough information to be processable there.  In particular minidumps and native 
 to undergo a symbolication step to be on the same level of fidelity as a regular error
 event.  Likewise some transaction events might require more expensive processing to clean up
 the span data.  Some of this is exploratory work.
+
+## Continuous Issue Monitoring
+
+Today an issue has relatively simplistic workflow transitions attached to them which make
+them rather static.  An issue at any point is open/resolved or muted, but it does not perform
+many transitions by itself.
+
+Yet as a user of the product I make an implicit decision to ignore an issue by not paying
+attention to it.  Sometimes however that issue which I am not paying attention to does change
+in frequency or importance.
+
+As such it would be interesting to explore the ability to have an issue transition between an
+implicit "not interesting" and "now spiking" state.  Likewise with supergroups the individual
+issues within a larger issue might all together indicate that the outer group now entered
+some form of criticallity.
+
+As an extreme example the unavailability of a database or external service can cause an incident,
+spiking a lot of groups in the system and bump them up.  This today requires an engineer to go
+in and resolve each group individually.  More often this is just ignored and left around.  Next
+time the same incident happens, it's hard to relate back to when it happened last because the
+incident is split across many individual groups.
+
+A sudden spike in such traffic could however be automatically sweeped up into an "incident
+superissue" and auto-resolved by the fact that these errors go away naturally.  Next time the
+incident happens, the super group will spike again and could alert once more.
+
