@@ -12,7 +12,7 @@ When an error or exception is reported, it's desireable to fingerprint them so t
 frequency of their ocurrence can be determined.  However what makes an error "the same"
 as another error?  Sentry has always run an algorithm to calculate the unique fingerprint
 of the error.  Any further error with the same fingerprint is fed into the same group and
-tallied up.  However no error is quite the same so the fingerprinting algorithm intentionally
+tallied up.  However no error is exactly the same so the fingerprinting algorithm intentionally
 removed quite a bit of information or cleaned it up, to increase the chance of getting the
 same fingerprint.
 
@@ -96,8 +96,8 @@ InvalidUuid
 ```
 
 Here the error is in fact not in `parse_uuid`.  The function operates as expected, but the
-calling functions are failing to catch down the invalid input error.  We at this point do not
-even know yet if the `parse_request` or `load_images` function are supposed to catch down the
+calling functions are failing to catch down the invalid input error. At this point we do not
+yet know if the `parse_request` or `load_images` function are supposed to catch the
 error or if someone higher up in the stack is supposed to, but we do know that it somewhere made
 it to a point where a Sentry error was created.  In this case we would not want this to group
 together under `parse_uuid`.
