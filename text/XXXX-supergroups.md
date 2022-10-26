@@ -1,6 +1,6 @@
-* Start Date: YYYY-MM-DD
+* Start Date: 2022-06-22
 * RFC Type: feature / decision / informational
-* RFC PR: <link>
+* RFC PR: https://github.com/getsentry/rfcs/pull/29
 
 # Summary
 
