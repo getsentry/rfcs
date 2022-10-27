@@ -152,6 +152,7 @@ To avoid the two different token versions, we could automatically prepend the pr
 
 # Unresolved questions
 
+- How do we deploy the necessary changes for the backend and frontend separately and in a backwards compatible way?
 - Implementation path for `APIApplication` secrets.
 - Is there a downside to allowing `null` in the additional columns?
 - What is the median time between token use?
