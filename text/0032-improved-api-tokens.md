@@ -18,13 +18,10 @@
 - [Background](#background)
 - [Options Considered](#options-considered)
   - [Option #1](#option--1)
-    - [`n+1`](#-n-1-)
-    - [`n+2`](#-n-2-)
   - [Option #2](#option--2)
+    - [Drawbacks](#drawbacks)
   - [Option #3](#option--3)
-- [Drawbacks](#drawbacks)
-  - [Option #2](#option--2-1)
-  - [Option #3](#option--3-1)
+    - [Drawbacks](#drawbacks-1)
 - [Unresolved questions](#unresolved-questions)
 
 ---
@@ -105,47 +102,40 @@ We can help customers further protect their accounts and data by providing a mea
 
 ## Option #1
 
-The migration from the legacy tokens to the new tokens should be rolled out over X releases. This allows for a smooth transition of self-hosted instances keeping pace with the versions.
+This option strives to limit impact to the database by avoiding large bulk operations. To do this we'll distribute the complete implementation over two features. This also allows for a smooth transition of self-hosted instances keeping pace with releases.
 
-> With `n` being the current version.
+**In the first release:**
 
-### `n+1`
+1. The frontend is updated to no longer display the token value for existing tokens.
+2. The frontend is updated to accept a `name` when creating new tokens.
+3. A notification/warning in the UI should be displayed recommending users recreate their tokens, resulting in the new token version.
+4. New tokens are only displayed once at creation time to the user.
+5. New tokens are created following the new format.
+   - A Django migration will be needed to add fields: `hashed_token`, `version`, and `name`.
+   - legacy tokens will be `version = 1` and new tokens `version = 2`
+6. As old tokens are used, they are hashed and stored in the database.
+   - This does not update the token to the new format.
+   - The plaintext token value should be removed in this action.
 
-- Add a Django migration including the `hashed_token`, `name`, and `token_version` fields.
-  - columns should allow `null` values for now.
-- Remove displaying the plaintext token in the frontend, and only display newly created tokens once.
-- Implement new logic to generate the new token pattern.
-  - The `token_version` should be set as `2`.
-- Implement a backwards compatible means of verifying legacy tokens. This should:
-  - Verify the legacy token is valid/invalid.
-  - If valid, hash the legacy token and store it in the table.
-  - Remove the plaintext representation of the token in the table.
-  - Mark the `token_version` as `1`.
-- A notification/warning in the UI should be displayed recommending users recreate their tokens, resulting in the new token version.
+**In the second release:**
 
-The `n+1` Sentry version should run in production for sufficient time to update the majority of the rows in the database as the legacy tokens are _used_ by users.
-
-### `n+2`
-
-- Add a Django migration to generate the `hashed_token` value for any tokens in `sentry_apitoken` that do not already have a hashed value.
-  - Rows matching this are legacy tokens that were not used during the transition period.
-  - The `token_version` should be set to `1` for these rows.
+1. As a Django migration, a bulk operation is executed to update all remaining legacy tokens in the database.
+   - This operation will hash the legacy token value, store it in the database, and remove the plaintext value.
+   - It does **not** update the token to the new format.
 
 ## Option #2
 
 Instead of slowly generating the hashed token values over time of the legacy tokens (as in Option #1), we could generate a single migration that migrates the entire table to the end state.
 
-## Option #3
-
-To avoid the two different token versions, we could automatically prepend the prefix `sntyx_` (with `x` just being a placeholder here). We would then follow a similar approach to Option #1 or Option #2 to generate the hashed values.
-
-# Drawbacks
-
-## Option #2
+### Drawbacks
 
 - This is less than ideal because of the potential performance impact while the migration mutates each row in the table. Potential impacts to self-hosted installs would be unknown as well.
 
 ## Option #3
+
+To avoid the two different token versions, we could automatically prepend the prefix `sntyx_` (with `x` just being a placeholder here). We would then follow a similar approach to Option #1 or Option #2 to generate the hashed values.
+
+### Drawbacks
 
 - Users would not be able to benefit from the Github Secrets Scanning since they would still be using their 64 character alphanumeric string without the prefix.
 - Authentication views/logic would become more complex with branching code to handle the with and without prefix cases.
