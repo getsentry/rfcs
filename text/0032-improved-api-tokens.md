@@ -102,7 +102,7 @@ We can help customers further protect their accounts and data by providing a mea
 
 ## Option #1
 
-This option strives to limit impact to the database by avoiding large bulk operations. To do this we'll distribute the complete implementation over two features. This also allows for a smooth transition of self-hosted instances keeping pace with releases.
+This option strives to limit impact to the database by avoiding large bulk operations. To do this we'll distribute the complete implementation over two releases. This also allows for a smooth transition of self-hosted instances keeping pace with releases.
 
 **In the first release:**
 
