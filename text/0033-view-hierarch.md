@@ -36,7 +36,7 @@ The proposal is to create a new envelope item in the form of a json representati
 
 # Options Considered
 
-- We could send the same information as attachment, but this impact on attachment quota. And also we need to rely on file name to determined whether an attachment is a view hierarch or not.
+- We could send the same information as attachment, but this impact on attachment quota. And also we need to rely on file name to determined whether an attachment is a view hierarch or not, this is a problem we already have with [screenshots](https://develop.sentry.dev/sdk/features/#screenshots).
 - The view hierarch could be part of the Event, but because of the size limit, isn't recommended. 
 
 # Drawbacks
