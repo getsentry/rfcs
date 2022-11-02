@@ -1,4 +1,4 @@
-name: Rustfmt
+name: Check all RFCs Linked
 
 on:
   push:
