@@ -1,6 +1,6 @@
 * Start Date: 2022-11-02
 * RFC Type: feature
-* RFC PR: [#28](https://github.com/getsentry/rfcs/pull/28)
+* RFC PR: [#33](https://github.com/getsentry/rfcs/pull/33)
 
 # Summary
 
