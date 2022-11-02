@@ -1,6 +1,8 @@
 * Start Date: 2022-11-02
 * RFC Type: feature
 * RFC PR: [#33](https://github.com/getsentry/rfcs/pull/33)
+* RFC Status: draft
+* RFC Driver: -
 
 # Summary
 
@@ -34,8 +36,11 @@ The proposal is to create a new envelope item in the form of a json representati
 
 # Options Considered
 
-We could send the same information as attachment, but this impact on attachment quota.
+- We could send the same information as attachment, but this impact on attachment quota. And also we need to rely on file name to determined whether an attachment is a view hierarch or not.
+- The view hierarch could be part of the Event, but because of the size limit, isn't recommended. 
 
 # Drawbacks
 
-This can significantly increase the envelope size. 
+- This can significantly increase the envelope size. 
+- We've decided to not add the content of textfields, editables or labels because of PII.
+    - We may evaluate an options to allow PII.
