@@ -1,0 +1,15 @@
+name: Rustfmt
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Run link check
+        run: python find-unlinked.py

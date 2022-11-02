@@ -1,5 +1,11 @@
+"""
+Running this script finds all RFCs that are in the `text` folder but not
+referenced by the `README.md` file.  These RFCs can be harder to find as
+a result.  Running it helps one to quickly remedy this situation.
+"""
 import os
 import re
+import sys
 
 
 _link_re = re.compile(r'\[[^\]]*\]\(([^)]*)\)')
@@ -57,6 +63,7 @@ def main():
             short = filename[:-3]
             summary = exists[filename]
             print(f'* [{short}](text/{filename}): {summary}')
+        sys.exit(1)
     else:
         print('All files added to README')
 
