@@ -1,6 +1,10 @@
 # RFCs
 
-This repository contains RFCs and DACIs. For creating a new RFC see [workflow](text/0001-workflow.md).
+This repository contains RFCs and DACIs.  Lost?
+
+* For creating a new RFC see [workflow](text/0001-workflow.md).
+* For the list of open RFCs have a look [at the open pull requests](https://github.com/getsentry/rfcs/pulls).
+* For the list of all accepted and live RFCs refer [to the index](#index).
 
 ## Index
 
