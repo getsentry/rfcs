@@ -11,7 +11,7 @@ Allow SDKs to send a textual representation of the application's UI view hierarc
 # Motivation
 
 Being able to see what the user was looking at is a good way to found out problems in the application. 
-This RFC proposes a way to send information from the UI state of an application, known as "view hierarch".
+This RFC proposes a way to send information from the UI state of an application, known as "view hierarchy".
 
 # Proposal 
 
@@ -19,35 +19,35 @@ The proposal is to create a new [envelope item](https://develop.sentry.dev/sdk/e
 This is how the envelope item header should look like:
 
 ```json
-{"type":"view_hierarch","length":...,"content_type":"application/json"}\n
+{"type":"view_hierarchy","length":...,"content_type":"application/json"}\n
 ```
 
-And the envelope item payload will be a JSON array that contains a view hierarch for each available screen/window. 
+And the envelope item payload will be a JSON array that contains a view hierarchy for each available screen/window. 
 This is how it should look like: 
 
 ```json
 [
-{
-    "type": "element_class_name", 
-    "identifier": "element_identifier",
-    "children": [...], //An array of ui elements.
-    "width": 100, 
-    "height": 100,
-    "depth": 100, //if 3D
-    "x": 0,
-    "y": 1,
-    "z": 2, //if 3D.
-    "visible": true|false,
-    "alpha": 1,
-    "{extra_properties}": "{property value}" //adicional information by platform
-}
+    {
+        "type": "element_class_name", 
+        "identifier": "element_identifier",
+        "children": [...], //An array of ui elements.
+        "width": 100, 
+        "height": 100,
+        "depth": 100, //if 3D
+        "x": 0,
+        "y": 1,
+        "z": 2, //if 3D.
+        "visible": true|false,
+        "alpha": 1,
+        "{extra_properties}": "{property value}" //adicional information by platform
+    }
 ]
 ```
 
 # Options Considered
 
-- We could send the same information as attachment, but this impact on attachment quota. And also we need to rely on file name to determined whether an attachment is a view hierarch or not, this is a problem we already have with [screenshots](https://develop.sentry.dev/sdk/features/#screenshots).
-- The view hierarch could be part of the Event, but because of the size limit, isn't recommended. 
+- We could send the same information as attachment, but this impact on attachment quota. And also we need to rely on file name to determined whether an attachment is a view hierarchy or not, this is a problem we already have with [screenshots](https://develop.sentry.dev/sdk/features/#screenshots).
+- The view hierarchy could be part of the Event, but because of the size limit, isn't recommended. 
 
 # Drawbacks
 
