@@ -1,6 +1,10 @@
 # RFCs
 
-This repository contains RFCs and DACIs. For creating a new RFC see [workflow](text/0001-workflow.md).
+This repository contains RFCs and DACIs.  Lost?
+
+* For creating a new RFC see [workflow](text/0001-workflow.md).
+* For the list of open RFCs have a look [at the open pull requests](https://github.com/getsentry/rfcs/pulls).
+* For the list of all accepted and live RFCs refer [to the index](#index).
 
 ## Index
 
@@ -14,6 +18,6 @@ This repository contains RFCs and DACIs. For creating a new RFC see [workflow](t
 * [0015-import-reorg](text/0015-expose-handeled-property.md): Expose handeled property
 * [0016-auto-code-mappings](text/0016-auto-code-mappings.md): Automatic code mappings
 * [0022-response-context](text/0022-response-context.md): Response context
-* [0027-manual-disabling-of-flaky-tests](text/0027-manual-disabling-of-flaky-tests.md): processes for manually 
-* [0033-view-hierarch](text/0033-view-hierarch.md): View Hierarch 
-disabling flaky tests in `sentry` and `getsentry`
+* [0027-manual-disabling-of-flaky-tests](text/0027-manual-disabling-of-flaky-tests.md): processes for manually disabling flaky tests in `sentry` and `getsentry`
+* [0033-view-hierarch](text/0033-view-hierarch.md): View Hierarch
+* [0042-gocd-succeeds-freight-as-our-cd-solution](text/0042-gocd-succeeds-freight-as-our-cd-solution.md): plan to replace freight with GoCD
