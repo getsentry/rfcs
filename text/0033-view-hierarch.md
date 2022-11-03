@@ -6,7 +6,7 @@
 
 # Summary
 
-Allow SDKs to send a textual representation of the application's UI view hierarch. 
+Allow SDKs to send a textual representation of the application's UI view hierarchy. 
 
 # Motivation
 
