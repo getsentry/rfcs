@@ -1,12 +1,12 @@
 * Start Date: 2022-11-02
 * RFC Type: feature
 * RFC PR: [#33](https://github.com/getsentry/rfcs/pull/33)
-* RFC Status: draft
-* RFC Driver: -
+* RFC Status: -
+* RFC Driver: [Dhiogo Ramos Brustolin](https://github.com/brustolin)
 
 # Summary
 
-Allow SDKs to send View hierarch of the application UI.
+Allow SDKs to send a textual representation of the application's UI view hierarch. 
 
 # Motivation
 
@@ -15,9 +15,18 @@ This RFC proposes a way to send information from the UI state of an application,
 
 # Proposal 
 
-The proposal is to create a new envelope item in the form of a json representation of the UI elements, like so: 
+The proposal is to create a new [envelope item](https://develop.sentry.dev/sdk/envelopes/) in the form of a json representation of the UI elements. 
+This is how the envelope item header should look like:
 
 ```json
+{"type":"view_hierarch","length":...,"content_type":"application/json"}\n
+```
+
+And the envelope item payload will be a JSON array that contains a view hierarch for each available screen/window. 
+This is how it should look like: 
+
+```json
+[
 {
     "type": "element_class_name", 
     "identifier": "element_identifier",
@@ -32,6 +41,7 @@ The proposal is to create a new envelope item in the form of a json representati
     "alpha": 1,
     "{extra_properties}": "{property value}" //adicional information by platform
 }
+]
 ```
 
 # Options Considered
