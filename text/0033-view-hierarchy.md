@@ -52,5 +52,6 @@ This is how it should look like:
 # Drawbacks
 
 - This can significantly increase the envelope size. 
+- Obfuscation will be a problem for custom UI controls.
 - We've decided to not add the content of textfields, editables or labels because of PII.
     - We may evaluate an options to allow PII.
