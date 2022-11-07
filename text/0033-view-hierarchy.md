@@ -44,6 +44,8 @@ This is how it should look like:
 ]
 ```
 
+This is just a sample, each platform will define the required properties.
+
 # Options Considered
 
 - We could send the same information as attachment, but this impact on attachment quota. And also we need to rely on file name to determined whether an attachment is a view hierarchy or not, this is a problem we already have with [screenshots](https://develop.sentry.dev/sdk/features/#screenshots).
