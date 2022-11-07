@@ -44,7 +44,7 @@ This is how it should look like:
 ]
 ```
 
-This is just a sample, each platform will define the required properties.
+This is just an example, each platform will define the required properties.
 
 # Options Considered
 
