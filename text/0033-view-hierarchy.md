@@ -38,7 +38,7 @@ This is how it should look like:
         "y": 1,
         "z": 2, //if applies.
         "visible": true|false,
-        "alpha": 1,
+        "alpha": 1, //A float number from 0 to 1, where 0 means totally transparent, and 1 totally opaque.
         "{extra_properties}": "{property value}" //adicional information by platform
     }
 ]
