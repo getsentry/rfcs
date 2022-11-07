@@ -54,6 +54,6 @@ This is just an example, each platform will define the required properties.
 # Drawbacks
 
 - This can significantly increase the envelope size. 
-- Obfuscation will be a problem for custom UI controls.
+- Obfuscation is a problem for custom UI controls, we'll probably need ingestion to de-obfuscate in the server side.
 - We've decided to not add the content of textfields, editables or labels because of PII.
     - We may evaluate an options to allow PII.
