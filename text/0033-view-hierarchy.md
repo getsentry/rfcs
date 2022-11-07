@@ -33,10 +33,10 @@ This is how it should look like:
         "children": [...], //An array of ui elements.
         "width": 100, 
         "height": 100,
-        "depth": 100, //if 3D
+        "depth": 100, //if applies
         "x": 0,
         "y": 1,
-        "z": 2, //if 3D.
+        "z": 2, //if applies.
         "visible": true|false,
         "alpha": 1,
         "{extra_properties}": "{property value}" //adicional information by platform
