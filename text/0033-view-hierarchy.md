@@ -28,7 +28,7 @@ This is how it should look like:
 ```json
 [
     {
-        "type": "element_class_name", 
+        "type": "element_full_qualified_class_name", 
         "identifier": "element_identifier",
         "children": [...], //An array of ui elements.
         "width": 100, 
