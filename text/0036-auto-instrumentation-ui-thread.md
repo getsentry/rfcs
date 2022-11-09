@@ -6,7 +6,7 @@
 
 # Summary
 
-Add new `ui_thread` attribute to the `data` key-value map of the `Span` interface, indicating whether
+Add new `ui_thread` attribute to the `data` key-value map of the [`Span`](https://develop.sentry.dev/sdk/event-payloads/span/) interface, indicating whether
 an auto-instrumented span has run on the UI/Main thread.
 
 # Motivation
