@@ -1,6 +1,6 @@
 * Start Date: 2022-11-08
 * RFC Type: decision
-* RFC PR: <link>
+* RFC PR: [#36](https://github.com/getsentry/rfcs/pull/36)
 * RFC Status: -
 * RFC Driver: [Roman Zavarnitsyn](https://github.com/romtsn)
 
