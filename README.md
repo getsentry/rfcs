@@ -19,4 +19,5 @@ This repository contains RFCs and DACIs.  Lost?
 * [0016-auto-code-mappings](text/0016-auto-code-mappings.md): Automatic code mappings
 * [0022-response-context](text/0022-response-context.md): Response context
 * [0027-manual-disabling-of-flaky-tests](text/0027-manual-disabling-of-flaky-tests.md): processes for manually disabling flaky tests in `sentry` and `getsentry`
+* [00034-sdk-lifecycle](text/0034-sdk-lifecycle-hooks.md): SDK Lifecycle hooks
 * [0042-gocd-succeeds-freight-as-our-cd-solution](text/0042-gocd-succeeds-freight-as-our-cd-solution.md): plan to replace freight with GoCD
