@@ -6,24 +6,94 @@
 
 # Summary
 
-One paragraph explanation of the feature or document purpose.
+This PR proposes the introduction of lifecycle hooks in the SDK, improving extensibility and usability of SDKs at Sentry.
+
+Lifecyle hooks can be registered as a top level method, and allow for integrations/sdk users to have finely grained control over the event lifecycle in the SDK.
+
+```ts
+Sentry.on("hook-name", (...args) => {
+  someLogic();
+});
+```
 
 # Motivation
 
-Why are we doing this? What use cases does it support? What is the expected outcome?
+There are three main ways users can extend functionality in the SDKs right now.
 
-# Background
+At it's current form, the SDK is an event processing pipeline. It takes in some data (an error/message, a span, a profile), turns it into the event, attaches useful context to that event based on the current scope, and then sends that event to Sentry.
 
-The reason this decision or document is required. This section might not always exist.
+```
+| Error | ---> | Event | ---> | EventWithContext | ---> | Envelope | ---> | Transport | ---> | Sentry |
+```
 
-# Supporting Data
+```
+| TransactionStart | ---> | SpanStart | ---> | SpanFinish | ---> | TransactionFinish | --> | Event | ---> | EventWithContext | ---> | Envelope | ---> | Transport | ---> | Sentry |
+```
 
-[Metrics to help support your decision (if applicable).]
+```
+| Session | ---> | Envelope | ---> | Transport | ---> | Sentry |
+```
 
-# Options Considered
+The SDKs provide a few ways to extend this pipeline:
 
-If an RFC does not know yet what the options are, it can propose multiple options. The
-preferred model is to propose one option and to provide alternatives.
+1. Event Processors (what Integrations use)
+2. `beforeSend` callback
+3. `beforeBreadcrumb` callback
+
+But these are all top level options in someway, and are part of the unified API as a result. This means that in certain scenarios, they are not granular enough as extension points.
+
+# Proposal
+
+SDK hooks live on the client, and are **stateless**. They are called in the order they are registered. SDKs can opt-in to whatever hooks they use, and there can be hooks unique to an SDK.
+
+```ts
+class Client {
+  hooks: {
+    [hookName: string]: HookCallback[];
+  };
+
+  on(hookName: string, callback: HookCallback) {
+    this.hooks[hookName].push(callback);
+  }
+}
+```
+
+## Hooks
+
+Hooks can return `null` to short-circuit the pipeline.
+
+- `captureException`
+
+```ts
+type onCaptureException<T = any> = (
+  exception: T,
+  hint?: EventHint,
+  scope?: Scope
+) => T | null;
+```
+
+- `captureMessage`
+
+```ts
+type onCaptureMessage = (
+  message: string,
+  level?: Severity,
+  hint?: EventHint,
+  scope?: Scope
+) => string | null;
+```
+
+- `captureEvent`
+
+```ts
+type onCaptureEvent = (
+  event: Event,
+  hint?: EventHint,
+  scope?: Scope
+) => string | null;
+```
+
+- `capture
 
 # Drawbacks
 
