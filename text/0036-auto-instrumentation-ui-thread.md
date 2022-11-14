@@ -74,4 +74,5 @@ should not be a problem. Other potential detectors we could create for detecting
 * Should the `ui_thread` attribute be part of the protocol or just a new key in the data bag?
 * How to properly fingerprint the File I/O performance issue? Do we need to provide a `caller_function`, which has 
 performed the File I/O operation?
+* Should we ignore native framework I/O operations, or should we add a new flag in the data bag? iOS screen parser always runs in the UI Thread and the developer has no control over this. Raising issues for this scenario doesn't seems right.
 * (Out of scope) De-obfuscation/symbolication of the `caller_function`.
