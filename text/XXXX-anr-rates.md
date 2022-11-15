@@ -105,6 +105,3 @@ SELECT
 4. Won’t be able to extend to `Input dispatching timed out`
     
 # Unresolved questions
-
-* What parts of the design do you expect to resolve through this RFC?
-* What issues are out of scope for this RFC but are known?
