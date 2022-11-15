@@ -22,8 +22,8 @@ ANRs are triggered if the UI thread on an Android app is blocked for too long. A
 
 <aside>
 💡 User-perceived ANR rate is a *core vital* meaning that it affects the discoverability of your app on Google Play.
-
 </aside>
+
 
 ANRs are currently surfaced as error events with tag `mechanism:ANR`. With the data we already have on hand, we can calculate ANR rate as follows:
 
@@ -36,14 +36,13 @@ ___________________________________________________________________ x 100
 There are a couple problems with this:
 
 1. Total ANRs is affected by client side sampling and dropped events if org/project is close to error quota
-2. The most accurate count of total unique users will probably come from the sessions dataset, or maybe even the metrics dataset (but again this one is affected by client side sampling)
+2. The most accurate count of total unique users will probably come from the sessions dataset, or maybe even the metrics dataset (but again this one is affected by client-side sampling)
 3. Getting this information will require clickhouse queries to two different datasets and post-processing to calculate the ANR rate
 
 Issues outlined in 1 & 2 will result in us showing *wrong* ANR rates and 3 will limit the capabilities of ANR rate - can’t allow sort and search, can’t add it to dashboards or alerts and is not future-proof in case we want to use ANR rates in issue detection.
 
 # Supporting Data
 
-[Metrics to help support your decision (if applicable).]
 
 # Options Considered
 
@@ -70,7 +69,7 @@ SELECT
   LIMIT 2
 ```
 
-1. This is a more generic solution that’s extensible to freeze mechanisms from other operating systems
+1. This is a more generic solution that’s extensible to "freeze mechanisms" (ex. app hangs on iOS) from other operating systems
 2. This can also be extended to track the four different types of ANRs outlined [here](https://developer.android.com/topic/performance/vitals/anr). Differentiating ANRs due to `Input dispatching timed out` separately will allow us to calculate user-perceived ANR rate
 3. Stand-alone addition that won’t require any migration, less risky, doesn’t affect existing calculations
 
@@ -99,8 +98,8 @@ SELECT
 
 ## Drawbacks
 
-1. We are introducing a new terminal session state but the system displays a dialogue to the user and it allows the user to either wait or force quit the app so that downstream session status change will no longer be captured.
-2. This will probably affect downstream crash_free_rate calculations, require update to crash_*/healthy* calculations before we can even start writing this new session status
+1. We are introducing a new terminal session state but the android system displays a dialogue asking the user if they would like to wait or force quit the app. So an ANR doesn't necessarily mean a terminating session state. Downstream session status changes will no longer be captured.
+2. This will probably affect downstream crash/free rate calculations, require update to crash/free rate calculations before we can even start writing this new session status
 3. Because of 2. will be harder to iterate on and roll back, seems risky
 4. Won’t be able to extend to `Input dispatching timed out`
     
