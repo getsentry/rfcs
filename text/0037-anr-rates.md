@@ -1,6 +1,6 @@
 * Start Date: 2022-10-15
 * RFC Type: decision
-* RFC PR: <link>
+* RFC PR: [#37](https://github.com/getsentry/rfcs/pull/37)
 
 # Summary
 
