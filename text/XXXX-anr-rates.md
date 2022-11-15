@@ -71,7 +71,7 @@ SELECT
 ```
 
 1. This is a more generic solution that’s extensible to freeze mechanisms from other operating systems
-2. This will also allow us to track ANRs due to `Input dispatching timed out` separately which will allow us to calculate user-perceived ANR rate
+2. This can also be extended to track the four different types of ANRs outlined [here](https://developer.android.com/topic/performance/vitals/anr). Differentiating ANRs due to `Input dispatching timed out` separately will allow us to calculate user-perceived ANR rate
 3. Stand-alone addition that won’t require any migration, less risky, doesn’t affect existing calculations
 
 ## Drawbacks
