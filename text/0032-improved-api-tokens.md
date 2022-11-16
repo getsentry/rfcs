@@ -33,7 +33,7 @@ Improve on Sentry's API token implementation to a more secure pattern. We will h
 1. Using hashed values in the database
 2. Only display the token once to the end user upon creation
 3. Allow users to _name_ the tokens ([#9600](https://github.com/getsentry/sentry/issues/9600))
-4. Use a predictable prefix to integrate with various secret scanning services (ex. Github's Secret Scanning)
+4. Use a predictable prefix and suffix to integrate with various secret scanning services (ex. Github's Secret Scanning)
 
 # Motivation
 
@@ -60,7 +60,7 @@ A notice in the Sentry UI should be presented to suggest the user rotate and gen
 
 We need a predictable token format in order to integrate properly with secret scanning services. Our current format is a 64 character alphanumeric string. This is insufficient and would likely produce a high amount of false positives in tooling like [TruffleHog](https://github.com/trufflesecurity/trufflehog), [detect-secrets](https://github.com/Yelp/detect-secrets), [Github's Secret Scanning](https://docs.github.com/en/code-security/secret-scanning/about-secret-scanning), etc.
 
-The suggested pattern is `snty[a-zA-Z]_[a-zA-Z0-9]{64}`. The character _after_ `snty` will be used to identify the token type.
+The suggested pattern is `snty[a-zA-Z]_[a-zA-Z0-9]{64}io`. The character _after_ `snty` will be used to identify the token type.
 
 For example:
 
@@ -133,12 +133,12 @@ Instead of slowly generating the hashed token values over time of the legacy tok
 
 ## Option #3
 
-To avoid the two different token versions, we could automatically prepend the prefix `sntyx_` (with `x` just being a placeholder here). We would then follow a similar approach to Option #1 or Option #2 to generate the hashed values.
+To avoid the two different token versions, we could automatically prepend the prefix `sntyx_` (with `x` just being a placeholder here) and suffix `io`. We would then follow a similar approach to Option #1 or Option #2 to generate the hashed values.
 
 ### Drawbacks
 
-- Users would not be able to benefit from the Github Secrets Scanning since they would still be using their 64 character alphanumeric string without the prefix.
-- Authentication views/logic would become more complex with branching code to handle the with and without prefix cases.
+- Users would not be able to benefit from the Github Secrets Scanning since they would still be using their 64 character alphanumeric string without the prefix and suffix.
+- Authentication views/logic would become more complex with branching code to handle the with and without prefix + suffix cases.
 
 # Unresolved questions
 
