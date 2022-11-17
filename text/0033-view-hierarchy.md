@@ -26,7 +26,7 @@ The attachment payload is a JSON structure containing the view hierarchy, here's
 ```json
 {
     "rendering_system": "compose", // or android_view_system, apple_uikit, apple_swiftui, unity, flutter, ...
-    "screens": [
+    "windows": [
         {
             "type": "com.example.ui.FancyButton",
             "identifier": "R.id.button_logout",
