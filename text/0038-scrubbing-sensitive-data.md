@@ -58,6 +58,8 @@ Same goes for `breadcrumb.message/breadcrumb.data`, `logentry.message/logentry.p
 
 We need to identify all the fields we need to do this.
 
+We should model this Option after how `Logentry` does this now.
+
 _Pros:_
 
 - Relay would not have to reverse-engineer the semantics of the information supplied by the SDK.
