@@ -60,6 +60,8 @@ We need to identify all the fields we need to do this.
 
 We should model this Option after how `Logentry` does this now.
 
+Note: If we change the span.description then the hash for existing performance issues will be changed and existing performance issues will be recreated, so users would have duplicate performance issues in their list of issues. (Which we can just document in the CHANGELOG and everything should be fine.)
+
 _Pros:_
 
 - Relay would not have to reverse-engineer the semantics of the information supplied by the SDK.
