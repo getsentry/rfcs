@@ -71,6 +71,12 @@ _Cons:_
 Relay can try for each field to "guess" what kind of data it is. Guessing can be done by looking at what field in general we are guessing (field X has always a SQL query in it), or the span.op or other fields as well as the content itself. If the content is a SQL query, JSON object, Elasticsearch Query, GraphQL Query, URL, ... When Relay is certain that it knows the content is of a specific kind, it can then run a parser on it to be able to scrub values of sensitive fields.
 
 An existing example for this is [parsing URL query parameters into a separate field](https://github.com/getsentry/relay/blob/c2e666d1728a2882b82e70fdbb02192c4cb0b50a/relay-general/src/store/normalize/request.rs#L29-L48), which Relay does when normalizing the [Request Interface](https://develop.sentry.dev/sdk/event-payloads/request/).
+
+For the performance issue detection `sentry` does something similar:
+
+- https://github.com/getsentry/sentry/blob/68e44ed3e8343a5e69d0b0a51ad65c02ae427cd0/src/sentry/spans/grouping/strategy/base.py#L186
+- https://github.com/getsentry/sentry/blob/68e44ed3e8343a5e69d0b0a51ad65c02ae427cd0/src/sentry/spans/grouping/strategy/base.py#L142-L150
+
 _Pros:_
 
 -
