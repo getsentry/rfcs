@@ -56,7 +56,7 @@ The content should not be a simple string but strucutred data. The content could
 
 _Pros:_
 
--
+* Relay would not have to reverse-engineer the semantics of the information supplied by the SDK. 
 
 _Cons:_
 
