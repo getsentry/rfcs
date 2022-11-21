@@ -52,7 +52,11 @@ _Cons:_
 
 ### Option B): Store data in a structured way in SDKs
 
-The content should not be a simple string but structured data. The content could be a template string where all the sensitive values are removed plus a list of values. (ex `select * from user where email=%s;` and `{ "email": "test@example.com" }`) This way it would be easy for Relay to remove sensitive information by field name.
+The content should not be a simple string but structured data. The content could be a template string where all the sensitive values are removed plus a dictionary with the values to insert into the string.
+Example `span.description` should be a string with named parameters in the format `select * from user where email=%(email)s;` or `POST /api/v1/update_password?new_password=%(new_password)s` and in `span.data` there should be `{"email": "test@example.com"}` or `{ "new_password": "123456" }` respectively.
+Same goes for `breadcrumb.message` and `breadcrumb.data`.
+
+We need to identify all the fields we need to do this.
 
 _Pros:_
 
