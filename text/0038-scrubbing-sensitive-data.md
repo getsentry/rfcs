@@ -1,6 +1,6 @@
 * Start Date: 2022-11-21
-* RFC Type: feature / decision / informational
-* RFC PR: <link>
+* RFC Type: feature 
+* RFC PR: https://github.com/getsentry/rfcs/pull/38 
 
 # Summary
 
