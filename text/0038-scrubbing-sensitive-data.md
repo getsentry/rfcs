@@ -52,7 +52,7 @@ _Cons:_
 
 ### Option B): Store data in a structured way in SDKs
 
-The content should not be a simple string but strucutred data. The content could be a template string where all the sensitive values are removed plus a list of values. (ex `select * from user where email=%s;` and `{ "email": "test@example.com" }`) This way it would be easy for Relay to remove sensitive information by field name.
+The content should not be a simple string but structured data. The content could be a template string where all the sensitive values are removed plus a list of values. (ex `select * from user where email=%s;` and `{ "email": "test@example.com" }`) This way it would be easy for Relay to remove sensitive information by field name.
 
 _Pros:_
 
@@ -60,7 +60,7 @@ _Pros:_
 
 _Cons:_
 
--
+- Could be complex for nested JSON objects or for "Array of objects" kind of data.
 
 ### Option C): Relay identifies what kind of data is present and parses it.
 
@@ -73,11 +73,11 @@ _Pros:_
 
 _Cons:_
 
--
+- Could be expensive to try multiple guesses before the right kind of data is identified. (Maybe its SQL? no. Maybe JSON? no. So it is a URL? yes.)
 
 ### Option D): Generic tozenization in Relay.
 
-Have a generic tokenizer in Relay that can not parse full fledged SQL, but can extract key/value pairs out of almost everything. This this the values of keys with potential sensitive information can be removed.
+Have a generic tokenizer in Relay that can not parse full fledged SQL, but can extract key/value pairs out of almost everything. With this the values of keys with potential sensitive information can be removed.
 
 _Pros:_
 
@@ -89,7 +89,7 @@ _Cons:_
 
 # Drawbacks
 
-(tbd)
+(none)
 
 # Unresolved questions
 
