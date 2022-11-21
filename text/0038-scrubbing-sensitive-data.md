@@ -31,10 +31,12 @@ A user complained that our data scrubbing did not remove sensitive data from an 
 - Right now most data scrubbing is done in Relay.
 - There is a option `sendDefaultPII` in SDKs that may or may not remove some sensitive data before sending.
 - In Relay fields have a "pii" attribute that can be `yes`, `no` or `maybe`:
-  - `yes` means all the data scrubbing Regexes defined [here](https://github.com/getsentry/relay/blob/master/relay-general/src/pii/regexes.rs#L103-L274) are applied to the fields. If the one Regex matches the whole content of the field is removed and an remark is saved telling us what regex was responsible for the removal of the data.
+  - `yes` means all the default data scrubbing Regexes are applied to the fields.
   - `maybe` means that the data scrubbing Regexes are not run by default. If the user has advanced data scrubbing set (in Sentry.io under: Project Settings > Security & Privacy > Advanced Data Scrubbing) those custom rules are applied to the field and if a rule matches the whole content of the field is removed.
   - `no` there is no possibility of data scrubbing for this field.
-- Always the complete content of a field is removed. This is because it is unstructured data. Relay does not know if the content is a SQL query, a JSON object, an URL, a Elasticsearch/MongoDB/whatever query in JSON format, or something else.
+- The regexes for data scrubbing are defined [here](https://github.com/getsentry/relay/blob/master/relay-general/src/pii/regexes.rs#L103-L274)
+- Some regexes can just remove the sensitive part of the content (like IP and SSH keys regexes).
+- Some of the regexes (like password regex) will remove the complete content of a field. This is because it is unstructured data. Relay does not know if the content is a SQL query, a JSON object, an URL, a Elasticsearch/MongoDB/whatever query in JSON format, or something else.
 
 ### Option A): Remove Sensitive Data in SDKs
 
