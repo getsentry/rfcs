@@ -38,6 +38,14 @@ A user complained that our data scrubbing did not remove sensitive data from an 
 - Some regexes can just remove the sensitive part of the content (like IP and SSH keys regexes).
 - Some of the regexes (like password regex) will remove the complete content of a field. This is because it is unstructured data. Relay does not know if the content is a SQL query, a JSON object, an URL, a Elasticsearch/MongoDB/whatever query in JSON format, or something else.
 
+### Currently perferred solution:
+
+A combination of some of the options listed below:
+
+- Have the SDKs store structured data (Option B)
+- If Relay does not get any structured data from Option B, Relay does Option C.
+- If Relay can not figure out what kind of data is in the field, do matching like we do now.
+
 ### Option A): Remove Sensitive Data in SDKs
 
 At the time when SDKs set the data in an event, it knows what the data represents and can remove sensitive information. This way Relay has to beliefe that the SDK does the right thing and does not need to scrub data.
