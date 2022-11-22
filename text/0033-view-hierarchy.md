@@ -72,45 +72,7 @@ As the view hierarchy may contain obfuscated attribute values (see `type` attrib
     - We may evaluate an options to allow PII.
 
 
-## Initial Proposal
-This is how the envelope item header should look like:
+# Appendix
 
-```json
-{"type":"view_hierarchy","length":...,"content_type":"application/json"}\n
-```
-
-And the envelope item payload will be a JSON array that contains a view hierarchy for each available screen/window. 
-This is how it should look like: 
-
-```json
-[
-    {
-        "type": "element_full_qualified_class_name", 
-        "identifier": "element_identifier",
-        "children": [...], //An array of ui elements.
-        "width": 100, 
-        "height": 100,
-        "depth": 100, //if applies
-        "x": 0,
-        "y": 1,
-        "z": 2, //if applies.
-        "visible": true|false,
-        "alpha": 1, //A float number from 0 to 1, where 0 means totally transparent, and 1 totally opaque.
-        "{extra_properties}": "{property value}" //adicional information by platform
-    }
-]
-```
-
-This is just an example, each platform will define the required properties.
-
-# Options Considered
-
-- We could send the same information as attachment, but this impact on attachment quota. And also we need to rely on file name to determined whether an attachment is a view hierarchy or not, this is a problem we already have with [screenshots](https://develop.sentry.dev/sdk/features/#screenshots).
-- The view hierarchy could be part of the Event, but because of the size limit, isn't recommended. 
-
-# Drawbacks
-
-- This can significantly increase the envelope size. 
-- Obfuscation is a problem for custom UI controls, we'll probably need ingestion to de-obfuscate in the server side.
-- We've decided to not add the content of textfields, editables or labels because of PII.
-    - We may evaluate an options to allow PII.
+## Removed Proposals
+Instead of sending it as an attachment, the initial proposal was to create a new Envelope item, but, doing so would introduce a lot of new challanges, so we opt for using attachments that requires minimun changes in the server side.
