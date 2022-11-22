@@ -89,6 +89,8 @@ For the performance issue detection `sentry` does something similar:
 - https://github.com/getsentry/sentry/blob/68e44ed3e8343a5e69d0b0a51ad65c02ae427cd0/src/sentry/spans/grouping/strategy/base.py#L186
 - https://github.com/getsentry/sentry/blob/68e44ed3e8343a5e69d0b0a51ad65c02ae427cd0/src/sentry/spans/grouping/strategy/base.py#L142-L150
 
+OpenTelementry has semantic conventions for tracing. A defined set of attributes set to the span describes the span data in more detail. We could borrow those semantic conventions and add them to `span.data` so that Relay can better parse the `span.description`: https://opentelemetry.io/docs/reference/specification/trace/semantic_conventions/
+
 _Pros:_
 
 -
