@@ -24,6 +24,15 @@ A user complained that our data scrubbing did not remove sensitive data from an 
 
 (tbd)
 
+# Conclusion
+
+Not one option will be implemented but a combination of options:
+
+1. The SDKs will try to save structured data where possible (Option B)
+2. The SDKs will try to specify what kind of data is in `span.description` (and other places) as good as possible. (Can be done by more fine grained `span.op`s or applying OTel trace semantic convention to `span.data`. Needs to be speced out)
+3. Relay uses data from 2.) to parse content fields and scrub sensitive data (Option C)
+4. If there is no structured data (so 3.) is not possible) Relay uses a more fine grained set of Regexes to remove sensitive data. Relay does not remove the complete content but only the sensitive part of it. (Option D+E)
+
 # Options Considered
 
 ### Status Quo:
@@ -37,14 +46,6 @@ A user complained that our data scrubbing did not remove sensitive data from an 
 - The regexes for data scrubbing are defined [here](https://github.com/getsentry/relay/blob/92a4b349f271963a53c8a8278acb3d4d56f0dfe5/relay-general/src/pii/regexes.rs#L103-L274)
 - Some regexes can just remove the sensitive part of the content (like IP and SSH keys regexes).
 - Some of the regexes (like password regex) will remove the complete content of a field. This is because it is unstructured data. Relay does not know if the content is a SQL query, a JSON object, an URL, a Elasticsearch/MongoDB/whatever query in JSON format, or something else.
-
-### Currently perferred solution:
-
-A combination of some of the options listed below:
-
-- Have the SDKs store structured data (Option B)
-- If Relay does not get any structured data from Option B, Relay does Option C.
-- If Relay can not figure out what kind of data is in the field, do matching like we do now.
 
 ### Option A): Remove Sensitive Data in SDKs
 
