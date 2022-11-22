@@ -131,7 +131,5 @@ _Cons:_
 
 # Unresolved questions
 
-(tbd)
-
-- What parts of the design do you expect to resolve through this RFC?
-- What issues are out of scope for this RFC but are known?
+- We need to check with legal and/or security to make sure that the stuff we are planing is actually OK with existing laws and regulations
+- We need to find all places in SDKs that sensitive data could be. Places we are targeting right now: `span.description/span.data`, `breadcrumb.message/breadcrumb.data`, `logentry.message/logentry.params`, and `message.message/message.params`, local variables, request bodies, response bodies, HTTP headers, cookies, ...
