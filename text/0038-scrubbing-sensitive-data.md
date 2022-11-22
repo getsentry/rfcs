@@ -34,7 +34,7 @@ A user complained that our data scrubbing did not remove sensitive data from an 
   - `yes` means all the default data scrubbing Regexes are applied to the fields.
   - `maybe` means that the data scrubbing Regexes are not run by default. If the user has advanced data scrubbing set (in Sentry.io under: Project Settings > Security & Privacy > Advanced Data Scrubbing) those custom rules are applied to the field and if a rule matches the whole content of the field is removed.
   - `no` there is no possibility of data scrubbing for this field.
-- The regexes for data scrubbing are defined [here](https://github.com/getsentry/relay/blob/master/relay-general/src/pii/regexes.rs#L103-L274)
+- The regexes for data scrubbing are defined [here](https://github.com/getsentry/relay/blob/92a4b349f271963a53c8a8278acb3d4d56f0dfe5/relay-general/src/pii/regexes.rs#L103-L274)
 - Some regexes can just remove the sensitive part of the content (like IP and SSH keys regexes).
 - Some of the regexes (like password regex) will remove the complete content of a field. This is because it is unstructured data. Relay does not know if the content is a SQL query, a JSON object, an URL, a Elasticsearch/MongoDB/whatever query in JSON format, or something else.
 
