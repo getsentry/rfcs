@@ -5,12 +5,12 @@
 # Summary
 
 Make scrubbing of sensitive data (security related data (passwords, keys, et al) and personal identifiable information (PII)) in Sentry smarter.
-This includes the SDK side (before we send data) and the Relay side (before we ingest data)
+This includes the SDK side (before we send data) and the Relay side (before we ingest data).
 
 # Motivation
 
-Currently the scrubbing of sensitive data works, but is not very smart. It can happen that sensitive data is leaked and ends up in our data storage.
-It also can happen, that scrubbing is too broadly defined and too much data is removed so the feature distroys value for the customer.
+Currently, the scrubbing of sensitive data works but is not very smart. It can happen that sensitive data is leaked and ends up in our data storage.
+It also can happen that scrubbing is too aggressive and too much data is removed, so the feature destroys value for the customer.
 
 We want to have a smarter way of scrubbing sensitive data with a more fine grained control of what data is preserved and what data is scrubbed.
 
@@ -100,7 +100,7 @@ _Cons:_
 
 - Could be expensive to try multiple guesses before the right kind of data is identified. (Maybe its SQL? no. Maybe JSON? no. So it is a URL? yes.)
 
-### Option D): Generic tozenization in Relay.
+### Option D): Generic tokenization in Relay.
 
 Have a generic tokenizer in Relay that can not parse full fledged SQL, but can extract key/value pairs out of almost everything. With this the values of keys with potential sensitive information can be removed.
 
@@ -114,7 +114,7 @@ _Cons:_
 
 ### NEW! Option E): Improved regexes
 
-Keep the logic on how data scrubbing is done right now the same, but improve the regexes to be more specific. Especially the "password regex" could be changed to the `auth` rule does ONLY match `auth` but NOT `author` or `authorize`.
+Keep the logic on how data scrubbing is done right now, but improve the regexes to be more specific. Especially the "password regex" could be changed to the `auth` rule does ONLY match `auth` but NOT `author` or `authorize`.
 
 With this we could add data scrubbing back to `span.description` (and potentially other fields that ware marked with `pii=maybe` right now).
 
