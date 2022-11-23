@@ -5,7 +5,7 @@
 
 # Summary
 
-Calculate ANR (App Not Responding) rates with session backed data to match Google Play apps Android vitals as closely as possible.
+Calculate ANR (App Not Responding) rates with session backed data to match Google Play apps Android vitals as closely as possible. is the The more desirable option between the two presented in this RFC is introducing a new, optional tag (name TBD, but options include `mechanism`, `error.mechanism`, `freeze_mechanism`) in sessions data to track the type of ANR which will allow us to calculate ANR rate without discrepencies introduced by client-side sampling. This tag will only be set by the Android SDK for sessions that experience an ANR. We will be limiting the cardinality of the tag values; currently expecting to distinguish between user-perceived vs other ANRs, with a hope to extend to a third value to track AppHangs from iOS in the future. 
 
 # Motivation
 
@@ -37,7 +37,7 @@ ___________________________________________________________________ x 100
 There are a couple problems with this:
 
 1. Total ANRs is affected by client side sampling and dropped events if org/project is close to error quota
-2. The most accurate count of total unique users will probably come from the sessions dataset, or maybe even the metrics dataset (but again this one is affected by client-side sampling)
+2. The most accurate count of total unique users will probably come from the sessions dataset
 3. Getting this information will require clickhouse queries to two different datasets and post-processing to calculate the ANR rate
 
 Issues outlined in 1 & 2 will result in us showing *wrong* ANR rates and 3 will limit the capabilities of ANR rate - can’t allow sort and search, can’t add it to dashboards or alerts and is not future-proof in case we want to use ANR rates in issue detection.
