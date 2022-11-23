@@ -5,7 +5,7 @@
 # Summary
 
 Make scrubbing of sensitive data (security related data (passwords, keys, et al) and personal identifiable information (PII)) in Sentry smarter.
-This includes the SDK side (before we send data) and the Relay side (before we ingest data)
+This includes the SDK side (before we send data) and the Relay side (before we ingest data).
 
 # Motivation
 
