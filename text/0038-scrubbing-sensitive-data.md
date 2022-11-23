@@ -31,7 +31,7 @@ Not one option will be implemented but a combination of options:
 1. The SDKs will try to save structured data where possible (Option B)
 2. The SDKs will try to specify what kind of data is in `span.description` (and other places) as good as possible. (Can be done by more fine grained `span.op`s or applying OTel trace semantic convention to `span.data`. Needs to be speced out)
 3. Relay uses data from 2.) to parse content fields and scrub sensitive data (Option C)
-4. If there is no structured data (so 3.) is not possible) Relay uses a more fine grained set of Regexes to remove sensitive data. Relay does not remove the complete content but only the sensitive part of it. (Option D+E)
+4. If there is no structured data (so 3.) is not possible) Relay applies a generic tokenizer that can extract key/value pairs from unstructured data and makes it easy to remove values from keys that are in a list of keys containing sensitive data. (Option D)
 
 # Options Considered
 
