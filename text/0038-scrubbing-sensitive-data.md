@@ -100,7 +100,7 @@ _Cons:_
 
 - Could be expensive to try multiple guesses before the right kind of data is identified. (Maybe its SQL? no. Maybe JSON? no. So it is a URL? yes.)
 
-### Option D): Generic tozenization in Relay.
+### Option D): Generic tokenization in Relay.
 
 Have a generic tokenizer in Relay that can not parse full fledged SQL, but can extract key/value pairs out of almost everything. With this the values of keys with potential sensitive information can be removed.
 
