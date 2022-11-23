@@ -6,8 +6,8 @@
 
 # Summary
 
-Add new `ui_thread` attribute to the `data` key-value map of the [`Span`](https://develop.sentry.dev/sdk/event-payloads/span/) interface, indicating whether
-an auto-instrumented span has run on the UI/Main thread.
+Add new `blocked_ui_thread` attribute to the `data` key-value map of the [`Span`](https://develop.sentry.dev/sdk/event-payloads/span/) interface, indicating whether
+an auto-instrumented span has run its entire duration on the UI/Main thread.
 
 # Motivation
 
@@ -38,6 +38,59 @@ to the `Span.data` map.
 
 [ANR documentation as part of Android Vitals](https://developer.android.com/topic/performance/vitals/anr).
 
+# Proposal
+
+Add two new attributes to the `data` key-value map of the [`Span`](https://develop.sentry.dev/sdk/event-payloads/span/) interface:
+
+  1. `blocked_ui_thread` - indicates whether the Span has spent its entire duration on the Main/UI thread.
+  2. `call_stack` - contains the most relevant stack frames, that lead to the File I/O span. The stack frame should adhere to the [`StackFrame`]
+  (https://develop.sentry.dev/sdk/event-payloads/stacktrace/#frame-attributes) interface. When possible, should only include `in-app` frames. 
+  Used for proper fingerprinting and grouping of the File I/O performance issues.
+
+An example of a File I/O span payload with the newly added attributes:
+```json
+{
+  "timestamp": 1669031858.806411,
+  "start_timestamp": 1669031858.712,
+  "exclusive_time": 94.411134,
+  "description": "1669031858711_file.txt (4.0 kB)",
+  "op": "file.write",
+  "span_id": "054ba3a374d543eb",
+  "parent_span_id": "b93d2be92cd64fd5",
+  "trace_id": "b2a33f3f79fe4a7c8de3426725a045cb",
+  "status": "ok",
+  "data": {
+    "blocked_ui_thread": true,
+    "call_stack": [
+      {
+        "function": "onClick",
+        "in_app": true,
+        "lineno": 2,
+        "module": "io.sentry.samples.android.MainActivity$$ExternalSyntheticLambda6",
+        "native": false
+      },
+      {
+        "filename": "MainActivity.java",
+        "function": "lambda$onCreate$5$io-sentry-samples-android-MainActivity",
+        "in_app": true,
+        "lineno": 93,
+        "module": "io.sentry.samples.android.MainActivity",
+        "native": false
+      }
+    ],
+    "file.path": "/data/user/0/io.sentry.samples.android/files/1669031858711_file.txt",
+    "file.size": 4010
+  },
+  "hash": "8add714f71a52ef2"
+}
+```
+
+## (De)obfuscation
+
+As the `call_stack` may contain obfuscated frames we need to process them server-side, similar to what we already do for [profiles]
+(https://github.com/getsentry/sentry/blob/cf71af372677487d7d0a7fd8ac9dd092f9596cf4/src/sentry/profiles/task.py#L350-L360). In addition, after de-obfuscation, the frames
+should be filtered to only `in-app` frames, using the `app.app_identifier` context.
+
 # Options Considered
 
 ## Detecting UI/Main thread for all Spans (Option 1)
@@ -54,7 +107,7 @@ as well as frontend changes.
 This option has been decided against, due to potential high-complexity of the proper solution or just simply
 infeasiable on some certain platforms.
 
-## Making `ui_thread` attribute part of the protocol (Option 2)
+## Making `blocked_ui_thread` attribute part of the protocol (Option 2)
 
 Since this flag is only relevant to Frontent SDKs, and is only used to mark auto-instrumented spans, it was
 decided against adding it to the common `Span` interface of the protocol.
@@ -71,8 +124,4 @@ should not be a problem. Other potential detectors we could create for detecting
 
 # Unresolved questions
 
-* Should the `ui_thread` attribute be part of the protocol or just a new key in the data bag?
-* How to properly fingerprint the File I/O performance issue? Do we need to provide a `caller_function`, which has 
-performed the File I/O operation?
 * Should we ignore native framework I/O operations, or should we add a new flag in the data bag? iOS screen parser always runs in the UI Thread and the developer has no control over this. Raising issues for this scenario doesn't seems right.
-* (Out of scope) De-obfuscation/symbolication of the `caller_function`.
