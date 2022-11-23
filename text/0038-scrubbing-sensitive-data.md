@@ -114,7 +114,7 @@ _Cons:_
 
 ### NEW! Option E): Improved regexes
 
-Keep the logic on how data scrubbing is done right now the same, but improve the regexes to be more specific. Especially the "password regex" could be changed to the `auth` rule does ONLY match `auth` but NOT `author` or `authorize`.
+Keep the logic on how data scrubbing is done right now, but improve the regexes to be more specific. Especially the "password regex" could be changed to the `auth` rule does ONLY match `auth` but NOT `author` or `authorize`.
 
 With this we could add data scrubbing back to `span.description` (and potentially other fields that ware marked with `pii=maybe` right now).
 
