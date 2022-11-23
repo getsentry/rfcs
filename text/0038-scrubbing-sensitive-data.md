@@ -9,7 +9,7 @@ This includes the SDK side (before we send data) and the Relay side (before we i
 
 # Motivation
 
-Currently the scrubbing of sensitive data works, but is not very smart. It can happen that sensitive data is leaked and ends up in our data storage.
+Currently, the scrubbing of sensitive data works but is not very smart. It can happen that sensitive data is leaked and ends up in our data storage.
 It also can happen that scrubbing is too aggressive and too much data is removed, so the feature destroys value for the customer.
 
 We want to have a smarter way of scrubbing sensitive data with a more fine grained control of what data is preserved and what data is scrubbed.
