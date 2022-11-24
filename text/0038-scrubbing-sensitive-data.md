@@ -49,7 +49,7 @@ Not one option will be implemented but a combination of options:
 
 ### Option A): Remove Sensitive Data in SDKs
 
-At the time when SDKs set the data in an event, it knows what the data represents and can remove sensitive information. This way Relay has to beliefe that the SDK does the right thing and does not need to scrub data.
+At the time when SDKs set the data in an event, it knows what the data represents and can remove sensitive information. This way, Relay has to believe that the SDK does the right thing and does not need to scrub data.
 
 _Pros:_
 
