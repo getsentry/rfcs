@@ -94,7 +94,8 @@ OpenTelementry has semantic conventions for tracing. A defined set of attributes
 
 _Pros:_
 
--
+- The SDKs don't need to replicate the same logic.
+- The customers don't need to update their SDKs to benefit.
 
 _Cons:_
 
