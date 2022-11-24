@@ -1,6 +1,7 @@
-* Start Date: YYYY-MM-DD
-* RFC Type: feature / decision / informational
-* RFC PR: <link>
+- Start Date: YYYY-MM-DD
+- RFC Type: feature / decision / informational
+- RFC PR: <link>
+- RFC Status: draft
 
 # Summary
 
@@ -12,7 +13,7 @@ Why are we doing this? What use cases does it support? What is the expected outc
 
 # Background
 
-The reason this decision or document is required.  This section might not always exist.
+The reason this decision or document is required. This section might not always exist.
 
 # Supporting Data
 
@@ -20,15 +21,15 @@ The reason this decision or document is required.  This section might not always
 
 # Options Considered
 
-If an RFC does not know yet what the options are, it can propose multiple options.  The
+If an RFC does not know yet what the options are, it can propose multiple options. The
 preferred model is to propose one option and to provide alternatives.
 
 # Drawbacks
 
-Why should we not do this?  What are the drawbacks of this RFC or a particular option if
+Why should we not do this? What are the drawbacks of this RFC or a particular option if
 multiple options are presented.
 
 # Unresolved questions
 
-* What parts of the design do you expect to resolve through this RFC?
-* What issues are out of scope for this RFC but are known?
+- What parts of the design do you expect to resolve through this RFC?
+- What issues are out of scope for this RFC but are known?
