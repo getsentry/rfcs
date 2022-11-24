@@ -128,7 +128,10 @@ _Cons:_
 
 # Drawbacks
 
-(none)
+There is always a tradeoff between:
+
+- If we scrub too much data (sensitive or not) it diminishes the data we can give the user to fix his/her problems, this degrading the value of the product.
+- If we scrub too little data, we leak sensitive data or our users.
 
 # Unresolved questions
 
