@@ -107,7 +107,8 @@ Have a generic tokenizer in Relay that can not parse full fledged SQL, but can e
 
 _Pros:_
 
--
+- The SDKs don't need to replicate the same logic.
+- The customers don't need to update their SDKs to benefit.
 
 _Cons:_
 
@@ -121,7 +122,9 @@ With this we could add data scrubbing back to `span.description` (and potentiall
 
 _Pros:_
 
--
+- The SDKs don't need to replicate the same logic.
+- The customers don't need to update their SDKs to benefit.
+- Least effort to hava quick (but not very substantial) improvement.
 
 _Cons:_
 
