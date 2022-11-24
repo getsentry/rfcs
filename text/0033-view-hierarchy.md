@@ -67,7 +67,6 @@ As the view hierarchy may contain obfuscated attribute values (see `type` attrib
 
 # Drawbacks
 - By utilizing attachments, [attachment scrubbing](https://docs.sentry.io/product/data-management-settings/scrubbing/attachment-scrubbing/) is relevant for any PII attributes in the view hierarchy
-- Increases event payload size
 - We've decided to not add the content of textfields, editables, or labels because of PII.
     - We may evaluate an option to allow PII.
 
