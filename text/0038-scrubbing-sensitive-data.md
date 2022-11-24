@@ -22,7 +22,7 @@ A user complained that our data scrubbing did not remove sensitive data from an 
 
 # Supporting Data
 
-(tbd)
+There was an incident where privacy data was leaked in a `http` span. An URL including an access token in a querystring was saved in the `span.description`. Default data scrubbing mechanism was not running on span description at that time. When default data scrubbing was activated on that field it removed to much data having a negative impact on the value our product deliveres. The fix was reverted and this RFC was started.
 
 # Conclusion
 
@@ -31,7 +31,7 @@ Not one option will be implemented but a combination of options:
 1. The SDKs will try to save structured data where possible (Option B)
 2. The SDKs will try to specify what kind of data is in `span.description` (and other places) as good as possible. (Can be done by more fine grained `span.op`s or applying OTel trace semantic convention to `span.data`. Needs to be speced out)
 3. Relay uses data from 2.) to parse content fields and scrub sensitive data (Option C)
-4. If there is no structured data (so 3.) is not possible) Relay applies a generic tokenizer that can extract key/value pairs from unstructured data and makes it easy to remove values from keys that are in a list of keys containing sensitive data. (Option D)
+4. If there is no structured data (so 3.) is not possible) Relay applies an improved version of the current data scrubbing mechanism to prevent leaking sensitive data. (Combination of Option D+E)
 
 # Options Considered
 
