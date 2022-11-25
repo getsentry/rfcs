@@ -6,8 +6,7 @@
 
 # Summary
 
-Add new `blocked_ui_thread` attribute to the `data` key-value map of the [`Span`](https://develop.sentry.dev/sdk/event-payloads/span/) interface, indicating whether
-an auto-instrumented span has run its entire duration on the UI/Main thread.
+Add new `blocked_main_thread` attribute to the `data` key-value map of the [`Span`](https://develop.sentry.dev/sdk/event-payloads/span/) interface, indicating whether an auto-instrumented span has run its entire duration on the UI/Main thread.
 
 # Motivation
 
@@ -42,7 +41,7 @@ to the `Span.data` map.
 
 Add two new attributes to the `data` key-value map of the [`Span`](https://develop.sentry.dev/sdk/event-payloads/span/) interface:
 
-  1. `blocked_ui_thread` - indicates whether the Span has spent its entire duration on the Main/UI thread.
+  1. `blocked_main_thread` - indicates whether the Span has spent its entire duration on the Main/UI thread.
   2. `call_stack` - contains the most relevant stack frames, that lead to the File I/O span. The stack frame should adhere to the [`StackFrame`]
   (https://develop.sentry.dev/sdk/event-payloads/stacktrace/#frame-attributes) interface. When possible, should only include `in-app` frames. 
   Used for proper fingerprinting and grouping of the File I/O performance issues.
@@ -60,7 +59,7 @@ An example of a File I/O span payload with the newly added attributes:
   "trace_id": "b2a33f3f79fe4a7c8de3426725a045cb",
   "status": "ok",
   "data": {
-    "blocked_ui_thread": true,
+    "blocked_main_thread": true,
     "call_stack": [
       {
         "function": "onClick",
@@ -107,7 +106,7 @@ as well as frontend changes.
 This option has been decided against, due to potential high-complexity of the proper solution or just simply
 infeasiable on some certain platforms.
 
-## Making `blocked_ui_thread` attribute part of the protocol (Option 2)
+## Making `blocked_main_thread` attribute part of the protocol (Option 2)
 
 Since this flag is only relevant to Frontent SDKs, and is only used to mark auto-instrumented spans, it was
 decided against adding it to the common `Span` interface of the protocol.
