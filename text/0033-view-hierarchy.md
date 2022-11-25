@@ -20,7 +20,7 @@ Example View Hierarchies from PoC implementations:
 
 # Proposal
 
-Capture the view hierarchy in our front-end SDKs and convert it to a common JSON representation. Add it as an [attachment](https://develop.sentry.dev/sdk/envelopes/#attachment) to the envelope. The `attachment_type` is set to `"event.view_hierarchy"` and the `content_type` is set to the `"application/json"` mime-type.
+Capture the view hierarchy in our front-end SDKs and convert it to a common JSON representation. Add it as an [attachment](https://develop.sentry.dev/sdk/envelopes/#attachment) to the envelope. The `attachment_type` is set to `"event.viewhierarchy"` and the `content_type` is set to the `"application/json"` mime-type.
 
 The attachment payload is a JSON structure containing the view hierarchy, here's an example:
 ```json
