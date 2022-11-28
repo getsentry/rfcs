@@ -20,6 +20,8 @@ We still need to clarify what easy to detect and matured precisely means, which 
 
 To clarify the threshold and configuration for performance issues, an experimental feature phase can help to get feedback.
 
+Neither pro/con; there's currently an assumption that if we pick this we'll create performance issues directly, and not errors since that's a better user experience. But this may open another can of worms since there may be billing implications if we need to start ingesting performance issues.
+
 ### Pros
 
 1. SDKs can capture a stack trace which will help with actionability.
