@@ -30,9 +30,10 @@ To clarify the threshold and configuration for performance issues, an experiment
 ### Cons
 
 1. Need for per-SDK rollout.
-2. Double dipping, sending the transaction and the error created within that transaction.
+2. Double dipping quotas, sending the transaction and the error created within that transaction.
 3. Not able to use dynamic thresholds and configurations, code changes would be required to update settings.
-
+4. Stack traces are inherently expensive to process
+5. Detection is mixed between ingest and SDK
 
 ## Option 2: SDKs should report all peformance issues
 
@@ -43,12 +44,15 @@ We already decided against this option in this [DACI](https://www.notion.so/sent
 1. SDKs can capture a stack trace which will help with actionability.
 2. No running transaction required.
 3. Can tie together transaction and error far more easily since both objects exist at the point of time the performance issue will be created
+4. Consistent location for detector logic
 
 ### Cons
 
-1. Double dipping, sending the transaction and the error created within that transaction.
-2. Code on SDK could cause overhead.
-3. Not able to use dynamic thresholds, code changes would be required to update settings.
+1. Need for per-SDK rollout.
+2. Double dipping quotas, sending the transaction and the error created within that transaction.
+3. Code on SDK could cause overhead.
+4. Not able to use dynamic thresholds, code changes would be required to update settings.
+5. Stack traces are inherently expensive to process
 
 ## Option 3: Ingest creates the performance issues
 
@@ -58,10 +62,11 @@ This option leaves the performance issue detection to Ingest. For more info see 
 
 1. No need for per-SDK rollout.
 2. Less SDK overhead as they don't have to detect the issues.
-3. Changing the algorithm doesn't require SDK rollout.
+3. Changing the algorithm, or thresholds doesn't require SDK rollout, which means we can address customer issues far faster.
+4. Consistent location for detector logic
 
 ### Cons
 
 1. Users have to enable performance monitoring.
 2. A transaction is required to be running while a performance issue is happening.
-3. No stack traces, so no way to show where the performance problem was detected.
+3. Transactions are high volume which means we may send too many stack traces, so we can't have stacktraces only the span that caused the issue. Which makes it harder to identify the root cause.
