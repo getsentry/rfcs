@@ -42,8 +42,8 @@ to the `Span.data` map.
 Add two new attributes to the `data` key-value map of the [`Span`](https://develop.sentry.dev/sdk/event-payloads/span/) interface:
 
   1. `blocked_main_thread` - indicates whether the Span has spent its entire duration on the Main/UI thread.
-  2. `call_stack` - contains the most relevant stack frames, that lead to the File I/O span. The stack frame should adhere to the [`StackFrame`]
-  (https://develop.sentry.dev/sdk/event-payloads/stacktrace/#frame-attributes) interface. When possible, should only include `in-app` frames. 
+  2. `call_stack` - contains the most relevant stack frames, that lead to the File I/O span. The stack frame should adhere to the 
+  [`StackFrame`](https://develop.sentry.dev/sdk/event-payloads/stacktrace/#frame-attributes) interface. When possible, should only include `in-app` frames. 
   Used for proper fingerprinting and grouping of the File I/O performance issues.
 
 An example of a File I/O span payload with the newly added attributes:
@@ -86,9 +86,9 @@ An example of a File I/O span payload with the newly added attributes:
 
 ## (De)obfuscation
 
-As the `call_stack` may contain obfuscated frames we need to process them server-side, similar to what we already do for [profiles]
-(https://github.com/getsentry/sentry/blob/cf71af372677487d7d0a7fd8ac9dd092f9596cf4/src/sentry/profiles/task.py#L350-L360). In addition, after de-obfuscation, the frames
-should be filtered to only `in-app` frames, using the `app.app_identifier` context.
+As the `call_stack` may contain obfuscated frames we need to process them server-side, similar to what we already do for 
+[profiles](https://github.com/getsentry/sentry/blob/cf71af372677487d7d0a7fd8ac9dd092f9596cf4/src/sentry/profiles/task.py#L350-L360). 
+In addition, after de-obfuscation, the frames should be filtered to only `in-app` frames, using the `app.app_identifier` context.
 
 # Options Considered
 
