@@ -1,7 +1,7 @@
 * Start Date: 2022-11-02
 * RFC Type: feature
 * RFC PR: [#33](https://github.com/getsentry/rfcs/pull/33)
-* RFC Status: -
+* RFC Status: approved
 * RFC Driver: [Dhiogo Ramos Brustolin](https://github.com/brustolin)
 
 # Summary
