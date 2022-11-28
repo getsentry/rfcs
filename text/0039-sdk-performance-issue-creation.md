@@ -50,7 +50,7 @@ We already decided against this option in this [DACI](https://www.notion.so/sent
 2. Code on SDK could cause overhead.
 3. Not able to use dynamic thresholds, code changes would be required to update settings.
 
-## Option 3: Ingest creates the performacne issues
+## Option 3: Ingest creates the performance issues
 
 This option leaves the performance issue detection to Ingest. For more info see previous [DACI](https://www.notion.so/sentry/Performance-Issue-Creation-POC-e521772ebccb482b83b08f4f8a3db2cb#169fa914e8c343468e9523906d0e2fff).
 
