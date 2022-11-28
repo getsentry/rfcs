@@ -10,7 +10,7 @@ This RFC aims to clarify which types of performance issues SDKs shall create.
 
 # Motivation
 
-On June 21, 2022, we decided with [DACI](https://www.notion.so/sentry/Performance-Issue-Creation-POC-e521772ebccb482b83b08f4f8a3db2cb) to create performance issues in Ingest. While implementing the file I/O on the main thread performance issue for Android, the question arose as to why SDKs don't report easy-to-detect performance issues. 
+On June 21, 2022, we decided with [DACI](https://www.notion.so/sentry/Performance-Issue-Creation-POC-e521772ebccb482b83b08f4f8a3db2cb) to create performance issues in Ingest. While implementing the file I/O on the main thread performance issue for Android, the question arose as to why SDKs don't report easy-to-detect and matured performance issues. 
 
 # Options Considered
 
@@ -54,7 +54,6 @@ We already decided against this option in this [DACI](https://www.notion.so/sent
 
 This option leaves the performance issue detection to Ingest. For more info see previous [DACI](https://www.notion.so/sentry/Performance-Issue-Creation-POC-e521772ebccb482b83b08f4f8a3db2cb#169fa914e8c343468e9523906d0e2fff).
 
-
 ### Pros
 
 1. No need for per-SDK rollout.
@@ -66,5 +65,3 @@ This option leaves the performance issue detection to Ingest. For more info see 
 1. Users have to enable performance monitoring.
 2. A transaction is required to be running while a performance issue is happening.
 3. No stack traces, so no way to show where the performance problem was detected.
-
-
