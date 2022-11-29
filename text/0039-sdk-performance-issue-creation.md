@@ -6,28 +6,25 @@
 
 # Summary
 
-This RFC aims to clarify which types of performance issues SDKs shall create.
+This RFC aims to clarify if SDKs should report file I/O on the main thread as errors, not performance issues.
 
 # Motivation
 
-On June 21, 2022, we decided with [DACI](https://www.notion.so/sentry/Performance-Issue-Creation-POC-e521772ebccb482b83b08f4f8a3db2cb) to create performance issues in Ingest. While implementing the file I/O on the main thread performance issue for Android, the question arose as to why SDKs don't report easy-to-detect and matured performance issues. 
+On June 21, 2022, we decided with [DACI](https://www.notion.so/sentry/Performance-Issue-Creation-POC-e521772ebccb482b83b08f4f8a3db2cb) to create performance issues in Ingest. While implementing the file I/O on the main thread performance issue for Android, the question arose as to why SDKs don't report file I/O on the main thread as errors.
 
 # Options Considered
 
-## Option 1: SDKs report easy to detect and matured performance issues
+## Option 1: SDKs report file I/O on the main thread as errors
 
-We still need to clarify what easy to detect and matured precisely means, which is not the goal of this document. For example, file I/O on the main thread could be a candidate.
+SDKs report file I/O on the main thread as errors with a stacktrace. 
 
-To clarify the threshold and configuration for performance issues, an experimental feature phase can help to get feedback.
-
-Neither pro/con; there's currently an assumption that if we pick this we'll create performance issues directly, and not errors since that's a better user experience. But this may open another can of worms since there may be billing implications if we need to start ingesting performance issues.
+To clarify the threshold and configuration, an experimental feature phase can help to get feedback.
 
 ### Pros
 
-1. SDKs can capture a stack trace which will help with actionability.
+1. SDKs can capture a stack trace which will helps actionability and fingerprinting/grouping.
 2. No running transaction required.
 3. Sentry can tie together transaction and error far more easily since both objects exist at the point of time the performance issue will be created.
-4. As we limit this only to easy detect peformance issues the SDK overhead should be minimal.
 
 ### Cons
 
@@ -37,28 +34,13 @@ Neither pro/con; there's currently an assumption that if we pick this we'll crea
 4. Stack traces are inherently expensive to process
 5. Detection is mixed between ingest and SDK
 
-## Option 2: SDKs should report all peformance issues
+## Option 2: SDKs report file I/O on the main thread as performance issues
 
-We already decided against this option in this [DACI](https://www.notion.so/sentry/Performance-Issue-Creation-POC-e521772ebccb482b83b08f4f8a3db2cb#907db42314864ae2a4b5348835c250c9)
+This option may open another can of worms since there may be billing implications if we need to start ingesting performance issue
 
-### Pros
+## Option 3: Ingest reports file I/O on the main thread as performance issues
 
-1. SDKs can capture a stack trace which will help with actionability.
-2. No running transaction required.
-3. Can tie together transaction and error far more easily since both objects exist at the point of time the performance issue will be created
-4. Consistent location for detector logic
-
-### Cons
-
-1. Need for per-SDK rollout.
-2. Double dipping quotas, sending the transaction and the error created within that transaction.
-3. Code on SDK could cause overhead.
-4. Not able to use dynamic thresholds, code changes would be required to update settings.
-5. Stack traces are inherently expensive to process
-
-## Option 3: Ingest creates the performance issues
-
-This option leaves the performance issue detection to Ingest. For more info see previous [DACI](https://www.notion.so/sentry/Performance-Issue-Creation-POC-e521772ebccb482b83b08f4f8a3db2cb#169fa914e8c343468e9523906d0e2fff).
+This option leaves the performance issue detection to Ingest.
 
 ### Pros
 
