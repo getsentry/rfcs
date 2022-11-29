@@ -6,17 +6,17 @@
 
 # Summary
 
-This RFC aims to clarify if SDKs should report file I/O on the main thread as errors, not performance issues.
+This RFC aims to clarify if SDKs should report file I/O on the main thread (__FIOMT__) as errors or performance issues.
 
 # Motivation
 
-On June 21, 2022, we decided with [DACI](https://www.notion.so/sentry/Performance-Issue-Creation-POC-e521772ebccb482b83b08f4f8a3db2cb) to create performance issues in Ingest. While implementing the file I/O on the main thread performance issue for Android, the question arose as to why SDKs don't report file I/O on the main thread as errors.
+On June 21, 2022, we decided with [DACI](https://www.notion.so/sentry/Performance-Issue-Creation-POC-e521772ebccb482b83b08f4f8a3db2cb) to create performance issues in Ingest. While implementing the FIOMT for Android, the question arose as to why SDKs don't report FIOMT.
 
 # Options Considered
 
-## Option 1: SDKs report file I/O on the main thread as errors
+## Option 1: SDKs report FIOMT as errors
 
-SDKs report file I/O on the main thread as errors with a stacktrace. 
+SDKs report FIOMT as errors with a stacktrace. 
 
 To clarify the threshold and configuration, an experimental feature phase can help to get feedback.
 
@@ -33,9 +33,9 @@ To clarify the threshold and configuration, an experimental feature phase can he
 
 Including [cons 1-3 of option 2](#option-2-cons).
 
-## Option 2: SDKs report file I/O on the main thread as performance issues
+## Option 2: SDKs report FIOMT as performance issues
 
-SDKs detect and report file I/O on the main thread as a performance issue. To achieve this need to:
+SDKs detect and report FIOMT as a performance issue. To achieve this need to:
 
 1. answer billing questions.
 2. make changes in Ingest to accept performance issues.
@@ -51,9 +51,9 @@ SDKs detect and report file I/O on the main thread as a performance issue. To ac
 
 Including [cons 1-3 of option 3](#option-3-cons).
 
-## Option 3: Ingest reports file I/O on the main thread as performance issues
+## Option 3: Ingest reports FIOMT as performance issues
 
-This option leaves the performance issue detection to Ingest.
+This option leaves the detection of FIOMT to Ingest.
 
 ### Pros
 
