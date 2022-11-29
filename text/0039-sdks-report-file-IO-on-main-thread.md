@@ -29,7 +29,6 @@ To clarify the threshold and configuration, an experimental feature phase can he
 ### Cons
 
 1. Double dipping quotas, sending the transaction and the error created within that transaction.
-2. Stack traces are inherently expensive to process
 
 Including [cons 1-3 of option 2](#option-2-cons).
 
