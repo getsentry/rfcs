@@ -3,7 +3,7 @@
 * RFC PR: [#37](https://github.com/getsentry/rfcs/pull/37)
 * RFC Status: draft
 
-# Summary
+# Summary 
 
 Calculate ANR (App Not Responding) rates with session backed data to match Google Play app's Android vitals as closely as possible. The more desirable option between the two presented in this RFC is introducing a new, optional tag (name TBD, but options include `mechanism`, `error.mechanism`, `freeze_mechanism`) in the release health metrics data to track the type of ANR which will allow us to calculate the ANR rate without discrepancies introduced by client-side sampling. This tag will only be set by the Android SDK for sessions that experience an ANR event. We will be limiting the cardinality of the tag values; currently expecting to distinguish between user-perceived vs other ANRs, with a hope to extend to a third value to track AppHangs from iOS in the future.
 
@@ -49,7 +49,10 @@ Issues outlined in 1 & 2 will result in us showing *wrong* ANR rates and 3 will 
 
 ## Introduce a new tag in the release health metrics dataset (Option 1)
 
-Introduce a new optional tag `freeze_mechanism` in the release health metrics dataset and track ANRs in sessions in addition to sending the ANR error events. 
+Introduce a new optional tag `freeze_mechanism` in the release health metrics dataset and track ANRs in sessions in addition to sending the ANR error events:
+  - We add a string-based enumeration called `freeze_metchanism` (name TBD)
+  - There will initially be two values `user-perceived` and `other` (values also TBD)
+  - Ingestion can remove unknown values
 
 SDK sends a session update (`freeze_mechanism:ANR`) when it hits an ANR in addition to creating an ANR error event.
 
