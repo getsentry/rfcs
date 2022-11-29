@@ -5,7 +5,7 @@
 
 # Summary
 
-Calculate ANR (App Not Responding) rates with session backed data to match Google Play apps Android vitals as closely as possible. is the The more desirable option between the two presented in this RFC is introducing a new, optional tag (name TBD, but options include `mechanism`, `error.mechanism`, `freeze_mechanism`) in sessions data to track the type of ANR which will allow us to calculate ANR rate without discrepencies introduced by client-side sampling. This tag will only be set by the Android SDK for sessions that experience an ANR. We will be limiting the cardinality of the tag values; currently expecting to distinguish between user-perceived vs other ANRs, with a hope to extend to a third value to track AppHangs from iOS in the future. 
+Calculate ANR (App Not Responding) rates with session backed data to match Google Play app's Android vitals as closely as possible. The more desirable option between the two presented in this RFC is introducing a new, optional tag (name TBD, but options include `mechanism`, `error.mechanism`, `freeze_mechanism`) in the release health metrics data to track the type of ANR which will allow us to calculate the ANR rate without discrepancies introduced by client-side sampling. This tag will only be set by the Android SDK for sessions that experience an ANR event. We will be limiting the cardinality of the tag values; currently expecting to distinguish between user-perceived vs other ANRs, with a hope to extend to a third value to track AppHangs from iOS in the future.
 
 # Motivation
 
@@ -30,14 +30,14 @@ ANRs are currently surfaced as error events with tag `mechanism:ANR`. With the d
 
 ```bash
 (unique users who experienced error events with tag mechanism: ANR)
-___________________________________________________________________ x 100 
+___________________________________________________________________
                     (total unique users)
 ```
 
 There are a couple problems with this:
 
 1. Total ANRs is affected by client side sampling and dropped events if org/project is close to error quota
-2. The most accurate count of total unique users will probably come from the sessions dataset
+2. The most accurate count of total unique users will probably come from the release health metrics dataset
 3. Getting this information will require clickhouse queries to two different datasets and post-processing to calculate the ANR rate
 
 Issues outlined in 1 & 2 will result in us showing *wrong* ANR rates and 3 will limit the capabilities of ANR rate - can’t allow sort and search, can’t add it to dashboards or alerts and is not future-proof in case we want to use ANR rates in issue detection.
@@ -47,9 +47,9 @@ Issues outlined in 1 & 2 will result in us showing *wrong* ANR rates and 3 will 
 
 # Options Considered
 
-## Introduce a new tag in the sessions dataset (Option 1)
+## Introduce a new tag in the release health metrics dataset (Option 1)
 
-Introduce a new optional tag `freeze_mechanism` in the sessions dataset and track ANRs in sessions in addition to sending the ANR error events. 
+Introduce a new optional tag `freeze_mechanism` in the release health metrics dataset and track ANRs in sessions in addition to sending the ANR error events. 
 
 SDK sends a session update (`freeze_mechanism:ANR`) when it hits an ANR in addition to creating an ANR error event.
 
@@ -76,7 +76,7 @@ SELECT
 
 ## Drawbacks
 
-1. Increases the cardinality of the sessions data, however this tag would only be set by Android SDKs for now, so would only affect Android sessions
+1. Increases the cardinality of the release health metrics data, however this tag would only be set by Android SDKs for now, so would only affect Android sessions
 
 ## Introduce a new session.status tag value (Option 2)
 
