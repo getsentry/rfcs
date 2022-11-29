@@ -43,6 +43,10 @@ SDKs detect and report FIOMT as a performance issue. To achieve this need to:
 ### Pros
 
 1. No double dipping of quotas.
+2. Sentry correctly categorizes FIOMT as a performance issue and returns it when searching inside Sentry for performance issues.
+3. Sentry presents FIOMT as a performance issue, highlighting root causes and resources to fix the issue.
+4. Performance-issue-specific quotas and thresholds apply to FIOMT.
+5. Planned UX and workflow changes specific to performance issues also apply to FIOMT issues.
 
 ### Cons<a name="option-2-cons"></a>
 
