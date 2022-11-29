@@ -23,8 +23,9 @@ To clarify the threshold and configuration, an experimental feature phase can he
 ### Pros
 
 1. SDKs can capture a stack trace which will helps actionability and fingerprinting/grouping.
-2. No running transaction required.
-3. Sentry can tie together transaction and error far more easily since both objects exist at the point of time the performance issue will be created.
+2. Users don't have to enable performance monitoring.
+3. No running transaction required.
+4. Sentry can tie together transaction and error far more easily since both objects exist at the point of time the performance issue will be created.
 
 ### Cons
 
