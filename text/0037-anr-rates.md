@@ -23,8 +23,8 @@ ANRs are triggered if the UI thread on an Android app is blocked for too long. A
 
 <aside>
 💡 User-perceived ANR rate is a *core vital* meaning that it affects the discoverability of your app on Google Play.
-</aside><br />
-
+</aside>
+  
 
 ANRs are currently surfaced as error events with tag `mechanism:ANR`. With the data we already have on hand, we can calculate ANR rate as follows:
 
