@@ -35,7 +35,7 @@ To clarify the threshold and configuration, an experimental feature phase can he
 
 ## Option 2: SDKs report FIOMT as performance issues
 
-SDKs detect and report FIOMT as a performance issue. To achieve this need to:
+SDKs detect and report FIOMT as a performance issue. To achieve this we need to:
 
 1. answer billing questions.
 2. make changes in Ingest to accept performance issues.
