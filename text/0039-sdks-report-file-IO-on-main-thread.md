@@ -41,6 +41,7 @@ SDKs detect and report FIOMT as a performance issue. To achieve this need to:
 
 ### Pros
 
+1. No double dipping of quotas.
 
 ### Cons<a name="option-2-cons"></a>
 
