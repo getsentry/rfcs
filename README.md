@@ -21,5 +21,5 @@ This repository contains RFCs and DACIs. Lost?
 - [0033-view-hierarchy](text/0033-view-hierarchy.md): View Hierarchy
 - [0027-manual-disabling-of-flaky-tests](text/0027-manual-disabling-of-flaky-tests.md): Processes for manually disabling flaky tests in `sentry` and `getsentry`
 - [0038-scrubbing-sensitive-data](text/0038-scrubbing-sensitive-data.md): Scrubbing sensitive data - how to improve
-- [0039-sdk-performance-issue-creation](text/0039-sdk-performance-issue-creation.md): SDK Performance Issue Creation
+- [0039-sdks-report-file-IO-on-main-thread](text/0039-sdks-report-file-IO-on-main-thread): SDKs report file I/O on the main thread
 - [0042-gocd-succeeds-freight-as-our-cd-solution](text/0042-gocd-succeeds-freight-as-our-cd-solution.md): Plan to replace freight with GoCD
