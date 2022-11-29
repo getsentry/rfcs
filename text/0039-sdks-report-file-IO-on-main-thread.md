@@ -32,6 +32,7 @@ To clarify the threshold and configuration, an experimental feature phase can he
 1. Double dipping quotas, sending the transaction and the error created within that transaction.
 
 Including [cons 1-3 of option 2](#option-2-cons).
+Including the opposit of [pros of 2-4 of option 2](#option-2-pros).
 
 ## Option 2: SDKs report FIOMT as performance issues
 
@@ -40,7 +41,7 @@ SDKs detect and report FIOMT as a performance issue. To achieve this need to:
 1. answer billing questions.
 2. make changes in Ingest to accept performance issues.
 
-### Pros
+### Pros <a name="option-2-pros"></a>
 
 1. No double dipping of quotas.
 2. Sentry correctly categorizes FIOMT as a performance issue and returns it when searching inside Sentry for performance issues.
@@ -48,7 +49,7 @@ SDKs detect and report FIOMT as a performance issue. To achieve this need to:
 4. Performance-issue-specific quotas and thresholds apply to FIOMT.
 5. Planned UX and workflow changes specific to performance issues also apply to FIOMT issues.
 
-### Cons<a name="option-2-cons"></a>
+### Cons <a name="option-2-cons"></a>
 
 1. Need for per-SDK rollout.
 2. Changing the algorithm or thresholds requires SDK rollout.
