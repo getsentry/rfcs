@@ -28,15 +28,28 @@ To clarify the threshold and configuration, an experimental feature phase can he
 
 ### Cons
 
-1. Need for per-SDK rollout.
-2. Double dipping quotas, sending the transaction and the error created within that transaction.
-3. Not able to use dynamic thresholds and configurations, code changes would be required to update settings.
-4. Stack traces are inherently expensive to process
-5. Detection is mixed between ingest and SDK
+1. Double dipping quotas, sending the transaction and the error created within that transaction.
+2. Stack traces are inherently expensive to process
+
+Including [cons 1-3 of option 2](#option-2-cons).
 
 ## Option 2: SDKs report file I/O on the main thread as performance issues
 
-This option may open another can of worms since there may be billing implications if we need to start ingesting performance issue
+SDKs detect and report file I/O on the main thread as a performance issue. To achieve this need to:
+
+1. answer billing questions.
+2. make changes in Ingest to accept performance issues.
+
+### Pros
+
+
+### Cons<a name="option-2-cons"></a>
+
+1. Need for per-SDK rollout.
+2. Changing the algorithm or thresholds requires SDK rollout.
+3. Detection is mixed between ingest and SDK.
+
+Including [cons 1-3 of option 3](#option-3-cons).
 
 ## Option 3: Ingest reports file I/O on the main thread as performance issues
 
@@ -45,12 +58,11 @@ This option leaves the performance issue detection to Ingest.
 ### Pros
 
 1. No need for per-SDK rollout.
-2. Less SDK overhead as they don't have to detect the issues.
-3. Changing the algorithm, or thresholds doesn't require SDK rollout, which means we can address customer issues far faster.
-4. Consistent location for detector logic
+2. Changing the algorithm or thresholds doesn't require SDK rollout.
+4. Consistent location for detector logic.
 
-### Cons
+### Cons <a name="option-3-cons"></a>
 
 1. Users have to enable performance monitoring.
 2. A transaction is required to be running while a performance issue is happening.
-3. Transactions are high volume which means we may send too many stack traces, so we can't have stacktraces only the span that caused the issue. Which makes it harder to identify the root cause.
+3. We can't attach a stacktrace to the span that caused the issue, so identifying the root cause is more challenging.
