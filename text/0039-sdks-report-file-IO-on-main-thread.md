@@ -30,9 +30,8 @@ To clarify the threshold and configuration, an experimental feature phase can he
 ### Cons
 
 1. Double dipping quotas, sending the transaction and the error created within that transaction.
-
-Including [cons 1-3 of option 2](#option-2-cons).
-Including the opposit of [pros of 2-4 of option 2](#option-2-pros).
+2. [Cons 1-3 of option 2](#option-2-cons).
+3. The opposit of [pros of 2-4 of option 2](#option-2-pros).
 
 ## Option 2: SDKs report FIOMT as performance issues
 
@@ -54,8 +53,7 @@ SDKs detect and report FIOMT as a performance issue. To achieve this need to:
 1. Need for per-SDK rollout.
 2. Changing the algorithm or thresholds requires SDK rollout.
 3. Detection is mixed between ingest and SDK.
-
-Including [cons 1-3 of option 3](#option-3-cons).
+4. [Cons 1-3 of option 3](#option-3-cons).
 
 ## Option 3: Ingest reports FIOMT as performance issues
 
