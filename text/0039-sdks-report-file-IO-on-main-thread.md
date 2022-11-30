@@ -18,7 +18,11 @@ Performance issues differ from error issues because they don't cause an exceptio
 
 # Options Considered
 
-## Option 1: SDKs report FIOMT as errors
+* [Option 1: SDKs report FIOMT as errors](#option-1)
+* [Option 2: SDKs report FIOMT as performance issues](#option-2)
+* [Option 3: Ingest reports FIOMT as performance issues](#option-3)
+
+## Option 1: SDKs report FIOMT as errors <a name="option-1"></a>
 
 SDKs report FIOMT as errors with a stacktrace. 
 
@@ -59,7 +63,7 @@ SDKs detect and report FIOMT as a performance issue. To achieve this we need to:
 3. Detection is mixed between ingest and SDK.
 4. [Cons 1-3 of option 3](#option-3-cons).
 
-## Option 3: Ingest reports FIOMT as performance issues
+## Option 3: Ingest reports FIOMT as performance issues <a name="option-3"></a>
 
 This option leaves the detection of FIOMT to Ingest, which can detect FIOMT for any SDK sending a span with `blocked_main_thread=true`, as outlined in [#36](https://github.com/getsentry/rfcs/pull/36).
 
