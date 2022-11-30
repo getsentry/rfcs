@@ -10,7 +10,7 @@ This RFC aims to clarify if SDKs should report file I/O on the main thread (__FI
 
 # Motivation
 
-On June 21, 2022, we decided with [DACI](https://www.notion.so/sentry/Performance-Issue-Creation-POC-e521772ebccb482b83b08f4f8a3db2cb) to create performance issues in Ingest. While implementing the FIOMT for Android, the question arose as to why SDKs don't report FIOMT, as they could attach stacktraces.
+On June 21, 2022, we decided with [DACI](https://www.notion.so/sentry/Performance-Issue-Creation-POC-e521772ebccb482b83b08f4f8a3db2cb) to create performance issues in Ingest. While implementing the FIOMT for Android, the question arose as to why SDKs don't report FIOMT, as they could add more context to make the issue more actionable.
 
 # Background
 
