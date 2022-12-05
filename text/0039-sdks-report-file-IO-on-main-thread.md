@@ -1,8 +1,9 @@
 * Start Date: 2022-11-28
 * RFC Type: decision
 * RFC PR: [#33](https://github.com/getsentry/rfcs/pull/33)
-* RFC Status: draft
+* RFC Status: Decided
 * RFC Driver: [Philipp Hofmann](https://github.com/philipphofmann)
+* RFC Approver: [Adam McKerlie](https://github.com/silent1mezzo)
 
 # Summary
 
@@ -12,9 +13,18 @@ This RFC aims to clarify if SDKs should report file I/O on the main thread (__FI
 
 On June 21, 2022, we decided with [DACI](https://www.notion.so/sentry/Performance-Issue-Creation-POC-e521772ebccb482b83b08f4f8a3db2cb) to create performance issues in Ingest. While implementing the FIOMT for Android, the question arose as to why SDKs don't report FIOMT, as they could add more context to make the issue more actionable.
 
-# Background
+# Background <a name="background"></a>
 
 Performance issues differ from error issues because they don't cause an exception or stop the code from running and have a perceived performance impact on end-users. 
+
+# Option Chosen
+
+The best option for File I/O on the main thread performance issues is __Option 3: Ingest reports FIOMT as performance issues.__
+
+We decided against __Option 1__ as FIOMT is not an error issue; it's a performance issue, as pointed out in [background](#background).
+We chose __Option 3__ over __Option 2__ because we can easily detect it via spans ([PR is already complete](https://github.com/getsentry/sentry/pull/41646/)), and the
+problem exists across multiple SDKs (iOS, Android, RN, Flutter, .NET, and possibly more). There's also a likely future where FIOMT is detected via profiles, and
+running detection in the ingestion pipeline will help combine Performance and Profiling issues.
 
 # Options Considered
 
