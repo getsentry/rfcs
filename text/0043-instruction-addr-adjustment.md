@@ -110,6 +110,16 @@ This is arguably an implementation bug that should be fixed?
 It has previously caused confusion for customers who complain about "broken" (actually off-by-one) stack traces
 compared to ones they capture / report through their own means.
 
+# Implementation
+
+Support for this field needs to be added to different parts of the pipeline:
+
+- Relay, to validate / forward this field to Sentry.
+- Symbolicator, to apply the requested adjustment, and to possibly fix exposing adjusted `instruction_addr` values.
+- Sentry event processors, to forward this flag to Symbolicator.
+- Possibly the profiling processor as well?
+- Various SDKs to provide the appropriate flags.
+
 # Unresolved questions
 
 - Should we bikeshed the names a bit more? Armin has originally suggested `instruction_addr_heuristics` with a default
