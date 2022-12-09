@@ -9,7 +9,7 @@ Introduce an infrastructure monitoring agent in all SDKs supported by us. This a
 
 # Motivation
 
-As part of the SDK onboarding improvements initiative, user tests have recently been done, where we collect data about the user experience when trying to integrate Sentry for the first time with their applications.
+As part of the [SDK onboarding improvements initiative](https://www.notion.so/sentry/SDK-Onboarding-Improvements-261a3d1deed94522bcff1361fc8bd756) (employees only), user tests have recently been done, where we collect data about the user experience when trying to integrate Sentry for the first time with their applications.
 
 Several discoveries were made, but one in particular that caught our attention is that many users, after following all the installation steps and sending the first error, were confused and frustrated if they did not see it in the Sentry's application.
 
@@ -41,6 +41,8 @@ The request body would initially be quite simple, containing only the following:
 
 Sentry when collecting this information will be able to give feedback to the user through the user interface, such as that he can now send an error or perform other actions.
 
+This is [one of the designs](https://www.figma.com/file/4EkecQGYtbpOY1G6oEir4X/Exploration%3A-User-Journey?node-id=215%3A1147&t=fGJbtdmq2tDAI8iE-0) we have in mind for the UI (employees only).
+
 In the future, we can also use this mechanism to send other information to Sentry, such as whether the user has configured performance, profiling, etc.
 
 ## Session
@@ -60,3 +62,8 @@ We would like to know through this RFC if there are any drawbacks that we should
   `postgresql on <getsentry_project>.<<firstevent>>`
 
   If we decide to go with the first proposed solution, is this something we can reuse during implementation?
+
+# Others
+
+- [Previous internal DACI](https://www.notion.so/sentry/Boot-up-and-or-heart-beat-b4308d3562a34aa6bba3c86bab575ea8) (employees only)
+- [Heartbeat Kick-off meeting](https://www.notion.so/sentry/SDK-Onboarding-Improvements-261a3d1deed94522bcff1361fc8bd756?p=ed5580c63cbf4298ac78eb0b4a9b508a&pm=s) (employees only)
