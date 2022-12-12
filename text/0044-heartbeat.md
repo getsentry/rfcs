@@ -5,7 +5,7 @@
 
 # Summary
 
-Introduce an infrastructure monitoring agent in all SDKs supported by us. This agent will be triggered every time the user launches the application and will send us information about the state of their integration with Sentry.
+Introduce a heartbeat in all SDKs supported by us. The heartbeat will carry diagnostic data and will be triggered every time the user launches the application.
 
 # Motivation
 
