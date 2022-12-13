@@ -5,7 +5,7 @@
 
 # Summary 
 
-Calculate ANR (App Not Responding) rates with session backed data to match Google Play Console's Android vitals as closely as possible. The more desirable option between the two presented in this RFC is introducing a new, optional tag called `abnormal_mechanism` in the release health metrics dataset to track the type of ANR which will allow us to calculate the ANR rate without discrepancies introduced by client-side sampling. This tag will only be set by the Android SDK for sessions that experience an ANR event. We will be limiting the cardinality of the tag values; currently expecting to distinguish between background and foreground (user-perceived) ANRs, with a potential to extend to a third value to track AppHangs from iOS in the future.
+Calculate ANR (App Not Responding) rates with session backed data to match Google Play Console's Android vitals as closely as possible. The accepted solution is introducing a new, optional tag called `abnormal_mechanism` in the release health metrics dataset to track the type of ANR which will allow us to calculate the ANR rate without discrepancies introduced by client-side sampling. This tag will only be set by the Android SDK for sessions that experience an ANR event. We will be limiting the cardinality of the tag values; currently expecting to distinguish between background and foreground (user-perceived) ANRs, with a potential to extend to a third value to track AppHangs from iOS in the future.
 
 # Motivation
 
