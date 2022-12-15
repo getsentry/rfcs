@@ -84,11 +84,13 @@ An example of a File I/O span payload with the newly added attributes:
 }
 ```
 
-## (De)obfuscation
+## Symbolication
 
-As the `call_stack` may contain obfuscated frames we need to process them server-side, similar to what we already do for 
+As the `call_stack` may contain obfuscated frames we need to symbolicate them server-side, similar to what we already do for 
 [profiles](https://github.com/getsentry/sentry/blob/cf71af372677487d7d0a7fd8ac9dd092f9596cf4/src/sentry/profiles/task.py#L350-L360). 
-In addition, after de-obfuscation, the frames should be filtered to only `in-app` frames, using the `app.app_identifier` context.
+
+To be able to symbolicate the `call_stack` which is part of the `Span` interface server-side, we have to start sending the `debug_meta`
+information for transactions as well.
 
 # Options Considered
 
@@ -120,7 +122,3 @@ should not be a problem. Other potential detectors we could create for detecting
 * Network I/O on main thread
 * Database operations on main thread
 * Resources (images/audio/video) manipulation on main thread (e.g. decoding, resizing, etc.)
-
-# Unresolved questions
-
-* Should we ignore native framework I/O operations, or should we add a new flag in the data bag? iOS screen parser always runs in the UI Thread and the developer has no control over this. Raising issues for this scenario doesn't seems right.
