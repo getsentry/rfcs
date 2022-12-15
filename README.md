@@ -20,6 +20,7 @@ This repository contains RFCs and DACIs. Lost?
 - [0022-response-context](text/0022-response-context.md): Response context
 - [0033-view-hierarchy](text/0033-view-hierarchy.md): View Hierarchy
 - [0027-manual-disabling-of-flaky-tests](text/0027-manual-disabling-of-flaky-tests.md): Processes for manually disabling flaky tests in `sentry` and `getsentry`
+- [0036-auto-instrumentation-ui-thread](text/0036-auto-instrumentation-ui-thread.md): auto-instrumentation UI thread
 - [0037-anr-rates](text/0037-anr-rates.md): Calculating accurate ANR rates
 - [0038-scrubbing-sensitive-data](text/0038-scrubbing-sensitive-data.md): Scrubbing sensitive data - how to improve
 - [0042-gocd-succeeds-freight-as-our-cd-solution](text/0042-gocd-succeeds-freight-as-our-cd-solution.md): Plan to replace freight with GoCD
