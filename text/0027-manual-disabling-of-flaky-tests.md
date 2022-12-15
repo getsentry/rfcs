@@ -28,7 +28,7 @@ https://sentry.io/organizations/sentry/dashboard/7997/?project=5350637&project=4
 **a test should be disabled if it has flaked on the primary branch**
 
 - identify the owner of the test in question
-    - often `.github/CODEOWNERS` can help
+    - often [.github/CODEOWNERS](https://github.com/getsentry/sentry/blob/master/.github/CODEOWNERS) can help
     - otherwise utilize `git log -- path/to/the/test/file`
 - find the corresponding sentry issue:
     - for example: [django tests](https://sentry.io/organizations/sentry/issues/?limit=5&project=2423079&query=&sort=freq&statsPeriod=14d)
@@ -36,17 +36,15 @@ https://sentry.io/organizations/sentry/dashboard/7997/?project=5350637&project=4
     - subject: `disabled flaky test: <testname>`
     - body: (something like this)
 
-      ```
-          the following test is flaky so it is being disabled:
+```
+The following test is flaky so it is being disabled: <name of tests>
 
-          here is the sentry issue: <<< link here >>>
+Here is the sentry issue: <<< link here >>>
 
-          ```
-          <<< test failure output here >>>
-          ```
+<<< test failure output here >>>
 
-          please fix this test and re-enable it
-      ```
+Please fix this test and re-enable it.
+```
 
 - make a pull request to disable the test (make sure to reference the ticket)
     - for python tests, the test can be decorated with:
