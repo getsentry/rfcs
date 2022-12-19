@@ -39,6 +39,8 @@ or the Rust SDK on some platforms.
 Stack walker implementations may do that automatically, or offer parameters to skip frames from the top, such as
 the Win32 [`CaptureStackBackTrace`](https://learn.microsoft.com/en-us/windows/win32/debug/capturestackbacktrace) function.
 
+Apart from trimming stack frames, some implementations might even return already adjusted frames.
+
 # Proposed Protocol Extension
 
 We propose to add the following field to the
@@ -54,7 +56,7 @@ This new attribute tells `symbolicator` if, and for which frames, adjustment of 
 
 All frames but the first (in callee to caller / child to parent direction) should be adjusted.
 
-SDKs should use this value if the stack trace was captured directly from a CPU context in a signal handler, or for
+SDKs should use this value if the stack trace was captured directly from a CPU context in a signal handler or for
 suspended threads.
 
 **`"all"`**:
@@ -62,7 +64,7 @@ suspended threads.
 All frames of the stack trace will be adjusted, subtracting one instruction with (or `1`) from the incoming
 `instruction_addr` before symbolication.
 
-SDKs should use this value if frames were trimmed / skipped from the top either in the SDK itself, or a stack walker
+SDKs should use this value if frames were trimmed / skipped from the top either in the SDK itself, or in a stack walker
 that is not under the control of the SDK.
 
 **`"none"`**:
@@ -86,19 +88,69 @@ The property which frame was a leaf frame is completely lost in this process.
 
 This is bad for two reasons:
 
-1. Whichever frame happens to be "first" is most likely wrong when using the `"all_but_first"` strategy. Unless it is
+1. Whichever frame happens to be _"first"_ is most likely wrong when using the `"all_but_first"` strategy. Unless it is
    indeed a leaf frame. But that is pretty random.
 2. Any other leaf frames that happen to be scattered around the "middle" of the long list of frames will be wrong.
 
-I can see one way to fix this for profiling:
-
-As profiling has more control over when and how stack traces are captured, it can move `instruction_addr` adjustment
-into the SDK, and send already _correctly_ adjusted frames along with `instruction_addr_adjustment: "none"`.
-
 Profiling most likely will use a profiling signal and capture the corresponding cpu context, or it will suspend threads
 and capture their stack from the outside. In both cases, the leaf frame should _not_ be adjusted, but all non-leaf
-frames should be. In this case it is fair to do a simple `- 1`, as the backend (Symbolicator) itself will make sure
-that fixed-sized instruction sets are aligned to instruction addresses.
+frames should be.
+
+# Internal Symbolicator Protocol
+
+The above `instruction_addr_adjustment` attribute will be used in the SDK -> Sentry protocol. The internal Sentry -> Symbolicator
+protocol will add a per-frame attribute:
+
+**`needs_adjustment: Option<bool>`**, _new_
+
+This is a _per-frame_ attribute which will do `instruction_addr` adjustment when set to `true`. The default depends on
+the whole stack trace. If _any_ stack frame has an explicit value set, it will default to `Some(true)`. Otherwise it
+defaults to `None`, which will apply the `"auto"` adjustment heuristic, keeping backwards compatibility to the current
+implementation.
+
+For example:
+
+```rust
+let default_adjustment = if frames.iter().any(|frame| frame.needs_adjustment.is_some()) {
+  Some(true)
+} else {
+  None
+};
+
+// ...
+
+let instruction_addr_to_symbolicate = match frame.needs_adjustment.or(default_adjustment) {
+  Some(true) => todo!("use previous instruction addr"),
+  Some(false) => instruction_addr,
+  None => todo!("use existing heuristic"),
+};
+```
+
+## Sentry Processor
+
+The Sentry stack trace processor should transform the per-stack trace `instruction_addr_adjustment` flag into a
+per-frame `needs_adjustment` flag like so:
+
+- `"auto"` / default: Do nothing.
+- `"all"`: Add `needs_adjustment: true` to the first frame, as every other frame will use `true` as default.
+- `"all_but_first"`: Add `needs_adjustment: false` to the first frame, as every other frame will use `true` as default.
+- `"none"`: Add `needs_adjustment: false` to every frame.
+
+## Profiling Processor
+
+The profiling product has tighter control over the quality of the stack traces and the methods with which they were obtained.
+Assuming the stack traces were captured by suspending threads and walking from their CPU context, the top frame of each
+stack trace would not need adjustment, but all the others would.
+
+To make that work with the "indexed list of frames" approach of the profiling protocol, one way to solve this could be:
+
+```rust
+let mut all_frames = vec![/*...*/];
+
+for idx in all_stack_traces.iter().flat_map(|frames| frames.first()) {
+    all_frames[idx].needs_adjustment = false;
+}
+```
 
 # Should we expose adjusted `instruction_addr`?
 
@@ -117,14 +169,14 @@ Support for this field needs to be added to different parts of the pipeline:
 - Relay, to validate / forward this field to Sentry.
 - Symbolicator, to apply the requested adjustment, and to possibly fix exposing adjusted `instruction_addr` values.
 - Sentry event processors, to forward this flag to Symbolicator.
-- Possibly the profiling processor as well?
-- Various SDKs to provide the appropriate flags.
+- The profiling processor to do the same.
+- Various SDKs to provide the appropriate flags if appropriate.
 
 # Unresolved questions
 
 - Should we bikeshed the names a bit more? Armin has originally suggested `instruction_addr_heuristics` with a default
   `"magic"` value.
-- Is the proposed solution to fix profiling appropriate?
+- Should adjustment also be done for relative addresses?
 - Should we indeed display non-adjusted "original" `instruction_addr` values in the UI?
 - Related, if we want to display non-adjusted values in the UI, how can we achieve that if the SDKs send us
   pre-adjusted values? Is aligning to instruction width + add one instruction width enough in that case?
