@@ -81,6 +81,17 @@ Pros:
 Cons:
 - Extra APIs to call.  
 - Keeping a reference of transaction.
+- Not knowing when to wait for fully drawn.
+6) Hook into Android's new `FullyDrawnReporter` and use a callback from that.  
+
+Pros:
+- Completely automatic and transparent to the user.  
+- We would know the activity that was drawn, so we'd know the span to finish.  
+
+Cons:
+- Would work for first launch of the first Activity only, as the documentation of `Activity.reportFullyDrawn` says `You can safely call this method any time after first launch as well, in which case it will simply be ignored.`  
+- Only available from `androidx.activity` library version 1.7, currently in alpha.  
+- This is not ideal for single activity apps, as it wouldn't work for fragments.  
 - Not knowing when to wait for fully drawn.  
   
 # Unresolved questions
