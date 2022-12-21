@@ -29,7 +29,7 @@ These options were considered for Android, but the same apply to other SDKs, too
 1) Add a `SentryAndroid.reportFullyDrawn(Activity)` static method. We would start the span automatically when an Activity is being created and we would finish it when the API is called.  
   
 Pros:
-- This resembles the system API `Activity.reportFullyDrawn()`, making it immediate to use.  
+- This resembles the system API `Activity.reportFullyDrawn()`, making it obvious how to use.  
 
 Cons:
 - We need the activity this API is called for, and passing an Activity instance to an API is not ideal.  
