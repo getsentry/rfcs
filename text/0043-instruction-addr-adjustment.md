@@ -167,9 +167,10 @@ compared to ones they capture / report through their own means.
 Support for this field needs to be added to different parts of the pipeline:
 
 - Relay, to validate / forward this field to Sentry.
-- Symbolicator, to apply the requested adjustment, and to possibly fix exposing adjusted `instruction_addr` values.
-- Sentry event processors, to forward this flag to Symbolicator.
-- The profiling processor to do the same.
+- Symbolicator, to apply the requested adjustment, and to possibly fix exposing adjusted `instruction_addr` values:
+  https://github.com/getsentry/symbolicator/pull/948
+- Sentry and Profiling event processors, to forward this flag to Symbolicator:
+  https://github.com/getsentry/sentry/pull/42533
 - Various SDKs to provide the appropriate flags if appropriate.
 
 # Unresolved questions
