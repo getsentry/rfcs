@@ -101,7 +101,7 @@ frames should be.
 The above `instruction_addr_adjustment` attribute will be used in the SDK -> Sentry protocol. The internal Sentry -> Symbolicator
 protocol will add a per-frame attribute:
 
-**`needs_adjustment: Option<bool>`**, _new_
+**`adjust_instruction_addr: Option<bool>`**, _new_
 
 This is a _per-frame_ attribute which will do `instruction_addr` adjustment when set to `true`. The default depends on
 the whole stack trace. If _any_ stack frame has an explicit value set, it will default to `Some(true)`. Otherwise it
@@ -111,7 +111,7 @@ implementation.
 For example:
 
 ```rust
-let default_adjustment = if frames.iter().any(|frame| frame.needs_adjustment.is_some()) {
+let default_adjustment = if frames.iter().any(|frame| frame.adjust_instruction_addr.is_some()) {
   Some(true)
 } else {
   None
@@ -119,7 +119,7 @@ let default_adjustment = if frames.iter().any(|frame| frame.needs_adjustment.is_
 
 // ...
 
-let instruction_addr_to_symbolicate = match frame.needs_adjustment.or(default_adjustment) {
+let instruction_addr_to_symbolicate = match frame.adjust_instruction_addr.or(default_adjustment) {
   Some(true) => todo!("use previous instruction addr"),
   Some(false) => instruction_addr,
   None => todo!("use existing heuristic"),
@@ -129,12 +129,12 @@ let instruction_addr_to_symbolicate = match frame.needs_adjustment.or(default_ad
 ## Sentry Processor
 
 The Sentry stack trace processor should transform the per-stack trace `instruction_addr_adjustment` flag into a
-per-frame `needs_adjustment` flag like so:
+per-frame `adjust_instruction_addr` flag like so:
 
 - `"auto"` / default: Do nothing.
-- `"all"`: Add `needs_adjustment: true` to the first frame, as every other frame will use `true` as default.
-- `"all_but_first"`: Add `needs_adjustment: false` to the first frame, as every other frame will use `true` as default.
-- `"none"`: Add `needs_adjustment: false` to every frame.
+- `"all"`: Add `adjust_instruction_addr: true` to the first frame, as every other frame will use `true` as default.
+- `"all_but_first"`: Add `adjust_instruction_addr: false` to the first frame, as every other frame will use `true` as default.
+- `"none"`: Add `adjust_instruction_addr: false` to every frame.
 
 ## Profiling Processor
 
@@ -148,7 +148,7 @@ To make that work with the "indexed list of frames" approach of the profiling pr
 let mut all_frames = vec![/*...*/];
 
 for idx in all_stack_traces.iter().flat_map(|frames| frames.first()) {
-    all_frames[idx].needs_adjustment = false;
+    all_frames[idx].adjust_instruction_addr = false;
 }
 ```
 
