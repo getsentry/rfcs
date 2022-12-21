@@ -36,15 +36,15 @@ https://sentry.io/organizations/sentry/dashboard/7997/?project=5350637&project=4
     - subject: `disabled flaky test: <testname>`
     - body: (something like this)
 
+~~~
+The following test is flaky and it has been disabled. Please fix it and re-enable it.
+
+Here is the Sentry issue: <<< link here >>>
+and the test output:
 ```
-The following test is flaky so it is being disabled: <name of tests>
-
-Here is the sentry issue: <<< link here >>>
-
 <<< test failure output here >>>
-
-Please fix this test and re-enable it.
 ```
+~~~
 
 - make a pull request to disable the test (make sure to reference the ticket)
     - for python tests, the test can be decorated with:
