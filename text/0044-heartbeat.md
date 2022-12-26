@@ -69,6 +69,13 @@ For the last use case, we can use the Client Report technology, but some updates
 
 A mechanism that combines the three proposed options is also something we want to implement, so that the diagnostic data is even more reliable and, in case there is an unavailable service, we can fall back to the next one available.
 
+# Documents
+
+- [Previous internal DACI](https://www.notion.so/sentry/Boot-up-and-or-heart-beat-b4308d3562a34aa6bba3c86bab575ea8) (employees only)
+- [Heartbeat Kick-off meeting](https://www.notion.so/sentry/SDK-Onboarding-Improvements-261a3d1deed94522bcff1361fc8bd756?p=ed5580c63cbf4298ac78eb0b4a9b508a&pm=s) (employees only)
+- [Sentry heartbeat doc](https://www.notion.so/sentry/Sentry-Heartbeat-c94ff5781c144b4c87b24fc1a302faa7) (employees only)
+- [SDK Onboarding Improvements](https://www.notion.so/sentry/SDK-Onboarding-Improvements-261a3d1deed94522bcff1361fc8bd756) (employees only)
+
 # Appendix
 
 > The RFC described below has already been discussed and the proposal has been discarded. We are keep it here for documentation purposes only.
