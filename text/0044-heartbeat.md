@@ -7,7 +7,7 @@
 
 Through “heartbeat” monitoring, we want a way for the SDKs to communicate with Sentry so that they are at the bare minimum connected.
 
-This will also be expanded in the future to include richer diagnostic information about SDK configuration such as configured products (bug tracking, performance profiling, replay) or features (e.g. releases, customer sample rates, frameworks, integrations ) and potentially more.
+This will also be expanded in the future to include richer diagnostic information about SDK configuration, such as the configuration of products 'error monitoring', 'performance monitoring', 'profiling', 'replays' and potentially more.
 
 # Motivation
 
