@@ -28,7 +28,7 @@ https://sentry.io/organizations/sentry/dashboard/7997/?project=5350637&project=4
 **a test should be disabled if it has flaked on the primary branch**
 
 - identify the owner of the test in question
-    - often [.github/CODEOWNERS](https://github.com/getsentry/sentry/blob/master/.github/CODEOWNERS) can help
+    - often `.github/CODEOWNERS` can help
     - otherwise utilize `git log -- path/to/the/test/file`
 - find the corresponding sentry issue:
     - for example: [django tests](https://sentry.io/organizations/sentry/issues/?limit=5&project=2423079&query=&sort=freq&statsPeriod=14d)
