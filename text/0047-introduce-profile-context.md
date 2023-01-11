@@ -12,9 +12,9 @@ transactions so we can easily relate a group of transactions back to the respect
 
 We already have a way to relate a group of profiles back to the respective transaction. And up to
 this point, we have been using this relationship to map single transaction at a time to the
-respective profile. This is now insufficient as we would like to be able to relate a group of
-transactions back to the respective profile. This is to enable various touch points into profiling
-in the existing performance product.
+respective profile. This is now insufficient as we would like to be able to relate a set of
+transaction ids back to the respective profile ids. This is to enable various touch points into
+profiling in the existing performance product.
 
 The intended use cases include
 
