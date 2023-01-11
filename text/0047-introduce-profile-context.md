@@ -34,7 +34,7 @@ Performance to Profiling and vice versa.
 
 ## SDK
 
-### Option A: Add a new context type
+### Add a new context type
 
 Introduce a key in the transaction payload under contexts called `profile` to include information
 related to the profile.
@@ -45,22 +45,6 @@ related to the profile.
   "contexts": {
     ...,
     "profile": {
-      "profile_id": "<id>"
-    }
-  }
-}
-```
-
-### Option B: Use the existing trace context
-
-Use the existing trace context and add a new key for the `profile_id`.
-
-```json
-{
-  ...,
-  "contexts": {
-    ...,
-    "trace": {
       "profile_id": "<id>"
     }
   }
