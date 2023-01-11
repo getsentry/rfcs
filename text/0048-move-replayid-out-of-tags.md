@@ -1,7 +1,7 @@
 - Start Date: 2023-01-05
 - RFC Type: decision
 - RFC PR: https://github.com/getsentry/rfcs/pull/48
-- RFC Status: draft
+- RFC Status: approved
 
 # Summary
 
@@ -61,3 +61,7 @@ Regardless of what options we choose, it will require work to be done, and backw
 
 - Need a go-ahead on event schema proposal
 - Is adding new columns for the replay_id the right path forward?
+
+# Decisions
+
+Going with a new context object ```{"replay":{"replay_id"}}``` on the SDK, and new columns in snuba storage.
