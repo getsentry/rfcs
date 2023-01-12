@@ -134,12 +134,6 @@ If the user calls `reportFullyDrawn` and the option wether to wait for calling `
 
 1. [Cons 1-2 of option 5](#option-5-cons)
 
-### Cons
-
-- Extra APIs to call.  
-- Keeping a reference of a transaction.
-- Not knowing when to wait for fully drawn.
-
 
 ## 7. Hook into Android's `FullyDrawnReporter` <a name="option-7"></a>
 
