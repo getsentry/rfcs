@@ -36,6 +36,7 @@ These options were considered for Android, but the same apply to other SDKs, too
 
 
 ## 1. SentryAndroid.reportFullyDrawn(Activity) <a name="option-1"></a>
+
 Add a `SentryAndroid.reportFullyDrawn(Activity)` static method. We would start the span automatically when an Activity is being created and we would finish it when the API is called.  
   
 ### Pros
@@ -68,7 +69,7 @@ This API would return the span or a custom object to allow the user to finish it
 
 ## 3. Sentry.monitorFullyDrawn() with UUID <a name="option-3"></a>
 
-Add a `Sentry.monitorFullyDrawn()` and a `Sentry.reportFullyDrawn(UUID)` API. We would start the span automatically when an Activity is being created.  
+Add a `Sentry.monitorFullyDrawn()` and a `Sentry.reportFullyDrawn(UUID)` API. We would start the span automatically when the SDK creates an auto-generated transaction.  
 This API would return a UUID used by the other API to stop the span.  
   
 ### Pros
@@ -98,7 +99,7 @@ Add `monitorFullyDrawn()` and `reportFullyDrawn()` to ISpan. The user gets acces
 ### Cons
 
 - Extra APIs to call.  
-- Keeping a reference of transaction.  
+- Keeping a reference of transaction.
 
 
 ## 5. reportFullyDrawn() on ISpan <a name="option-5"></a>
@@ -112,8 +113,9 @@ Add `reportFullyDrawn()` toISpan. The user gets access to the APM UI transaction
 - User can add more spans via the same API Sentry.span.  
 
 ### Cons
+
 - Extra APIs to call.  
-- Keeping a reference of transaction.
+- Keeping a reference of a transaction.
 - Not knowing when to wait for fully drawn.
 
 
@@ -131,6 +133,7 @@ We would use use a callback from that.
 - Only available from `androidx.activity` library version 1.7, currently in alpha.  
 - This is not ideal for single activity apps, as it wouldn't work for fragments.  
 - Not knowing when to wait for fully drawn.  
+- Only works on Android.
   
 # Unresolved questions
   
