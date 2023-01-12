@@ -34,7 +34,7 @@ Performance to Profiling and vice versa.
 
 ## SDK
 
-### Option A: Add a new context type
+### Option A: Add a new context type (Chosen)
 
 Introduce a key in the transaction payload under contexts called `profile` to include information
 related to the profile.
@@ -51,7 +51,7 @@ related to the profile.
 }
 ```
 
-### Option B: Use the existing trace context
+### Option B: Use the existing trace context (Dropped)
 
 Use the existing trace context and add a new key for the `profile_id`.
 
@@ -77,7 +77,7 @@ to do are as follows:
 2. Selecting rows that have a profile ID since not all transactions will have a profile
 3. Selecting a transaction with a specific profile ID (this use case is less common)
 
-### Option A: Add a new column to the transactions dataset
+### Option A: Add a new column to the transactions dataset (Chosen)
 
 The new `profile_id` column will have type `Nullable(UUID)`. The queries would roughly look like
 
@@ -85,7 +85,7 @@ The new `profile_id` column will have type `Nullable(UUID)`. The queries would r
 2. `SELECT ... FROM transactions_local WHERE isNotNull(profile_id)`
 3. `SELECT ... FROM transactions_local WHERE profile_id = "<id>"`
 
-### Option B: Use the contexts columns on the transactions dataset
+### Option B: Use the contexts columns on the transactions dataset (Dropped)
 
 The `profile_id` will be added to the existing array columns for contexts. The queries would roughly
 look like
