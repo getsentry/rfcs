@@ -20,7 +20,7 @@ Example View Hierarchies from PoC implementations:
 
 # Proposal
 
-Capture the view hierarchy in our front-end SDKs and convert it to a common JSON representation. Add it as an [attachment](https://develop.sentry.dev/sdk/envelopes/#attachment) to the envelope. The `attachment_type` is set to `"event.view_hierarchy"` and the `content_type` is set to the `"application/json"` mime-type.
+Capture the view hierarchy in our front-end SDKs and convert it to a common JSON representation. Add it as an [attachment](https://develop.sentry.dev/sdk/envelopes/#attachment) to the envelope. The filename is `view-hierarchy.json`, the `attachment_type` is set to `"event.view_hierarchy"` and the `content_type` is set to the `"application/json"` mime-type.
 
 The attachment payload is a JSON structure containing the view hierarchy, here's an example:
 ```json
@@ -38,6 +38,7 @@ The attachment payload is a JSON structure containing the view hierarchy, here's
             "y": 0.0,
             "z": 2.0, // if applies.
             "visible": true|false,
+            "visibility": "visible|invisible|gone", // Android specific visibility property
             "alpha": 1, // a float number from 0 to 1, where 0 means transparent, and 1 is opaque.
             "{extra_properties}": "{property value}" // additional platform-specific attributes
         }
