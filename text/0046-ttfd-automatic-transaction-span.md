@@ -30,7 +30,8 @@ At this point without the activity it was called on, we wouldn't know which span
 * [3. Sentry.monitorFullyDrawn() with UUID](#option-3)
 * [4. monitorFullyDrawn on ISpan](#option-3)
 * [5. reportFullyDrawn() on ISpan](#option-5)
-* [6. Hook into Android's `FullyDrawnReporter`](#option-6)
+* [6. reportFullyDrawn on ISpan with Option](#option-6)
+* [7. Hook into Android's `FullyDrawnReporter`](#option-7)
   
 These options were considered for Android, but the same apply to other SDKs, too.  
 
@@ -102,15 +103,36 @@ Add `monitorFullyDrawn()` and `reportFullyDrawn()` to ISpan. The user gets acces
 - Keeping a reference of transaction.
 
 
-## 5. reportFullyDrawn() on ISpan <a name="option-5"></a>
+## 5. reportFullyDrawn on ISpan <a name="option-5"></a>
 
 Add `reportFullyDrawn()` toISpan. The user gets access to the APM UI transaction by calling `Sentry.getSpan`, and calls `span.monitorFullyDrawn()`.  
 
-### Pros
+### Pros <a name="option-5-pros"></a>
 
 - We don't depend on Activity, making it usable on other platforms, too.  
 - Correlate fully drawn to correct APM transaction.  
 - User can add more spans via the same API Sentry.span.  
+
+### Cons <a name="option-5-cons"></a>
+
+1. Extra APIs to call.  
+2. Keeping a reference of a transaction.
+3. Not knowing when to wait for fully drawn.
+
+## 6. reportFullyDrawn on ISpan with Option <a name="option-6"></a>
+
+Same as Option 5. but with an option wether to wait for calling `reportFullyDrawn` or not. 
+The SDK would wait for a configurable timeout for the user to call `reportFullyDrawn`. If the user doesn't call the API the SDK adds a `ui.load.full_display` span with `deadline_exceeded`, and finishes the auto-generated transaction.
+If the user calls `reportFullyDrawn` and the option wether to wait for calling `reportFullyDrawn` or not is disabled, the SDK does nothing.
+
+### Pros
+
+- [Same Pros as option 5](#option-5-pros)
+- Knowing when to wait for fully drawn when option enabled.
+
+### Cons
+
+1. [Cons 1-2 of option 5](#option-5-cons)
 
 ### Cons
 
@@ -119,7 +141,7 @@ Add `reportFullyDrawn()` toISpan. The user gets access to the APM UI transaction
 - Not knowing when to wait for fully drawn.
 
 
-## 6. Hook into Android's `FullyDrawnReporter` <a name="option-6"></a>
+## 7. Hook into Android's `FullyDrawnReporter` <a name="option-7"></a>
 
 We would use use a callback from that.  
 
