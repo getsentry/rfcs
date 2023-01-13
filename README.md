@@ -25,4 +25,5 @@ This repository contains RFCs and DACIs. Lost?
 - [0038-scrubbing-sensitive-data](text/0038-scrubbing-sensitive-data.md): Scrubbing sensitive data - how to improve
 - [0039-sdks-report-file-IO-on-main-thread](text/0039-sdks-report-file-IO-on-main-thread.md): SDKs report file I/O on the main thread
 - [0042-gocd-succeeds-freight-as-our-cd-solution](text/0042-gocd-succeeds-freight-as-our-cd-solution.md): Plan to replace freight with GoCD
+- [0047-introduce-profile-context](text/0047-introduce-profile-context.md): Add Profile Context
 - [0048-move-replayid-out-of-tags](text/0048-move-replayid-out-of-tags.md): Plan to replace freight with GoCD
