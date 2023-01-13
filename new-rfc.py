@@ -97,7 +97,7 @@ def create_branch_and_pull_request_for_rfc(formatted_rfc_name, rfc_name, rfc_typ
         f"git commit --allow-empty -m {quote(f'rfc({rfc_type}): {rfc_name}')}"
     )
     run_bash_command(f"git push origin {branch_name}")
-    pr_link = run_bash_command("gh pr create --fill")
+    pr_link = run_bash_command("gh pr create --fill --draft")
     pr_link = pr_link.split(" ")[-1].strip()
     pr_number = pr_link.split("/")[-1]
     rfc_number = str.zfill(pr_number, 4)
