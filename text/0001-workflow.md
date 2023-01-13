@@ -37,6 +37,9 @@ The are three kinds of RFCs:
    becomes the assigned RFC number filled into `XXXX`.  Zero pad it out to 4 places for better sorting.
 4. Pick an RFC type and write it down on your RFC text in the header.
 
+You can use the RFC Creation script via `python new-rfc.py` to automate this. You'll need python3 in your path, and the (gh cli installed)[https://cli.github.com/] and (authed)[https://cli.github.com/manual/gh_auth_login].
+
+
 If you are writing a DACI-style RFC, read "Instructions for running this Play" (10 mins) from
 [Atlassian's Playbook](https://www.atlassian.com/team-playbook/plays/daci).  Mention informed and contributors in the PR
 description and assign the approver to the PR.
