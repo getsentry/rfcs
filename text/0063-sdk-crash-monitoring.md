@@ -23,9 +23,9 @@ The Google Play SDK Console provides insights into crashes for SDK maintainers. 
 
 ## Options Considered
 
-- [Option 1: SDKs report FIOMT as errors](#option-1)
-- [Option 2: SDKs report FIOMT as performance issues](#option-2)
-- [Option 3: Ingest reports FIOMT as performance issues](#option-3)
+- [Option 1: Detect during event processing](#option-1)
+- [Option 2: Detect in SDKs](#option-2)
+- [Option 3: Client Reports](#option-3)
 
 ### Option 1: Detect during event processing <a name="option-1"></a>
 
