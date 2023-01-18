@@ -19,7 +19,7 @@ For some SDKs, like mobile SDKs, we primarily rely on users to reach out when ou
 
 ## Background
 
-Google Play SDK console only works for Android.
+The Google Play SDK Console provides insights into crashes for SDK maintainers. We regularly use it for the Android/Java SDK. While it would be great also to build something similar for SDK maintainers within Sentry, it's a bit complicated cause of PII and such. Narrowing down the scope to only Sentry SDKs makes the problem easier to solve.
 
 ## Options Considered
 
