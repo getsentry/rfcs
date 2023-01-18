@@ -17,12 +17,6 @@ As an APM company, the reliability of our SDKs is one of our most essential qual
 
 For some SDKs, like mobile SDKs, we primarily rely on users to reach out when our SDKs cause crashes cause we don't operate them in production. If users don't report them, we are unaware. Instead, we should detect crashes caused by our SDKs when they happen so we can proactively fix them.
 
-https://develop.sentry.dev/sdk/client-reports/
-
-### No APM for SDKs
-
-The proposed solution is not an APM solution for our SDKs. Our SDKs should not send extra events to Sentry to inform us about a problem cause of PII and the overhead of the extra requests.
-
 ## Background
 
 Google Play SDK console only works for Android.
