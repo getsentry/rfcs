@@ -29,7 +29,7 @@ We'd add a new baggage http header `sentry-replay_id`. This value would automati
 
 [Link to sentry-trace header information](https://develop.sentry.dev/sdk/performance/#header-sentry-trace)
 
-- The current sentry-trace header format is `sentry-trace = traceid-spanid-sampled`. If we want to maintain compatability with traceparent/zipkin-b3, we'd extend this to add the flags field. he format would be `traceid-spanid-sampled-flags`, of which flags can contain 8 bits. We'd add a "has_replay" bit to the flags field.
+- The current sentry-trace header format is `sentry-trace = traceid-spanid-sampled`. If we want to maintain compatibility with traceparent/zipkin-b3, we'd extend this to add the flags field. The format would be `traceid-spanid-sampled-flags`, of which flags can contain 8 bits. We'd add a "has_replay" bit to the flags field.
 - In ingest we'd then add `hasReplay:true` somewhere on the event.
 - in `post_process`, if this flag is true, we'll emit an event for further processing
 - We'd need to wait a little bit to ensure that the corresponding replay_event to our backend error is written. We'd then do a lookup to get the replay_id, then finally emit a message to our snuba processer which would write the `event_id`/`replay_id` to our replays table.
