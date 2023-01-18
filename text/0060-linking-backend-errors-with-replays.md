@@ -55,6 +55,12 @@ We'd add a new baggage http header `sentry-replay_id`. This value would automati
 
 ### Option A
 
+A thing to keep in mind when adding a replay ID to the Dynamic Sampling Context is the immutability of DSC and traces starting in the backend.
+
+Simple example: A trace starts in the backend for a server-side rendered website, DSC is frozen there, if we assume that DSC cannot be unfrozen, the frontend cannot add a replay ID as part of the pageload transaction.
+
+### Option A
+
 This requires a decent amount of cross-team collaboration and a lot of SDK modifications potentially. We may want to do this anyways for dynamic sampling, as we've discussed always having associated transactions during a replay always sampled.
 
 ### Option B
