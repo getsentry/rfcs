@@ -23,6 +23,8 @@ The Google Play SDK Console provides insights into crashes for SDK maintainers. 
 
 ## Options Considered
 
+For every solution, the server or the SDK has to strip all irrelevant data for us to have enough information to solve an SDK crash to reduce privacy implications and risk. They should strip stacktrace frames from our customers, remove most of the context, etc.
+
 - [Option 1: Detect during event processing](#option-1)
 - [Option 2: Detect in SDKs](#option-2)
 - [Option 3: Client Reports](#option-3)
@@ -73,9 +75,11 @@ Similar to option 2, we use client reports instead of sending events. We would n
 
 ## Drawbacks
 
+Please add any drawbacks you can think of as a comment or just commit directly.
+
 Why should we not do this? What are the drawbacks of this RFC or a particular option if
 multiple options are presented.
 
 ## Unresolved questions
 
-- Do we need to strip sensitive values from the events because of PII or is going through the _admin portal enough?
+- How can we we maintain data locality with Option 1 (ie. the hybrid cloud project)?
