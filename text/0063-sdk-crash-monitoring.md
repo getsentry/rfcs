@@ -50,9 +50,10 @@ When the SDK sends a crash event to Sentry, it checks the stacktrace and checks 
 
 ### Cons <a name="option-2-cons"></a>
 
-1. Opposite of [Pro 1 of option 1](#option-1-pro).
+1. Opposite of [Pro 1 of option 1](#option-1-pros).
 2. Extra events sent from SDKs to Sentry.
 3. Changing the DSN needs an SDK update.
+4. The SDK might end up in an endless loop, if there is a bug in this functionality.
 
 ### Option 3: Client Reports <a name="option-3"></a>
 
@@ -64,12 +65,11 @@ Similar to option 2, we use client reports instead of sending events. We would n
 
 ### Cons
 
-1. Opposite of [Pro 1 of option 1](#option-1-pro).
-2. [Con 3 of option 2](#option-2-cons).
+1. Opposite of [Pro 1 of option 1](#option-1-pros).
+2. [Con 3-4 of option 2](#option-2-cons).
 3. Extend the protocol of client reports.
 4. `The client reports feature doesn't expect 100 percent correct numbers, and it is acceptable for the SDKs to lose a small number of client reports`, [develop docs](https://develop.sentry.dev/sdk/client-reports/#sdk-side-recommendations). So the SDK might drop some crashes, but maybe that's acceptable.
 5. `Bugs in our SDKs are out of scope for client reports and are not being tracked using client reports at the moment`, [develop-docs](https://develop.sentry.dev/sdk/client-reports/#basic-operation).
-
 
 ## Drawbacks
 
