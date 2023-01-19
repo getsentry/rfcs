@@ -15,7 +15,7 @@ This RFC aims to detect crashes caused by our SDKs to improve reliability.
 
 As an APM company, the reliability of our SDKs is one of our most essential quality goals. If our SDK breaks the customer, we fail. Our SDK philosophy refers to this as [degrade gracefully](https://develop.sentry.dev/sdk/philosophy/#degrade-gracefully).
 
-For some SDKs, like mobile SDKs, we primarily rely on users to reach out when our SDKs cause crashes cause we don't operate them in production. If users don't report them, we are unaware. Instead, we should detect crashes caused by our SDKs when they happen so we can proactively fix them.
+For some SDKs, like mobile SDKs, we primarily rely on users to report  SDK crashes because we don't operate them in production. If users don't report them, we are unaware. Instead, we should detect crashes caused by our SDKs when they happen so we can proactively fix them.
 
 ## Background
 
@@ -31,11 +31,9 @@ For every solution, the server or the SDK has to strip all irrelevant data for u
 
 ### Option 1: Detect during event processing <a name="option-1"></a>
 
-During event processing, after processing the stacktrace, the server detects if a crash stems from any of our SDKs by looking at the top frames of the stacktrace. If the server detects that it does, it could duplicate the event and store it in a special-cased sentry org where each SDK gets its project.
+During event processing, after processing the stacktrace, the server detects if a crash stems from any of our SDKs by looking at the top frames of the stacktrace. If the server detects that it does, it duplicates the event and stores it in a special-cased sentry org where each SDK gets its project.
 
 A good candidate to add this functionality is the `event_manager`. Similarly, where we call [`_detect_performance_problems`](https://github.com/getsentry/sentry/blob/4525f70a1fb521445bbb4c9250b2e15e05b059c3/src/sentry/event_manager.py#L2461), we could add an extra function called `detect_sdk_crashes`.
-
-As we’d only make this visible to Sentry employees, we might not have to strip out any data cause of data privacy reasons, as employees could view the original events anyways. Of course, employees would need to go through the _admin portal and form.
 
 ### Pros <a name="option-1-pros"></a>
 
@@ -48,7 +46,7 @@ As we’d only make this visible to Sentry employees, we might not have to strip
 
 ### Option 2: Detect in SDKs <a name="option-2"></a>
 
-When the SDK sends a crash event to Sentry, it checks the stacktrace and checks if the crash stems from the SDK itself by looking at the top frames of the stacktrace. If it does, the SDK duplicates the event and sends it to a special-cased sentry org where each SDK gets its project.
+When the SDK sends a crash event to Sentry, it checks the stacktrace and checks if the crash stems from the SDK itself by looking at the top frames of the stacktrace. If it does, the SDK also sends the event to a special-cased sentry org, where each SDK gets its project.
 
 ### Cons <a name="option-2-cons"></a>
 
@@ -59,7 +57,7 @@ When the SDK sends a crash event to Sentry, it checks the stacktrace and checks 
 
 ### Option 3: Client Reports <a name="option-3"></a>
 
-Similar to option 2, we use client reports instead of sending events. We would need the entire event to get enough context to fix a crash. So basically, we would add the crash event to client reports.
+Similar to option 2, we use [client reports](https://develop.sentry.dev/sdk/client-reports/) instead of sending events. We would need the entire event to get enough context to fix a crash. So basically, we would add the crash event to client reports.
 
 ### Pros
 
