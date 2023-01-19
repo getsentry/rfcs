@@ -25,70 +25,39 @@ At this point without the activity it was called on, we wouldn't know which span
   
 # Options Considered
 
+* [2. Sentry.monitorFullDisplay() with Span](#option-2)
+* [4. monitorFullDisplay on ISpan](#option-3)
+  
+Options removed:  
 * [1. SentryAndroid.reportFullyDrawn(Activity)](#option-1)
-* [2. Sentry.monitorFullyDrawn() with Span](#option-2)
-* [3. Sentry.monitorFullyDrawn() with UUID](#option-3)
-* [4. monitorFullyDrawn on ISpan](#option-3)
-* [5. reportFullyDrawn() on ISpan](#option-5)
-* [6. reportFullyDrawn on ISpan with Option](#option-6)
+* [3. Sentry.monitorFullDisplay() with UUID](#option-3)
+* [5. reportFullDisplay() on ISpan](#option-5)
+* [6. reportFullDisplay on ISpan with Option](#option-6)
 * [7. Hook into Android's `FullyDrawnReporter`](#option-7)
   
 These options were considered for Android, but the same apply to other SDKs, too.  
 
 
-## 1. SentryAndroid.reportFullyDrawn(Activity) <a name="option-1"></a>
+## 2. Sentry.monitorFullDisplay() with Span <a name="option-2"></a>
 
-Add a `SentryAndroid.reportFullyDrawn(Activity)` static method. We would start the span automatically when an Activity is being created and we would finish it when the API is called.  
-  
-### Pros
-
-- This resembles the system API `Activity.reportFullyDrawn()`, making it obvious how to use.  
-
-### Cons
-
-- We need the activity this API is called for, and passing an Activity instance to an API is not ideal.  
-- We need to add an API to `SentryAndroid`, instead of the `Sentry` class used everywhere else, due to Activity dependency.  
-- This is not ideal for single activity apps, as it wouldn't work for fragments.  
-- If the user doesn't call the API, we would have a span that runs forever. We would have to add a timeout to automatically cancel the span.  
-
-
-## 2. Sentry.monitorFullyDrawn() with Span <a name="option-2"></a>
-
-Add a `Sentry.monitorFullyDrawn()` API. We would start the span automatically when an Activity is being created.  
+Add a `Sentry.monitorFullDisplay()` API. We would start the span automatically when an Activity is being created.  
 This API would return the span or a custom object to allow the user to finish it autonomously.  
   
 ## Pros
 
+- We don't depend on Activity, making it usable on other platforms, too.  
 - We can flag the span when the API is called, so that if the user doesn't call the API, we know we can cancel it. 
 
 ### Cons
  
 - Returning the span would allow the user to perform "dangerous" operations. We could solve this by returning a stripped interface to allow only the `finish()` method, or an entirely custom object.  
 - If the user doesn't call the API, we would have a span that runs forever. We would have to add a timeout to automatically cancel the span.  
-- We can't reliably map `Sentry.monitorFullyDrawn()` to the correct APM transaction, unless we force the user to call it in a specific callback, like `Activity.onActivityCreated()`.  
+- We can't reliably map `Sentry.monitorFullDisplay()` to the correct APM transaction, unless we force the user to call it in a specific callback, like `Activity.onActivityCreated()`.  
 
 
-## 3. Sentry.monitorFullyDrawn() with UUID <a name="option-3"></a>
+## 4. monitorFullDisplay on ISpan <a name="option-4"></a>
 
-Add a `Sentry.monitorFullyDrawn()` and a `Sentry.reportFullyDrawn(UUID)` API. We would start the span automatically when the SDK creates an auto-generated transaction.  
-This API would return a UUID used by the other API to stop the span.  
-  
-### Pros
-
-- We don't depend on Activity, making it usable on other platforms, too.  
-- We can flag the span when the API is called, so that if the user doesn't call the API, we know we can cancel it.  
-- We don't return any "dangerous" object to the user.  
-
-### Cons
-
-- We would add and force the user to use 2 APIs.  
-- If the user doesn't call the second API, we would have a span that runs forever. We would have to add a timeout to automatically cancel the span.
-- We can't reliably map `Sentry.monitorFullyDrawn()` to the correct APM transaction, unless we force the user to call it in a specific callback, like `Activity.onActivityCreated()`.  
-
-
-## 4. monitorFullyDrawn on ISpan <a name="option-4"></a>
-
-Add `monitorFullyDrawn()` and `reportFullyDrawn()` to ISpan. The user gets access to the APM UI transaction by calling `Sentry.getSpan`, calls `span.monitorFullyDrawn()` and `span.reportFullyDrawn()`.  
+Add `monitorFullDisplay()` and `reportFullDisplay()` to ISpan. The user gets access to the APM UI transaction by calling `Sentry.getSpan`, calls `span.monitorFullDisplay()` and `span.reportFullDisplay()`.  
 
 ### Pros
 
@@ -101,11 +70,59 @@ Add `monitorFullyDrawn()` and `reportFullyDrawn()` to ISpan. The user gets acces
 
 - Extra APIs to call.  
 - Keeping a reference of transaction.
+  
+## Removed Options
+
+## 1. SentryAndroid.reportFullyDrawn(Activity) <a name="option-1"></a>
+
+Add a `SentryAndroid.reportFullyDrawn(Activity)` static method. We would start the span automatically when an Activity is being created and we would finish it when the API is called.
+
+### Removal reason
+
+- The name of the api should be closer to `reportTimeToFullDisplay()`, losing the only pro.
+
+### Pros
+
+- This resembles the system API `Activity.reportFullyDrawn()`, making it obvious how to use.
+
+### Cons
+
+- We need the activity this API is called for, and passing an Activity instance to an API is not ideal.  
+- We need to add an API to `SentryAndroid`, instead of the `Sentry` class used everywhere else, due to Activity dependency.  
+- This is not ideal for single activity apps, as it wouldn't work for fragments.  
+- If the user doesn't call the API, we would have a span that runs forever. We would have to add a timeout to automatically cancel the span.  
 
 
-## 5. reportFullyDrawn on ISpan <a name="option-5"></a>
+## 3. Sentry.monitorFullDisplay() with UUID <a name="option-3"></a>
 
-Add `reportFullyDrawn()` toISpan. The user gets access to the APM UI transaction by calling `Sentry.getSpan`, and calls `span.monitorFullyDrawn()`.  
+Add a `Sentry.monitorFullDisplay()` and a `Sentry.reportFullDisplay(UUID)` API. We would start the span automatically when the SDK creates an auto-generated transaction.  
+This API would return a UUID used by the other API to stop the span.
+
+### Removal reason
+
+- Returning a span could be more useful to the end user, making [option 2](#option-2) better then this.
+
+### Pros
+
+- We don't depend on Activity, making it usable on other platforms, too.
+- We can flag the span when the API is called, so that if the user doesn't call the API, we know we can cancel it.
+- We don't return any "dangerous" object to the user.
+
+### Cons
+
+- We would add and force the user to use 2 APIs.
+- If the user doesn't call the second API, we would have a span that runs forever. We would have to add a timeout to automatically cancel the span.
+- We can't reliably map `Sentry.monitorFullDisplay()` to the correct APM transaction, unless we force the user to call it in a specific callback, like `Activity.onActivityCreated()`.
+
+
+## 5. reportFullDisplay on ISpan <a name="option-5"></a>
+
+Add `reportFullDisplay()` toISpan. The user gets access to the APM UI transaction by calling `Sentry.getSpan`, and calls `span.reportFullDisplay()`.
+
+### Removal reason
+
+- Add an API to all ISpan objects could be confusing.  
+- Not knowing when to wait for fully drawn, making [option 4](#option-4) better then this.  
 
 ### Pros <a name="option-5-pros"></a>
 
@@ -119,11 +136,17 @@ Add `reportFullyDrawn()` toISpan. The user gets access to the APM UI transaction
 2. Keeping a reference of a transaction.
 3. Not knowing when to wait for fully drawn.
 
-## 6. reportFullyDrawn on ISpan with Option <a name="option-6"></a>
 
-Same as Option 5. but with an option wether to wait for calling `reportFullyDrawn` or not. 
-The SDK would wait for a configurable timeout for the user to call `reportFullyDrawn`. If the user doesn't call the API the SDK adds a `ui.load.full_display` span with `deadline_exceeded`, and finishes the auto-generated transaction.
-If the user calls `reportFullyDrawn` and the option wether to wait for calling `reportFullyDrawn` or not is disabled, the SDK does nothing.
+## 6. reportFullDisplay on ISpan with Option <a name="option-6"></a>
+
+Same as Option 5. but with an option wether to wait for calling `reportFullDisplay` or not.
+The SDK would wait for a configurable timeout for the user to call `reportFullDisplay`. If the user doesn't call the API the SDK adds a `ui.load.full_display` span with `deadline_exceeded`, and finishes the auto-generated transaction.
+If the user calls `reportFullDisplay` and the option wether to wait for calling `reportFullDisplay` or not is disabled, the SDK does nothing.
+
+### Removal reason
+
+- A timeout should always be present, to avoid transactions running indefinitely due to user's error.  
+- Same reasons of [option 5](#option-5).  
 
 ### Pros
 
@@ -138,6 +161,11 @@ If the user calls `reportFullyDrawn` and the option wether to wait for calling `
 ## 7. Hook into Android's `FullyDrawnReporter` <a name="option-7"></a>
 
 We would use use a callback from that.  
+
+### Removal reason
+
+- Not knowing when to wait for fully drawn.  
+- Would work only on Android, and not even for single activity apps.  
 
 ### Pros 
 
