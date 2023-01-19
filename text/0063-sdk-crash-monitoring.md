@@ -17,6 +17,10 @@ As an APM company, the reliability of our SDKs is one of our most essential qual
 
 For some SDKs, like mobile SDKs, we primarily rely on users to report  SDK crashes because we don't operate them in production. If users don't report them, we are unaware. Instead, we should detect crashes caused by our SDKs when they happen so we can proactively fix them.
 
+### SDK Crash Health
+
+In Looker, we could calculate the ratio of crashes reported by each SDK versus the crashes caused by itself to have a metric for how many crashes each SDK causes.
+
 ## Background
 
 The Google Play SDK Console provides insights into crashes for SDK maintainers. We regularly use it for the Android/Java SDK. While it would be great also to build something similar for SDK maintainers within Sentry, it's a bit complicated cause of PII and such. Narrowing down the scope to only Sentry SDKs makes the problem easier to solve.
