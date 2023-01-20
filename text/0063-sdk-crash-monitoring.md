@@ -43,6 +43,7 @@ A good candidate to add this functionality is the `event_manager`. Similarly, wh
 
 1. No need for per-SDK rollout.
 2. No extra events or data sent to Sentry.
+3. Easier to maintain.
 
 ### Cons <a name="option-1-cons"></a>
 
