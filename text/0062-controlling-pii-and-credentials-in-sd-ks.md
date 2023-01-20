@@ -1,7 +1,8 @@
 - Start Date: 2023-01-17
 - RFC Type: feature
 - RFC PR: https://github.com/getsentry/rfcs/pull/62
-- RFC Status: draft
+- RFC Status: approved
+- RFC Driver: [Neel Shah](https://github.com/sl0thentr0py/)
 
 # Summary
 
@@ -98,7 +99,7 @@ def capture_event(self, event):
     if not config.send_default_pii:
         scrubbed_event = event_scrubber.scrub_event(event)
 
-    new_event = before_send(event)
+    new_event = before_send(scrubbed_event)
     # ... existing logic
 
 
@@ -205,3 +206,11 @@ irrespective of `send_default_pii` and stuff in `pii_denylist` is only scrubbed 
 
 * What issues are out of scope for this RFC but are known?
   * More advanced scrubbing such as regex detection within a value is out of scope
+
+# Conclusion
+
+For implementation of the scrubber, we will go with Option B since a recursive Option A seems infeasible in most SDKs.  
+The first MVP will be done in `sentry-python` and we will also include Option C (separate always-on security denylist) for now.  
+If the implementation has too much complexity, we can debate again during code review and simplify.  
+Once `sentry-python` is shipped with a scrubber, develop docs will be updated and other high prio SDKs can port the implementation.
+
