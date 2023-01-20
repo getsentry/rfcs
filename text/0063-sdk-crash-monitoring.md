@@ -46,11 +46,15 @@ A good candidate to add this functionality is the `event_manager`. Similarly, wh
 
 ### Cons <a name="option-1-cons"></a>
 
-1. Please add your cons.
+1. Requires changes on the backend.
 
 ### Option 2: Detect in SDKs <a name="option-2"></a>
 
 When the SDK sends a crash event to Sentry, it checks the stacktrace and checks if the crash stems from the SDK itself by looking at the top frames of the stacktrace. If it does, the SDK also sends the event to a special-cased sentry org, where each SDK gets its project.
+
+### Pros <a name="option-2-pros"></a>
+
+1. No backend changes required.
 
 ### Cons <a name="option-2-cons"></a>
 
@@ -63,6 +67,16 @@ When the SDK sends a crash event to Sentry, it checks the stacktrace and checks 
 
 Similar to option 2, we use [client reports](https://develop.sentry.dev/sdk/client-reports/) instead of sending events. We would need the entire event to get enough context to fix a crash. So basically, we would add the crash event to client reports.
 
+> Client reports are a protocol feature that let clients send status reports about themselves to Sentry [develop docs](https://develop.sentry.dev/sdk/client-reports/).
+
+> Bugs in our SDKs are out of scope for client reports and are not being tracked using client reports at the moment, [develop-docs](https://develop.sentry.dev/sdk/client-reports/#basic-operation).
+
+According to the develop docs, client reports could be used for such a feature.
+
+> The client reports feature doesn't expect 100 percent correct numbers, and it is acceptable for the SDKs to lose a small number of client reports, [develop docs](https://develop.sentry.dev/sdk/client-reports/#sdk-side-recommendations).
+
+So the SDK might drop some crashes, but  that's acceptable.
+
 ### Pros
 
 1. Opposite of [Con 2 of option 2](#option-2-cons).
@@ -71,11 +85,11 @@ Similar to option 2, we use [client reports](https://develop.sentry.dev/sdk/clie
 
 1. Opposite of [Pro 1 of option 1](#option-1-pros).
 2. [Con 3-4 of option 2](#option-2-cons).
-3. Extend the protocol of client reports.
-4. `The client reports feature doesn't expect 100 percent correct numbers, and it is acceptable for the SDKs to lose a small number of client reports`, [develop docs](https://develop.sentry.dev/sdk/client-reports/#sdk-side-recommendations). So the SDK might drop some crashes, but maybe that's acceptable.
-5. `Bugs in our SDKs are out of scope for client reports and are not being tracked using client reports at the moment`, [develop-docs](https://develop.sentry.dev/sdk/client-reports/#basic-operation).
+3. Extend the protocol of client reports, and changes on the backend to pull events from the client reports.
 
 ## Drawbacks
+
+1. Option 3: Not all SDKs have implemented client reports yet. PHP most likely will never add it.
 
 Please add any drawbacks you can think of as a comment or just commit directly.
 
