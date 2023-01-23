@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 This script creates a branch with a new RFC file and a pull request for it.
 Requirements:
