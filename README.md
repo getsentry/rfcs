@@ -28,3 +28,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0047-introduce-profile-context](text/0047-introduce-profile-context.md): Add Profile Context
 - [0048-move-replayid-out-of-tags](text/0048-move-replayid-out-of-tags.md): Plan to replace freight with GoCD
 * [0043-instruction-addr-adjustment](text/0043-instruction-addr-adjustment.md): new StackTrace Protocol field that controls adjustment of the `instruction_addr` for symbolication
+- [0066-rbac-at-sentry](text/0066-rbac-at-sentry.md): RBAC at Sentry
