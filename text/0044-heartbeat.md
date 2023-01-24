@@ -33,13 +33,15 @@ This is highly platform-dependent:
 1. for front-end and mobile applications the heartbeat on start-up is enough
 2. for back-ends it’s necessary to periodically send a heartbeat to know that it is still connected
 
-**2. Sentry config visibility across releases (secondary)**
+**2. SDK diagnostics through Client Reports (Down the road)**
 
-Especially for mobile projects, where a number of different releases might still be active concurrently with different configurations, it can be hard for customers to keep track and cumbersome to search through code in order to determine what options were set.
+As part of options 2 and 3 presented in the next section, we would like to use Client Reports service to collect diagnostic data from SDKs. This collected data will help us provide more accurate user feedback regarding the incorrect configuration that users may have set when trying to instrument Sentry in their SDKs.
 
-**User story**: As a mobile customer, I want to have visibility in the Sentry product of my different configurations across releases, so that I can easily verify what options were set for a particular release if needed.
+We still don't know exactly what data it would be interesting to collect, but an idea would be, for example, the information if a session was sent without a release name. That way we would know that the DSN was set up correctly and there is a connection between Sentry and the user SDK, but the release name is missing, and that is why no session was identified on the Sentry server.
 
-_Note_: this is about SDK diagnostics, so probably better fits to Client Reports.
+**User story**: As a new Sentry user, instrumenting Sentry in my SDK with a `correct` DSN, I would like to know if the rest of my configuration is correct and if not, what I have configured wrong.
+
+_Note_ This is something we certainly want to work on soon, but which will gain more focus in the next phases of this project. For this first phase, the information collected by the Client Report service is already satisfactory and we will be working with it.
 
 # Options Considered
 
