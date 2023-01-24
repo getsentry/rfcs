@@ -24,20 +24,16 @@ We also believe that if we separate the need for a first event and that it is an
 
 Today we are basically relying on customers sending a first error event in order to give users feedback on their setup during their onboarding and project creation. We want to decouple these two events in order to give users more precise feedback on the success of their configuration.
 
+The idea is that every time an application is started, the user will be informed through the UI that the Sentry SDK is present and connected.
+
 **User story**: As a user integrating Sentry into a new project, I want to receive feedback on the successful connection between my application and Sentry during this process, before starting to send events such as errors or transactions.
-
-**2. Sentry connection monitoring**
-
-Every time an application starts up a heartbeat helps to establish that the Sentry SDK is present and connected.
-
-**User story**: As a user, I want to know whether Sentry is connected or not so that I am sure everything is working correctly and I can avoid any observability gaps.
 
 This is highly platform-dependent:
 
 1. for front-end and mobile applications the heartbeat on start-up is enough
 2. for back-ends it’s necessary to periodically send a heartbeat to know that it is still connected
 
-**3. Sentry config visibility across releases (secondary)**
+**2. Sentry config visibility across releases (secondary)**
 
 Especially for mobile projects, where a number of different releases might still be active concurrently with different configurations, it can be hard for customers to keep track and cumbersome to search through code in order to determine what options were set.
 
@@ -49,7 +45,7 @@ _Note_: this is about SDK diagnostics, so probably better fits to Client Reports
 
 **1. Release Health (Session Tracking)**
 
-It is an already existing and robust technology that gives us all the information we need for use cases 1 and 2 and would cause almost no work to everyone envolved. Also, since it's already supported by many SDKs, when we release the new feature, adoption will be almost immediate.
+It is an already existing and robust technology that gives us all the information we need for use case 1 and would cause almost no work to everyone envolved. Also, since it's already supported by many SDKs, when we release the new feature, adoption will be almost immediate.
 
 **2. Client Reports**
 
