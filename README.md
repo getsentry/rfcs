@@ -28,5 +28,5 @@ This repository contains RFCs and DACIs. Lost?
 - [0047-introduce-profile-context](text/0047-introduce-profile-context.md): Add Profile Context
 - [0048-move-replayid-out-of-tags](text/0048-move-replayid-out-of-tags.md): Plan to replace freight with GoCD
 - [0043-instruction-addr-adjustment](text/0043-instruction-addr-adjustment.md): new StackTrace Protocol field that controls adjustment of the `instruction_addr` for symbolication
-* [0044-heartbeat](text/0044-heartbeat.md): Heartbeat monitoring
+- [0044-heartbeat](text/0044-heartbeat.md): Heartbeat monitoring
 
