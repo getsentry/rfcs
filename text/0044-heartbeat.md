@@ -35,9 +35,9 @@ This is highly platform-dependent:
 
 **2. SDK diagnostics through Client Reports (Down the road)**
 
-As part of options 2 and 3 presented in the next section, we would like to use Client Reports service to collect diagnostic data from SDKs. This collected data will help us provide more accurate user feedback regarding the incorrect configuration that users may have set when trying to instrument Sentry in their SDKs.
+As part of options 2 and 3 presented in the next section, we would like to use the Client Reports service to collect diagnostic data from SDKs. This collected data will help us provide more accurate user feedback regarding the incorrect configuration that users may have set when trying to instrument Sentry in their SDKs.
 
-We still don't know exactly what data it would be interesting to collect, but an idea would be, for example, the information if a session was sent without a release name. That way we would know that the DSN was set up correctly and there is a connection between Sentry and the user SDK, but the release name is missing, and that is why no session was identified on the Sentry server.
+We still don't know exactly what data it would be interesting to collect, but an idea would be, for example, the information if a session was sent without a release name. That way we would know that the DSN was set up correctly, so there is a connection between Sentry and the user SDK, but the release name is missing, and that is the reason why no session was identified on the Sentry server.
 
 **User story**: As a new Sentry user, instrumenting Sentry in my SDK with a `correct` DSN, I would like to know if the rest of my configuration is correct and if not, what I have configured wrong.
 
