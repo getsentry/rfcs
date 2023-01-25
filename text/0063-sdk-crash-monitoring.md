@@ -25,6 +25,17 @@ In Looker, we could calculate the ratio of crashes reported by each SDK versus t
 
 The Google Play SDK Console provides insights into crashes for SDK maintainers. We regularly use it for the Android/Java SDK. While it would be great also to build something similar for SDK maintainers within Sentry, it's a bit complicated cause of PII and such. Narrowing down the scope to only Sentry SDKs makes the problem easier to solve.
 
+## Legal Perspective
+
+The proposal is acceptable from a legal perspective, provided we ensure the following parameters. This is to account for (1) contractual requirements related to our use and retention of customer data, (2) privacy obligations related to PII, and (3) future commitments we will make related to data locality.  
+
+Parameters:
+
+1. __No PII__ - PII is stripped from the data
+2. __Limited Use__ - Data is used solely to detect crashes caused by our SDKs and fix our SDKs (and not for any other purposes)
+3. __Limited Retention__ - Data persists for no longer than 30 days (shortest retention period we make available) but ideally no longer than 2 weeks (to account for customer manual deletion requests)
+4. __Data Locality__ - Future data locality elections will be respected
+
 ## Options Considered
 
 For every solution, the server or the SDK has to strip all irrelevant data for us to have enough information to solve an SDK crash to reduce privacy implications and risk. They should strip stacktrace frames from our customers, remove most of the context, etc.
