@@ -2,7 +2,7 @@
 
 - Start Date: 2023-01-18
 - RFC Type: feature
-- RFC PR: [#33](https://github.com/getsentry/rfcs/pull/33)
+- RFC PR: [#63](https://github.com/getsentry/rfcs/pull/63)
 - RFC Status: active
 - RFC Driver: [Philipp Hofmann](https://github.com/philipphofmann)
 - RFC Approver: tbd
