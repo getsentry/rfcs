@@ -17,6 +17,8 @@ As an APM company, the reliability of our SDKs is one of our most essential qual
 
 For some SDKs, like mobile SDKs, we primarily rely on users to report  SDK crashes because we don't operate them in production. If users don't report them, we are unaware. Instead, we should detect crashes caused by our SDKs when they happen so we can proactively fix them.
 
+This solution doesn't seek to detect severe bugs, such as the transport layer breaking or the SDK continuously crashing. CI or other quality mechanisms should find such severe bugs. Instead, the proposal focuses on surfacing crashes that are hard to catch with CI.
+
 ### SDK Crash Health
 
 In Looker, we could calculate the ratio of crashes reported by each SDK versus the crashes caused by itself to have a metric for how many crashes each SDK causes.
