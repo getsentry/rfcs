@@ -102,6 +102,7 @@ So the SDK might drop some crashes, but  that's acceptable.
 ## Drawbacks
 
 1. Option 3: Not all SDKs have implemented client reports yet. PHP most likely will never add it.
+2. The proposal only works for errors that the SDK can still send to Sentry. If the SDK keeps crashing or there is a significant bug preventing the SDK from sending events, this solution won't help to surface such problems.
 
 Please add any drawbacks you can think of as a comment or just commit directly.
 
