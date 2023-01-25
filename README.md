@@ -25,7 +25,8 @@ This repository contains RFCs and DACIs. Lost?
 - [0038-scrubbing-sensitive-data](text/0038-scrubbing-sensitive-data.md): Scrubbing sensitive data - how to improve
 - [0039-sdks-report-file-IO-on-main-thread](text/0039-sdks-report-file-IO-on-main-thread.md): SDKs report file I/O on the main thread
 - [0042-gocd-succeeds-freight-as-our-cd-solution](text/0042-gocd-succeeds-freight-as-our-cd-solution.md): Plan to replace freight with GoCD
+- [0043-instruction-addr-adjustment](text/0043-instruction-addr-adjustment.md): new StackTrace Protocol field that controls adjustment of the `instruction_addr` for symbolication
+- [0044-heartbeat](text/0044-heartbeat.md): Heartbeat monitoring
 - [0047-introduce-profile-context](text/0047-introduce-profile-context.md): Add Profile Context
 - [0048-move-replayid-out-of-tags](text/0048-move-replayid-out-of-tags.md): Plan to replace freight with GoCD
-* [0043-instruction-addr-adjustment](text/0043-instruction-addr-adjustment.md): new StackTrace Protocol field that controls adjustment of the `instruction_addr` for symbolication
 - [0063-sdk-crash-monitoring](text/0063-sdk-crash-monitoring.md): SDK Crash Monitoring
