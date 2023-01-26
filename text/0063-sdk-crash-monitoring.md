@@ -29,7 +29,7 @@ The Google Play SDK Console provides insights into crashes for SDK maintainers. 
 
 ## Legal Perspective
 
-The proposal is acceptable from a legal perspective, provided we ensure the following parameters. This is to account for (1) contractual requirements related to our use and retention of customer data, (2) privacy obligations related to PII, and (3) future commitments we will make related to data locality.  
+__This is not yet signed off by our legal team.__ The following parameters should apply. This is to account for (1) contractual requirements related to our use and retention of customer data, (2) privacy obligations related to PII, and (3) future commitments we will make related to data locality.  
 
 Parameters:
 
