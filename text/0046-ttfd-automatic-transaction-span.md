@@ -22,8 +22,22 @@ We have to add a new API to the SDK to allow the user to notify that the UI was 
 Also, we need the user to specify the span to finish through a parameter, as it cannot be done automatically.  
 E.g. Activity A starts -> Activity B starts -> Activity A finishes loading data and the API is called.  
 At this point without the activity it was called on, we wouldn't know which span to finish, because the activity B would be at the top of the stack.  
+# Final Decision
   
-# Options Considered
+We decided to go with the simplest API possible, from the end user perspective.  
+We are going to add a single new API `Sentry.reportFullDisplayed()`, which will find the last active screen load transaction and finish the `time-to-full-display` span.  
+The active screen load transaction needs to wait for a to-be-defined timeout if the user calls this API.  
+We still have to evaluate all the edge cases.  
+  
+Since we are going to wait for the user to call the manual API, we are going to make it opt-in, otherwise unaware users would have their transactions take much longer without immediate causes.
+  
+Furthermore, we will evaluate if the SDKs should automatically finish the `time-to-full-display` span, as it would greatly push adoption, but with a lot of possible false positives.  
+This consideration will be evaluated after getting feedbacks (or complains) from the users and after checking the feature adoption.  
+  
+We are keeping the considered options as a reference.  
+  
+  
+## Options Considered
 
 * [2. Sentry.monitorFullDisplay() with Span](#option-2)
 * [4. monitorFullDisplay on ISpan](#option-3)
