@@ -22,6 +22,7 @@ We have to add a new API to the SDK to allow the user to notify that the UI was 
 Also, we need the user to specify the span to finish through a parameter, as it cannot be done automatically.  
 E.g. Activity A starts -> Activity B starts -> Activity A finishes loading data and the API is called.  
 At this point without the activity it was called on, we wouldn't know which span to finish, because the activity B would be at the top of the stack.  
+  
 # Final Decision
   
 We decided to go with the simplest API possible, from the end user perspective.  
@@ -35,7 +36,6 @@ Furthermore, we will evaluate if the SDKs should automatically finish the `time-
 This consideration will be evaluated after getting feedbacks (or complains) from the users and after checking the feature adoption.  
   
 We are keeping the considered options as a reference.  
-  
   
 ## Options Considered
 
