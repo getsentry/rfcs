@@ -5,7 +5,7 @@
 - RFC PR: [#63](https://github.com/getsentry/rfcs/pull/63)
 - RFC Status: Decided
 - RFC Driver: [Philipp Hofmann](https://github.com/philipphofmann)
-- RFC Approver: tbd
+- RFC Approver: Karl Heinz Struggl
 
 ## Summary
 
