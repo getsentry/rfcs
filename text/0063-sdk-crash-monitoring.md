@@ -3,7 +3,7 @@
 - Start Date: 2023-01-18
 - RFC Type: feature
 - RFC PR: [#63](https://github.com/getsentry/rfcs/pull/63)
-- RFC Status: active
+- RFC Status: Decided
 - RFC Driver: [Philipp Hofmann](https://github.com/philipphofmann)
 - RFC Approver: tbd
 
@@ -38,6 +38,21 @@ Parameters:
 3. __Limited Retention__ - Data persists for no longer than 30 days (shortest retention period we make available) but ideally no longer than 2 weeks (to account for customer manual deletion requests)
 4. __Data Locality__ - Future data locality elections will be respected
 
+If we strip the data, so we only collect data related to our SDKs, we wouldn’t need data locality from a legal perspective.
+
+## Option Chosen
+
+On 2023-01-18, we decided unanimously to move forward with [Option 1: Detect during event processing](#option-1) and giving our customers the possibility to opt out of this feature. Participants in the decision:
+
+- Philipp Hofmann
+- Manoel Aranda
+- Joris Bayer
+- Karl Heinz Struggl
+- Daniel Griesser
+- Matthew Trostel
+
+The group decided on option 1 as it doesn't require any changes to SDKs, and we can implement it on the backend. The biggest con of options 2 and 3 is that they need a per-SDK rollout to detect SDK crashes.
+
 ## Options Considered
 
 For every solution, the server or the SDK has to strip all irrelevant data for us to have enough information to solve an SDK crash to reduce privacy implications and risk. They should strip stacktrace frames from our customers, remove most of the context, etc.
@@ -48,7 +63,7 @@ For every solution, the server or the SDK has to strip all irrelevant data for u
 
 ### Option 1: Detect during event processing <a name="option-1"></a>
 
-During event processing, after processing the stacktrace, the server detects if a crash stems from any of our SDKs by looking at the top frames of the stacktrace. If the server detects that it does, it duplicates the event and stores it in a special-cased sentry org where each SDK gets its project.
+During event processing, after processing the stacktrace and symbolication, the server detects if a crash stems from any of our SDKs by looking at the top frames of the stacktrace. If the server detects that it does, it duplicates the event and stores it in a special-cased sentry org where each SDK gets its project. Some SDKs, such as Java,  don’t send SDK frames, and they would need to start sending them, and Sentry might need some UI changes not to confuse users.
 
 A good candidate to add this functionality is the `event_manager`. Similarly, where we call [`_detect_performance_problems`](https://github.com/getsentry/sentry/blob/4525f70a1fb521445bbb4c9250b2e15e05b059c3/src/sentry/event_manager.py#L2461), we could add an extra function called `detect_sdk_crashes`.
 
