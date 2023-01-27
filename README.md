@@ -30,3 +30,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0047-introduce-profile-context](text/0047-introduce-profile-context.md): Add Profile Context
 - [0048-move-replayid-out-of-tags](text/0048-move-replayid-out-of-tags.md): Plan to replace freight with GoCD
 
+- [0070-document-sensitive-data-collected](text/0070-document-sensitive-data-collected.md): Document sensitive data collected
