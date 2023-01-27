@@ -38,6 +38,7 @@ Here a list of all sensitive data that is collected:
 - HTTP Request Body (`event.request.data`)
 - Log Entry Params (`event.logentry.params`)
 - Logged in User (`event.user`)
+- Users IP address (`event.user`)
 - Breadcrumb Values (`event.breadcrumbs.values -> value.data`)
 - Local vars in Exceptions (`event.exception.values -> value.stacktrace.frames -> frame.vars`)
 - Span Data (`event.spans -> span.data`)
