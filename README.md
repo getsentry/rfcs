@@ -29,4 +29,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0044-heartbeat](text/0044-heartbeat.md): Heartbeat monitoring
 - [0047-introduce-profile-context](text/0047-introduce-profile-context.md): Add Profile Context
 - [0048-move-replayid-out-of-tags](text/0048-move-replayid-out-of-tags.md): Plan to replace freight with GoCD
-
+- [0063-sdk-crash-monitoring](text/0063-sdk-crash-monitoring.md): SDK Crash Monitoring
