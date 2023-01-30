@@ -90,7 +90,7 @@ This in every way feels inferior to option A, as the backend is still quite comp
 
 This is very brittle and likely wouldn't scale super well. A naive solution if SDK changes aren't possible.
 
-## Option C
+## Option D
 
 This is a lot of work and may not be feasible now, if ever.
 
