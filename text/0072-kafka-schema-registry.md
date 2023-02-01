@@ -1,35 +1,111 @@
 - Start Date: 2023-02-01
 - RFC Type: feature
-- RFC PR: <link>
+- RFC PR: n/a
 - RFC Status: draft
 
 # Summary
 
-One paragraph explanation of the feature or document purpose.
+This RFC proposes introducing a centralized schema repository for the Kafka topics in use at Sentry. It provides mappings between the Kafka topics we are using to the encoding format and schemas for messages on that topic.
+
+Topic registration and schema validation of messages will be optional for the foreseeable future.
 
 # Motivation
 
-Why are we doing this? What use cases does it support? What is the expected outcome?
+Kafka is increasingly used as the message bus between services at Sentry. A Kafka topic and its’ schema not owned by any one service, but is part of the contract between services.
 
-# Background
+As Sentry grows, the number of event types and topics in use is exploding. We are marching further towards increasingly distributed ownership of data by product and infrastructure engineering teams. We have already seen an increase in the number of incidents related with invalid data and schema issues at Sentry. It is reasonable to expect this trend to continue as the number of topics, data types, teams and engineers contributing to Sentry grows.
 
-The reason this decision or document is required. This section might not always exist.
+The goals of the centralized schema repository are to:
+
+- provide an explicit, single source of truth about how data in any given topic should look, and the contract that all consumers and producers of a topic must adhere to
+- provide more stability by enforcing backward compatibility of changes via automation
+- explicitly enumerate ownership of schemas
+- make it easier for consumers to identify and reject bad messages without pausing the whole pipeline
 
 # Supporting Data
 
-[Metrics to help support your decision (if applicable).]
+Over the last quarter, we have seen many incidents related to schema disagreements at Sentry. Examples include the following: (note: inc numbers are internal to Sentry)
+
+- Post process forwarder (INC-218)
+- Snuba’s transactions consumer (INC-210)
+- Super big consumers (INC-220)
+- Replays consumer (INC-281)
+
+Many of these incidents are P1. Since messages are in order, an invalid message often halts consumers and requires manual intervention. This is disruptive to both Sentry engineers and our users (it takes us much longer to recover).
 
 # Options Considered
 
-If an RFC does not know yet what the options are, it can propose multiple options. The
-preferred model is to propose one option and to provide alternatives.
+### **Option A (preferred): Publish a library**
+
+Schemas will be made available as a library for multiple programming languages (Python and Rust to start).
+
+**Client usage example:**
+
+```python
+from sentry_kafka_schemas import get_schema
+
+topic = "events"
+schema = get_schema(topic)
+# => {
+# 	"type": "json"
+# 	"schema": {
+# 		"$schema": "http://json-schema.org/draft-07/schema#",
+# 		"type": "object",
+# 		...
+# 	}
+# }
+
+# Get a specific version of the schema
+v1_schema = get_schema(topic, version=1)
+```
+
+**How schemas are stored:**
+Topic data will be stored as yaml. For example:
+
+```yaml
+topic: events
+schemas:
+	- version: 1
+	type: json
+    resource: events.schema.json
+    - version: 2
+	type: avro
+    resource: events_v2.avsc
+```
+
+In this example scenario, we decided to make a change to schemas on the “events” topic. The `events.schema.json` and `events_v2.avsc` files must be present. The version bump is only necessary for major breaking changes of the schema (like changing the encoding). Most changes should be done in backward compatible manner, and keep the same version number even if the schema changes.
+
+**Data governance**
+The schemas repository will have checks in place to ensure schemas are valid and non backwards compatible changes are not being introduced with a same version number.
+
+### **Option B (alternative, non-preferred option): Deploy a separate service **
+
+No library is provided. Clients fetch data from the schemas service and need to know how to parse the schema from the response by themselves. The schemas service could either be built from scratch or we could deploy an existing open source implementation such as Confluent schema registry.
+
+**Example usage:**
+
+```bash
+GET /schemas/events
+GET /schemas/events?version=1
+```
+
+Or, using the Confluent schema registry API
+
+```bash
+GET /subjects/events/versions
+GET /schemas/ids/123/schema
+
+# Creating schemas. Unlike other options presented, schemas are not checked into code
+POST /subjects/events/version/
+{
+    "schema": {"type": .........}
+}
+```
+
+Unlike Option A, consumer and producer code should be updated automatically when a new version of the schemas service is deployed. This requires consumers and producers to frequently check for updates to the schema to stay in sync. If using the Confluent API, there are libraries to manage this. There are additional complexities of adding another service, like network access to the schema service and schema service capacity to figure out.
 
 # Drawbacks
 
-Why should we not do this? What are the drawbacks of this RFC or a particular option if
-multiple options are presented.
-
-# Unresolved questions
-
-- What parts of the design do you expect to resolve through this RFC?
-- What issues are out of scope for this RFC but are known?
+- We expect a significant performance hit if we were to validate every message in Python consumers (and producers). This has not yet been benchmarked for the various shapes of messages we process. Even with multiprocessing, we may have to sample or not validate in every scenario
+- Additional step involved in making schema changes to Kafka topics
+- Option B in particular adds quite a bit of additional overhead to Sentry’s infrastructure and would need to be shipped in all environments: all regions, open source, dev, CI and single tenant installations.
