@@ -65,8 +65,8 @@ Topic data will be stored as yaml. For example:
 ```
 topic: events
 schemas:
-- version: 1
-type: json
+    - version: 1
+    type: json
     resource: events.schema.json
     - version: 2
     type: avro
