@@ -65,12 +65,12 @@ Topic data will be stored as yaml. For example:
 ```
 topic: events
 schemas:
-  - version: 1
-  type: json
-  resource: events.schema.json
-  - version: 2
-  type: avro
-  resource: events_v2.avsc
+- version: 1
+type: json
+    resource: events.schema.json
+    - version: 2
+    type: avro
+    resource: events_v2.avsc
 ```
 
 In this example scenario, we decided to make a change to schemas on the “events” topic. The `events.schema.json` and `events_v2.avsc` files must be present. The version bump is only necessary for major breaking changes of the schema (like changing the encoding). Most changes should be done in backward compatible manner, and keep the same version number even if the schema changes.
