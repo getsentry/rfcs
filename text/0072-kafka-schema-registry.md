@@ -29,7 +29,7 @@ Over the last quarter, we have seen many incidents related to schema disagreemen
 - Post process forwarder (INC-218)
 - Snuba’s transactions consumer (INC-210)
 - Super big consumers (INC-220)
-- Replays consumer (INC-281)
+- Replays consumer (INC-250, INC-281)
 
 Many of these incidents are P1. Since messages are in order, an invalid message often halts consumers and requires manual intervention. This is disruptive to both Sentry engineers and our users (it takes us much longer to recover).
 
