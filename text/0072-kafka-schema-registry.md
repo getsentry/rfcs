@@ -78,7 +78,7 @@ In this example scenario, we decided to make a change to schemas on the “event
 **Data governance**
 The schemas repository will have checks in place to ensure schemas are valid and non backwards compatible changes are not being introduced with a same version number.
 
-### **Option B (alternative, non-preferred option): Deploy a separate service **
+### **Option B (alternative, non-preferred option): Deploy a separate service**
 
 No library is provided. Clients fetch data from the schemas service and need to know how to parse the schema from the response by themselves. The schemas service could either be built from scratch or we could deploy an existing open source implementation such as Confluent schema registry.
 
