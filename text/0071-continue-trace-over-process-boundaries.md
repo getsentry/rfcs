@@ -5,9 +5,7 @@
 
 # Summary
 
-To make it possible to continue a trace over process boundaries (think of one program starting another one)
-For this to work we will use environment variables as the carrier.
-An SDK should be able to fetch tracing data from environment variables on `init()` to continue a trace started in another process.
+To make it possible to continue a trace over process boundaries (think of one program starting another one) For this to work we will use environment variables as the carrier. An SDK should be able to fetch tracing data from environment variables on `init()` to continue a trace started in another process.
 
 # Motivation
 
@@ -22,8 +20,11 @@ The `sentry-cli` call starts a trace (so it is the head of trace) and the Sentry
 ## Existing trace propagation mechanism
 
 Trace propagation is: giving trace information from one service (the first service, or head of trace) to a second service, so that the second service can create transactions that are attached to the trace created in the first service.
+
 In most cases we use HTTP as the carrier for trace information. The information is propagated through two HTTP headers (`sentry-trace` and `baggage`).
+
 A few integrations (for example job queues) use queue specific meta data fields for propagating trace information. (but those implementations only propagate `sentry-trace` and maybe the legacy `tracestate` that will be rmeoved, but NOT `baggage` so some information is lost here.)
+
 The trace information can also be injected into rendered HTML as a <meta> HTML tag.
 
 See Appendix A if you want to know how this works in the Python SDK.
@@ -67,9 +68,11 @@ The integrations that patch functions that are used for spawning new processes (
 
 Because the serialization format of the bagagge (and thus the dynamic sampling context) stays the same, just the carrier is a new one, it should be 100% compatible to other integrations and will not break dynamic sampling.
 
+So: No drawbacks.
+
 # Unresolved questions
 
-- Should create a new `transaction_info.source` for this kind of transactions that span one execution of a process?
+- Should we create a new `transaction_info.source` for this kind of transactions that span one execution of a process?
 
 # Appendix A
 
