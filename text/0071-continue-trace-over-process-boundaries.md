@@ -21,8 +21,8 @@ The `sentry-cli` call starts a trace (so it is the head of trace) and the Sentry
 ## Existing trace propagation mechanism
 
 Trace propagation is: giving trace information from one service (the first service, or head of trace) to a second service, so that the second service can create transactions that are attached to the trace created in the first service.
-In most cases the trace information is propagated through three HTTP headers (`sentry-trace`, `baggage` and `tracestate`).
-A few integrations (for example job queues) use queue specific meta data fields for propagating trace information. (but those implementations only propagate `sentry-trace` and `tracestate`, NOT `baggage` so some information is lost here.)
+In most cases the trace information is propagated through two HTTP headers (`sentry-trace` and `baggage`).
+A few integrations (for example job queues) use queue specific meta data fields for propagating trace information. (but those implementations only propagate `sentry-trace` and maybe the legacy `tracestate` that will be rmeoved, but NOT `baggage` so some information is lost here.)
 The trace information can also be injected into rendered HTML as a <meta> HTML tag.
 
 See Appendix A if you want to know how this works in the Python SDK.
@@ -38,7 +38,6 @@ If `SENTRY_TRACING_USE_ENVIRONMENT` is set to `true` (or `true|True|TRUE|1|on|ye
 
 - `SENTRY_TRACING_BAGGAGE`
 - `SENTRY_TRACING_SENTRY_TRACE`
-- `SENTRY_TRACING_TRACESTATE`
 
 The environment variables contain the same strings that the respecitve HTTP headers would contain.
 The SDK parses the string values from the environment variables and stores them in the current scope.
@@ -54,7 +53,7 @@ TODO: Maybe we should create a new transaction source for this kind of root tran
 
 ### Creating tracing information on process start up
 
-If `SENTRY_TRACING_USE_ENVIRONMENT` is set to `true` and no information can be found in `SENTRY_TRACING_BAGGAGE`, `SENTRY_TRACING_SENTRY_TRACE` or `SENTRY_TRACING_TRACESTATE` then the current process is the head of trace and a dynamic sampling context should be created.
+If `SENTRY_TRACING_USE_ENVIRONMENT` is set to `true` and no information can be found in `SENTRY_TRACING_BAGGAGE` or `SENTRY_TRACING_SENTRY_TRACE` then the current process is the head of trace and a dynamic sampling context should be created.
 
 See [Unified Propagation Mechanism](https://develop.sentry.dev/sdk/performance/dynamic-sampling-context/#unified-propagation-mechanism) for details.
 
@@ -62,7 +61,7 @@ See [Dynamic Sampling Context Payloads](https://develop.sentry.dev/sdk/performan
 
 ### Propagating/sending tracing information via environment variables:
 
-The integrations that patch functions that are used for spawning new processes (`StdlibIntegration` in Python) should be changed so they grab the tracing information from the scope (if any) and set them in the environment variables (`SENTRY_TRACING_BAGGAGE`, `SENTRY_TRACING_SENTRY_TRACE`, `SENTRY_TRACING_TRACESTATE`) for the newly spawned process. The variable `SENTRY_TRACING_USE_ENVIRONMENT` should also be set to `true` so the receiving process is picking up the information.
+The integrations that patch functions that are used for spawning new processes (`StdlibIntegration` in Python) should be changed so they grab the tracing information from the scope (if any) and set them in the environment variables (`SENTRY_TRACING_BAGGAGE`, `SENTRY_TRACING_SENTRY_TRACE`) for the newly spawned process. The variable `SENTRY_TRACING_USE_ENVIRONMENT` should also be set to `true` so the receiving process is picking up the information.
 
 # Drawbacks
 
@@ -82,10 +81,10 @@ The process of creating a transaction that attaches to an existing trace receive
 
 - data from the `baggage` header is parsed. If it contains values with a `sentry-` prefix the parsed baggage is frozen (marked as immutable).
 - data from the `sentry-trace` header is parsed. (`trace_id`, `parent_span_id` and `parent_sampled`) If this header exists and contains values the parsed baggage from step is is frozen (marked as immutable).
-- data from the `tracestate` header is parsed. (`sentry_tracestate` and `third_party_tracestate`).
+- DEPRECATED and will be removed soon: data from the `tracestate` header is parsed. (`sentry_tracestate` and `third_party_tracestate`).
 - With all this information a new transaction is created.
 - If an outgoing request is done this tracing information is attached to the request as HTTP headers, thus propagated.
-- There are the options `propagate_traces` and `propagate_tracestate` that can turn off the propagation of traces (but not yet implemented in all integrations, so some integrations ignore them).
+- There is the option `propagate_traces` that can turn off the propagation of traces (but not yet implemented in all integrations, so some integrations ignore them).
 
 This should adhere to the [Unified Propagation Mechanism](https://develop.sentry.dev/sdk/performance/dynamic-sampling-context/#unified-propagation-mechanism).
 
