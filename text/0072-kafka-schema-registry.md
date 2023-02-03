@@ -11,7 +11,7 @@ Topic registration and schema validation of messages will be optional for the fo
 
 # Motivation
 
-Kafka is increasingly used as the message bus between services at Sentry. A Kafka topic and its’ schema is usually not internal to any one service, but is part of the contract between services.
+Kafka is increasingly used as the message bus between services at Sentry. Kafka topics and their schemas are usually not internal to any one service, but part of the contract between services.
 
 As Sentry grows, the number of message types and topics in use is exploding. We are marching further towards increasingly distributed ownership of data by product and infrastructure engineering teams. We have already seen an increase in the number of incidents related with invalid data and schema issues at Sentry. It is reasonable to expect this trend to continue as the number of topics, data types, teams and engineers contributing to Sentry grows.
 
