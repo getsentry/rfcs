@@ -26,8 +26,13 @@ After a data incident and a meeting with legal, we said that we need to take dat
 
 Have a hand written (and maintained) table in the description that shows people in an easy to grasp way what data is collected. It also shows how the data collection is changed when certain options (like `sendDefaultPII`) are changed.
 
-Here a example on how this could look like:
-https://sentry-docs-git-antonpirker-python-fastapi-sensitive-data.sentry.dev/platforms/python/guides/fastapi/#data-collected
+Here a example on how this could look like. (After talking with our designer Jesse, having two tables makes it way easier to ingest the information)
+
+For issues:
+https://sentry-docs-git-antonpirker-python-fastapi-sensitive-data.sentry.dev/platforms/python/guides/fastapi/#data-collected-by-issue-reporting
+
+And for performance:
+https://sentry-docs-git-antonpirker-python-fastapi-sensitive-data.sentry.dev/platforms/python/guides/fastapi/#data-collected-measuring-performance
 
 The elements in the table can be different for different kinds (frontend, backend, mobile) of SDKS.
 
@@ -42,6 +47,7 @@ Here a list of all sensitive data that is collected:
 - Breadcrumb Values (`event.breadcrumbs.values -> value.data`)
 - Local vars in Exceptions (`event.exception.values -> value.stacktrace.frames -> frame.vars`)
 - Span Data (`event.spans -> span.data`)
+- ... more to be defined ...
 
 Pros:
 
