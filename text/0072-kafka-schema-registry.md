@@ -21,6 +21,7 @@ The goals of the centralized schema repository are to:
 - provide more stability by enforcing backward compatibility of changes via automation
 - explicitly enumerate ownership of schemas
 - make it easier for consumers to identify and reject bad messages without pausing the whole pipeline
+- provide examples of messages for each schema type, which would help with writing consumer tests
 
 # Supporting Data
 
