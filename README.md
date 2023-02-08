@@ -32,3 +32,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0048-move-replayid-out-of-tags](text/0048-move-replayid-out-of-tags.md): Plan to replace freight with GoCD
 - [0062-controlling-pii-and-credentials-in-sd-ks](text/0062-controlling-pii-and-credentials-in-sd-ks.md): Controlling PII and Credentials in SDKs
 - [0063-sdk-crash-monitoring](text/0063-sdk-crash-monitoring.md): SDK Crash Monitoring
+- [0071-continue-trace-over-process-boundaries](text/0071-continue-trace-over-process-boundaries.md): Continue trace over process boundaries
