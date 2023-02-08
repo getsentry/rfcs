@@ -1,7 +1,7 @@
 - Start Date: 2023-02-01
 - RFC Type: feature
 - RFC PR: https://github.com/getsentry/rfcs/pull/71
-- RFC Status: draft
+- RFC Status: approved
 
 # Summary
 
@@ -28,6 +28,12 @@ A few integrations (for example job queues) use queue specific meta data fields 
 The trace information can also be injected into rendered HTML as a <meta> HTML tag.
 
 See Appendix A if you want to know how this works in the Python SDK.
+
+# Decision
+
+We will implement Option A.
+
+In the [develop docs](https://develop.sentry.dev/) a specification of this RFC will be added and afterwards it will be first implemented in Python.
 
 # Options Considered
 
@@ -88,12 +94,6 @@ Main differences from Option A:
 
 - Should we create a new `transaction_info.source` for this kind of transactions that span one execution of a process?
 - We probably need a flag on a transaction that says "do not emit me" but do consider me sampled (to avoid charging customers unnecessary transactions). This is out of scope for this RFC, but will be handled in a separate RFC.
-
-# Decision
-
-We will implement Option A.
-
-In the [develop docs](https://develop.sentry.dev/) a specification of this RFC will be added and afterwards it will be first implemented in Python.
 
 # Appendix A
 
