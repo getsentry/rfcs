@@ -82,13 +82,12 @@ Main differences from Option A:
 
 # Drawbacks
 
-Because the serialization format of the bagagge (and thus the dynamic sampling context) stays the same, just the carrier is a new one, it should be 100% compatible to other integrations and will not break dynamic sampling.
-
-So: No drawbacks.
+- Because the serialization format of the bagagge (and thus the dynamic sampling context) stays the same, just the carrier is a new one, it should be 100% compatible to other integrations and will not break dynamic sampling. **So: No drawbacks.**
 
 # Unresolved questions
 
 - Should we create a new `transaction_info.source` for this kind of transactions that span one execution of a process?
+- We probably need a flag on a transaction that says "do not emit me" but do consider me sampled (to avoid charging customers unnecessary transactions). This is out of scope for this RFC, but will be handled in a separate RFC.
 
 # Appendix A
 
