@@ -31,7 +31,7 @@ See Appendix A if you want to know how this works in the Python SDK.
 
 # Decision
 
-We will implement Option A.
+We will implement **Option A**.
 
 In the [develop docs](https://develop.sentry.dev/) a specification of this RFC will be added and afterwards it will be first implemented in Python.
 
