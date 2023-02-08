@@ -89,6 +89,12 @@ Main differences from Option A:
 - Should we create a new `transaction_info.source` for this kind of transactions that span one execution of a process?
 - We probably need a flag on a transaction that says "do not emit me" but do consider me sampled (to avoid charging customers unnecessary transactions). This is out of scope for this RFC, but will be handled in a separate RFC.
 
+# Decision
+
+We will implement Option A.
+
+In the [develop docs](https://develop.sentry.dev/) a specification of this RFC will be added and afterwards it will be first implemented in Python.
+
 # Appendix A
 
 How trace propagation is working in the Python SDK right now:
