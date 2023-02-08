@@ -35,7 +35,7 @@ See Appendix A if you want to know how this works in the Python SDK.
 
 ### Retrieving tracing information via environment variables:
 
-When the SDK starts up it reads an environment variable `SENTRY_TRACING_USE_ENVIRONMENT` (defaults to `False`).
+When the SDK starts up it reads an environment variable `SENTRY_TRACING_USE_ENVIRONMENT` (defaults to `True`).
 If `SENTRY_TRACING_USE_ENVIRONMENT` is set to `true` (or `true|True|TRUE|yes|Yes|YES|y|1|on`) then the SDK reads the following environment variables:
 
 - `SENTRY_TRACING_BAGGAGE` (similar to `baggage` HTTP header)
@@ -76,9 +76,9 @@ After the values are read from the files, the same considerations as in Option A
 
 Main differences from Option A:
 
-* Using files, tracing information can be passed not only from a parent process to a child process, but also between processes that don't have direct parent-child relationships.
-* Files used for transport can be updated by any other process (as far as filesystem permissions allow), and the SDK can technically re-read the file multiple times during the lifetime of the host application. However, I don't have a good use case for this right now.
-* Message passing via files is generally more cumbersome and might have performance/reliability drawbacks, depending on the type of file (plain file, named pipe) and the backing filesystem.
+- Using files, tracing information can be passed not only from a parent process to a child process, but also between processes that don't have direct parent-child relationships.
+- Files used for transport can be updated by any other process (as far as filesystem permissions allow), and the SDK can technically re-read the file multiple times during the lifetime of the host application. However, I don't have a good use case for this right now.
+- Message passing via files is generally more cumbersome and might have performance/reliability drawbacks, depending on the type of file (plain file, named pipe) and the backing filesystem.
 
 # Drawbacks
 
