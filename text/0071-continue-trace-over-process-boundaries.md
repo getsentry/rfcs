@@ -64,6 +64,22 @@ See [Dynamic Sampling Context Payloads](https://develop.sentry.dev/sdk/performan
 
 The integrations that patch functions that are used for spawning new processes (`StdlibIntegration` in Python) should be changed so they use the parsed tracing information (if any) and serialize it to the environment variables (`SENTRY_TRACING_BAGGAGE`, `SENTRY_TRACING_SENTRY_TRACE`) for the newly spawned process. The variable `SENTRY_TRACING_USE_ENVIRONMENT` should also be set to `true` so the receiving process is picking up the information.
 
+## Option B) Passing tracing information via files
+
+While initializing, SDK checks for environment variables: `SENTRY_TRACING_FILE_BAGGAGE` and `SENTRY_TRACING_FILE_SENTRY_TRACE`. Each of those variables might contain a file path that points to a file containing the tracing information.
+
+For example, `SENTRY_TRACING_FILE_SENTRY_TRACE=/dir1/file1` indicates that `sentry-trace` value should be read from the file located at `/dir/file1`.
+
+**Note**: the actual file object might also be, for example, a named pipe.
+
+After the values are read from the files, the same considerations as in Option A apply.
+
+Main differences from Option A:
+
+* Using files, tracing information can be passed not only from a parent process to a child process, but also between processes that don't have direct parent-child relationships.
+* Files used for transport can be updated by any other process (as far as filesystem permissions allow), and the SDK can technically re-read the file multiple times during the lifetime of the host application. However, I don't have a good use case for this right now.
+* Message passing via files is generally more cumbersome and might have performance/reliability drawbacks, depending on the type of file (plain file, named pipe) and the backing filesystem.
+
 # Drawbacks
 
 Because the serialization format of the bagagge (and thus the dynamic sampling context) stays the same, just the carrier is a new one, it should be 100% compatible to other integrations and will not break dynamic sampling.
