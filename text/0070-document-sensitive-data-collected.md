@@ -1,7 +1,7 @@
 - Start Date: 2023-01-27
 - RFC Type: decision
 - RFC PR: https://github.com/getsentry/rfcs/pull/70
-- RFC Status: draft
+- RFC Status: approved
 
 # Summary
 
@@ -19,6 +19,10 @@ This will probably be a big selling point for larger customers.
 # Background
 
 After a data incident and a meeting with legal, we said that we need to take data issues to the next level.
+
+# Decision
+
+We will start with implementing **Option A)**.
 
 # Options Considered
 
@@ -71,10 +75,6 @@ Cons:
 
 - Doc strings in code need to be kept up to date.
 - Need to write tooling for exporting doc string from all SDKs to be able to include the generated documentation into docs.sentry.io
-
-## C) \*\*please suggest\*\*
-
-If you have another idea on how to document this, please and an option here.
 
 # Drawbacks
 
