@@ -33,3 +33,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0062-controlling-pii-and-credentials-in-sd-ks](text/0062-controlling-pii-and-credentials-in-sd-ks.md): Controlling PII and Credentials in SDKs
 - [0063-sdk-crash-monitoring](text/0063-sdk-crash-monitoring.md): SDK Crash Monitoring
 - [0071-continue-trace-over-process-boundaries](text/0071-continue-trace-over-process-boundaries.md): Continue trace over process boundaries
+- [0073-usage-of-transaction-types](text/0073-usage-of-transaction-types.md): Usage of transaction types
