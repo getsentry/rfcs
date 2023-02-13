@@ -5,25 +5,32 @@
 
 # Summary
 
-One paragraph explanation of the feature or document purpose.
+This RFC aims to give Sentry developers insights into which types of events and transactions our customers use.
 
 # Motivation
 
-We, the SDK developers, would like to get insights into which types of events and transactions our customers use. Looker doesn't allow querying for different kinds of transactions at the moment. Furthermore, knowing what created an event, transaction or span helps debug SDK issues.
+We, the SDK developers, would like to get insights into the types of events and transactions
+our customers use, which is only partially possible when writing this.
 
 # Background
 
-Looker doesn't allow querying for different kinds of transactions or events. For events, we have kind of abuse `Exception Stack Mechanism Type`, which ends up in Looker, to query for different types of events.
-
-We use the SDK integration list to determine which organizations have specific performance integrations enabled. The downside is that the SDK sends this list for each event, not giving us insights into how many events/transactions/spans stem from a specific parts of the SDK.
+While Looker allows queries for `Exception Stack Mechanism Type` to gain insight into
+different error events, it doesn't allow querying for different transaction types. We
+use the SDK integration list to determine which organizations have specific performance
+integrations enabled. The downside is that the SDK sends this list for each event, not
+giving us insights into how many events/transactions/spans stem from a specific parts
+of the SDK. 
+Furthermore, knowing what created an event, transaction, or span helps debug SDK issues.
 
 
 # Options Considered
 
-For every option, looker picks up this field, but we don't need to index it and make it searchable in Discover. Amplitude could look at this field as a property when users visit issue or transaction detail pages.
+For every option, Looker picks up the field, but we don't need to index it and make it searchable in Discover. Amplitude could look at this field as a property when users visit issue or transaction detail pages.
 
 - [Option 1: Event SDK Origin](#option-1)
-- [Option 2: Transaction Info Type](#option-2)
+- [Option 2: Event Origin](#option-2)
+- [Option 3: Transaction Info Type](#option-3)
+
 
 ## Option 1: Event SDK Origin <a name="option-1"></a>
 
@@ -36,24 +43,43 @@ The property is optional and of type string. Examples:
 - `sentry-crash`
 - `metric-kit`
 - `anr`
-- `file-io-on-main-thread`
-- `next-js`
+- `next-js` 
 
 
 ### Pros <a name="option-1-pros"></a>
 
-1. Works for all events including performance issues.
+1. Works for all event and transactions.
+2. Works for performance issues created by SDKs.
 
 ### Cons <a name="option-1-cons"></a>
 
-1.  Doesn't work for spans.
+1. Doesn't work for spans.
+2. Doesn't work for performance issues.
 
-## Option 2: Transaction Info Type <a name="option-1"></a>
+## Option 2: Event Origin <a name="option-2"></a>
+
+Similar to option 1, but `origin` is a top level optional property directly on the event, to determine what exactly created the event. It has two fields: 
+
+- `type`: Required, type str. Identifies what created the event. At the moment it can be `sdk` or `performance-issue`.
+- `name`: Required, type str. Contains more detailed information on what exactly created the event, such as: `swift-ui`, `http-client-errors`, `sentry-crash`, `metric-kit`, `anr`, `jetpack-compose`, `next-js`, `flask`, `django`, `log4net`, `apollo3`, `dio.http`, `file-io-on-main-thread`, `n+1-queries`, `n+1-api-calls`, `consecutive-db-calls`, etc. 
+This information is similar to `sdk.integrations`, but instead of always containing the list of all enabled integrations, this property exclusively includes the integration/part creating the event.
+
+### Pros <a name="option-2-pros"></a>
+
+1. Works for all existing event types including performance issues.
+2. Works for future non yet existend event types.
+3. Works for performance issues created by SDKs.
+
+### Cons <a name="option-2-cons"></a>
+
+1. [Con  of option 1](#option-1-cons).
+
+## Option 3: Transaction Info Type <a name="option-3"></a>
 
 Add a new property to the [transaction info](https://develop.sentry.dev/sdk/event-payloads/transaction/#transaction-annotations) named `origin`
 
 
-### Cons <a name="option-2-cons"></a>
+### Cons <a name="option-3-cons"></a>
 
 1. [Con  of option 1](#option-1-cons).
 2. Naming is similar to `source` and can be confusing
@@ -62,13 +88,10 @@ Add a new property to the [transaction info](https://develop.sentry.dev/sdk/even
 
 Please add your option here: ...
 
-
 # Drawbacks
 
-Why should we not do this? What are the drawbacks of this RFC or a particular option if
-multiple options are presented.
+Please comment if you see any drawbacks.
 
 # Unresolved questions
 
-- What parts of the design do you expect to resolve through this RFC?
-- What issues are out of scope for this RFC but are known?
+- How does Looker pick up these properties?
