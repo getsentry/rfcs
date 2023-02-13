@@ -90,6 +90,8 @@ Please add your option here: ...
 
 # Drawbacks
 
+- Each solution requires extending the protocol.
+
 Please comment if you see any drawbacks.
 
 # Unresolved questions
