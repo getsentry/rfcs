@@ -20,7 +20,7 @@ use the SDK integration list to determine which organizations have specific perf
 integrations enabled. The downside is that the SDK sends this list for each event, not
 giving us insights into how many events/transactions/spans stem from a specific parts
 of the SDK. 
-Furthermore, knowing what created an event, transaction, or span helps debug SDK issues.
+Furthermore, knowing what created an event, transaction, or span helps investigating issues.
 
 
 # Options Considered
@@ -95,3 +95,4 @@ Please comment if you see any drawbacks.
 # Unresolved questions
 
 - How does Looker pick up these properties?
+- Should we make the option searchable in Discover?
