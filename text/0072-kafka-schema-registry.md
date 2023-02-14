@@ -52,7 +52,7 @@ schema = get_schema(topic)
 #   "version": 1,
 # 	"schema": {
 # 		"$schema": "http://json-schema.org/draft-07/schema#",
-#       "compatibility_mode": "backward",
+# 		"compatibility_mode": "backward",
 # 		"type": "object",
 # 		...
 # 	}
