@@ -1,6 +1,6 @@
 - Start Date: 2023-02-01
 - RFC Type: feature
-- RFC PR: n/a
+- RFC PR: https://github.com/getsentry/sentry-kafka-schemas/pull/2
 - RFC Status: draft
 
 # Summary
