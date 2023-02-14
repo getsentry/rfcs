@@ -63,6 +63,7 @@ v1_schema = get_schema(topic, version=1)
 ```
 
 **How schemas are stored:**
+
 Topic data will be stored as yaml. For example:
 
 ```
@@ -81,6 +82,7 @@ schemas:
 In this example scenario, we decided to make a change to schemas on the “events” topic. The `events.schema.json` and `events_v2.avsc` files must be present.
 
 **Compatibility modes:**
+
 Each schema version defines it's compatibility mode. There will be 2 to start but more can be added if we want to change or tighten the rules.
 
 - `none` - Any changes are allowed. Generally used if a feature is in dev to allow for fast iteration and breaking changes.
