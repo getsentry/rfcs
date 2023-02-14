@@ -48,11 +48,11 @@ from sentry_kafka_schemas import get_schema
 topic = "events"
 schema = get_schema(topic)
 # => {
-# 	"type": "json"
 # 	"version": 1,
+# 	"type": "json"
+# 	"compatibility_mode": "backward",
 # 	"schema": {
 # 		"$schema": "http://json-schema.org/draft-07/schema#",
-# 		"compatibility_mode": "backward",
 # 		"type": "object",
 # 		...
 # 	}
