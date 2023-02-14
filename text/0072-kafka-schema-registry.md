@@ -52,6 +52,7 @@ schema = get_schema(topic)
 #   "version": 1,
 # 	"schema": {
 # 		"$schema": "http://json-schema.org/draft-07/schema#",
+#       "compatibility_mode": "backward",
 # 		"type": "object",
 # 		...
 # 	}
@@ -86,7 +87,6 @@ Each schema version defines it's compatibility mode. There will be 2 to start bu
 - `backward` - Allows adding optional fields, removing optional fields, and changing from optional to required and required to optional. Required field cannot be added at once, it must be split into 2 separate releases.
 
 If `backward` is selected, CI in the schemas repository will ensure changes that are not allowed are not being introduced with a same version number
-
 
 ### **Option B (alternative, non-preferred option): Deploy a separate service**
 
