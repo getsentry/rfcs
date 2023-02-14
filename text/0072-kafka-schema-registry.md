@@ -68,17 +68,25 @@ Topic data will be stored as yaml. For example:
 topic: events
 schemas:
     - version: 1
+    compatibility_mode: backward
     type: json
     resource: events.schema.json
     - version: 2
+    compatibility_mode: none
     type: avro
     resource: events_v2.avsc
 ```
 
-In this example scenario, we decided to make a change to schemas on the “events” topic. The `events.schema.json` and `events_v2.avsc` files must be present. The version bump is only necessary for major breaking changes of the schema (like changing the encoding). Most changes should be done in backward compatible manner, and keep the same version number even if the schema changes.
+In this example scenario, we decided to make a change to schemas on the “events” topic. The `events.schema.json` and `events_v2.avsc` files must be present.
 
-**Data governance**
-The schemas repository will have checks in place to ensure schemas are valid and non backwards compatible changes are not being introduced with a same version number.
+**Compatibility modes:**
+Each schema version defines it's compatibility mode. There will be 2 to start but more can be added if we want to change or tighten the rules.
+
+- `none` - Any changes are allowed. Generally used if a feature is in dev to allow for fast iteration and breaking changes.
+- `backward` - Allows adding optional fields, removing optional fields, and changing from optional to required and required to optional. Required field cannot be added at once, it must be split into 2 separate releases.
+
+If `backward` is selected, CI in the schemas repository will ensure changes that are not allowed are not being introduced with a same version number
+
 
 ### **Option B (alternative, non-preferred option): Deploy a separate service**
 
