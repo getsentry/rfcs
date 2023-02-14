@@ -49,7 +49,7 @@ topic = "events"
 schema = get_schema(topic)
 # => {
 # 	"type": "json"
-#   "version": 1,
+# 	"version": 1,
 # 	"schema": {
 # 		"$schema": "http://json-schema.org/draft-07/schema#",
 # 		"compatibility_mode": "backward",
