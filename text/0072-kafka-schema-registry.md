@@ -86,7 +86,7 @@ In this example scenario, we decided to make a change to schemas on the “event
 Each schema version defines it's compatibility mode. There will be 2 to start but more can be added if we want to change or tighten the rules.
 
 - `none` - Any changes are allowed. Generally used if a feature is in dev to allow for fast iteration and breaking changes.
-- `backward` - Allows adding optional fields, removing optional fields, and changing from optional to required and required to optional. Required field cannot be added at once, it must be split into 2 separate releases.
+- `backward` - Allows adding optional fields and removing optional fields.
 
 If `backward` is selected, CI in the schemas repository will ensure changes that are not allowed are not being introduced with a same version number
 
