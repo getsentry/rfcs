@@ -90,6 +90,10 @@ Each schema version defines it's compatibility mode. There will be 2 to start bu
 
 If `backward` is selected, CI in the schemas repository will ensure changes that are not allowed are not being introduced with a same version number
 
+**Sentry release process:**
+
+We will use Craft / `publish` GitHub workflow for publishing releases like all Sentry libraries. Since this library is internal, the release will be auto approved and not subject to manual approval processes that apply to SDKs and customer installed packages.
+
 ### **Option B (alternative, non-preferred option): Deploy a separate service**
 
 No library is provided. Clients fetch data from the schemas service and need to know how to parse the schema from the response by themselves. The schemas service could either be built from scratch or we could deploy an existing open source implementation such as Confluent schema registry.
