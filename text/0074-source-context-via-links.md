@@ -22,6 +22,8 @@ available during symbolication, thus the attributes are filled in at that time, 
 There are, however, situations where we do have a URL where the source code resides, but not the contents (without downloading it), for example:
 
 - Portable-PDB source-link (.NET, see [this `symbolic` issue](https://github.com/getsentry/symbolic/issues/735))
+- Debuginfod servers (we don’t support these yet)
+- SourceMaps (either embedded sourcesContent or using individual source files)
 - via a repository integration in combination with associated commit
 
 In these cases, the actual source code is not necessary to do symbolication (as opposed to source maps and other types of obfuscated source containers) but it is useful for end-user
