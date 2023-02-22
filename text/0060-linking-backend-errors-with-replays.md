@@ -15,24 +15,16 @@ This feature will likely require cross-team collaboration, so a few options are 
 
 Far and away the most useful replays for developers are those that occur with errors associated. There are cases where no frontend error occurs, but a backend one does. A developer seeing this backend error could find a replay that caused it extremely useful. For one, a developer can see how a backend error manifests in the user experience and how impactful/detrimental it was to the user experience. This bridges the backend to the frontend. Alternatively, if a developer is debugging a frontend error, they can more easily uncover if the root cause was something deeper in the stack (i.e., stemming from the backend).
 
-Also, we're able to give a more complete user session view by communicating to customers *all* errors that happen in their user session.
+Also, we're able to give a more complete user session view by communicating to customers _all_ errors that happen in their user session.
 
 Additionally, part of our Session Replay strategy is to more deeply integrate replays in the existing product experiences to increase the overall value of the Sentry platform. Issues is our bread and butter, and we want to be able to provide valuable replays for frontend and backend errors.
 
 On the performance side, we want to be able to connect backend transactions to replays. For example, seeing how a slow API translates to the user experience.
 
-## Supporting customer quotes
+## Supporting quotes
 
-_LogRocket does a good job of displaying the session replays. To me the biggest differentiator that Session Replay has is its connectivity to the rest of the Sentry ecosystem. 
-
-LogRocket is perfect for determining front-end only issues, but doesn't give enough information to find root causes when the issue is deeper in the system._
-
-and
-
-_It would be great if we could link replays to BE errors.
-
-This is our current setup. 1) FE Web App; 2) BE Web App._
-
+> XX does a good job of displaying the session replays. To me the biggest differentiator that Session Replay has is its connectivity to the rest of the Sentry ecosystem.
+> XX is perfect for determining front-end only issues, but doesn't give enough information to find root causes when the issue is deeper in the system. and It would be great if we could link replays to BE errors. This is our current setup. 1) FE Web App; 2) BE Web App.
 
 # Options Considered
 
@@ -64,7 +56,7 @@ We'd add a new baggage http header `sentry-replay_id`. This value would automati
 ## Option D:
 
 - This is unlikely to be done, but there has been talk before of creating a "graph" type datastore of events, where you could pass a list of events/traces/issues and quickly retrieve back a list of associated events. If we had a store like this, we'd simply pass it a transaction_name/issue_id/list of traces, and get back a list of replay_ids.
-- This store would not help with combined queries like "show me replays greater than 1 min that have a backend error associated", as I assume we could not join it with a clickhouse query easily. It would only be for showing associated replays on a backend issue / transaction / event, and
+- This store would not help with combined queries like "show me replays greater than 1 min that have a backend error associated", as I assume we could not join it with a clickhouse query easily. It would only be for showing associated replays on a backend issue / transaction / event.
 
 ### Option E:
 
@@ -77,6 +69,8 @@ We'd add a new baggage http header `sentry-replay_id`. This value would automati
 A thing to keep in mind when adding a replay ID to the Dynamic Sampling Context is the immutability of DSC and traces starting in the backend.
 
 Simple example: A trace starts in the backend for a server-side rendered website, DSC is frozen there, if we assume that DSC cannot be unfrozen, the frontend cannot add a replay ID as part of the pageload transaction.
+
+Given this drawback, could we add this to a baggage header that may or may not be part of the DSC?
 
 ## Option A
 
@@ -92,7 +86,7 @@ This is very brittle and likely wouldn't scale super well. A naive solution if S
 
 ## Option D
 
-This is a lot of work and may not be feasible now, if ever.
+This is a lot of work and may not be feasible now.
 
 # Unresolved questions
 
