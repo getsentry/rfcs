@@ -32,7 +32,7 @@ On the performance side, we want to be able to connect backend transactions to r
 
 [Link To relevant docs about dynamic sampling context / baggage](https://develop.sentry.dev/sdk/performance/dynamic-sampling-context/#baggage)
 
-We'd add a new baggage http header `sentry-replay_id`. This value would automatically make it onto the trace envelope header, and from there we could add it onto the event's payload if it exists.
+We'd add a new baggage item `sentry-replay_id`. This value would automatically make it onto the trace envelope header, and from there we could add it onto the event's payload if it exists.
 
 - in `post_process`, if a replay_id exists on the event (we've previously defined a context for this) emit a message to our snuba processer which would write the `event_id`/`replay_id` to our replays table. [Link to post_process code where we'd emit kafka message](https://github.com/getsentry/sentry/blob/b1c6aa7b1a4ca0bfa2f402df61bf5d23b169e7ed/src/sentry/tasks/post_process.py#L452)
 
