@@ -5,7 +5,7 @@
 
 # Summary
 
-The current RFC workflow requires authors to keep the RFC status updated in the text document. This is a fragile process that can introduce synchronization and even simple spelling errors. This RFC proposed relying on GitHub PR automation to dictate some of the happy path states, and using special text elements for the remaining states.
+The current RFC workflow requires authors to keep the RFC status updated in the text document. This is a fragile process that can introduce synchronization and even simple spelling errors. This RFC proposes relying on GitHub PR automation to dictate some of the happy path states, and using special text elements for the remaining states.
 
 # Motivation
 
