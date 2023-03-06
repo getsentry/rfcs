@@ -9,6 +9,8 @@
 
 Allow customers to mark issues as archived-until-escalating. Issues marked as such will not be shown in the issue stream. When an issue starts escalating we will mark the issue as escalating and allow it to show up again in the issue stream (similar to when issues go from ignored to unignored or from resolved to unresolved). This work removes the need of doing mental math to set an “Ignore until X count is reached” to clear the For Review tab.
 
+This is a simpler version of the original tech spec. You can read the original tech spec in [here](https://www.notion.so/sentry/Tech-Spec-Escalating-issues-4e8cad11598f4c779407ca50bbe33e14?pvs=4) (internal link).
+
 ## Motivation
 
 It makes it easier for customers to move known issues out of the Issue Stream without loosing the ability of becoming aware when the issue starts getting worse.
@@ -29,13 +31,27 @@ Several Sentry customers ingest errors that belong to issues that have been ongo
 
 Allow customers to mark issues as archived-until-escalating. Issues marked as such will not be shown in the issue stream. When an issue starts escalating we will mark the issue as escalating and allow it to show up again in the issue stream (similar to when issues go from ignored to unignored or from resolved to unresolved). This work removes the need of doing mental math to set an “Ignore until X count is reached” to clear the For Review tab. 
 
-Issue forecast generation will be produced with the data team’s algorithm ([private link](https://github.com/getsentry/data-analysis/tree/spike_protection) to repo - [page](https://www.notion.so/Issue-Spiking-Algorithm-9c7be98895574f3b98c991deb0bbed9e) about the design of the algorithm). This algorithm can handle Spiking and Bursty Issues. For V1 we will be creating a periodic task that will query for issues marked as archived-until-escalating to generate the forecasts. We may be able to use the same cron as the weekly email report but we can’t adapt the queries for this work.
+![Workflow for user request](https://user-images.githubusercontent.com/44410/223194372-a1bfe61b-2e32-4279-9f02-6fd4605f0ad2.png) *Caption: Workflow for generating intial issue forecast*
+
+Issue forecast generation will be produced with the data team’s algorithm ([internal link](https://github.com/getsentry/data-analysis/tree/spike_protection) to repo - [page](https://www.notion.so/Issue-Spiking-Algorithm-9c7be98895574f3b98c991deb0bbed9e) about the design of the algorithm). This algorithm can handle Spiking and Bursty Issues. For V1 we will be creating a periodic task that will query for issues marked as archived-until-escalating to generate the forecasts. We may be able to use the same cron as the weekly email report but we can’t adapt the queries for this work.
 
 To make it clear, every time an issue is marked as archived-until-escalating we will create an initial forecast while the cron task will focus on updating the forecast.
 
+<img src="https://user-images.githubusercontent.com/44410/223194435-6ebd2337-19b2-45c7-85f0-137a1e7f2b0a.png" alt="Escalating Issues" width="360" height="180" border="10" />
+
+*Caption: This image visualizes an escalating issue.*
+
+<img src="https://user-images.githubusercontent.com/44410/223194456-3bf053be-fafc-4cc9-bb5c-c98101625e88.png" alt="Bursty Issues" width="360" height="180" border="10" />
+
+*Caption: This image visualzes a bursty issue.*
+
 In order for the pipeline to determine if an issue needs to be marked as escalating, we need to evaluate the total count of events for the day as the events come in. We will compare day to day (e.g. Monday to Monday). We will use the cached forecast for the issue which will be used as the ceiling to blow through. The data team has produced an algorithm that can generate the forecast (see link). 
 
-A forecast will be produced by looking at the last 7 days of data and generating a forecast for the next 7 days (As documented in the algorithm’s Notion page) and store it as something like this:
+![image](https://user-images.githubusercontent.com/44410/223196089-c78aa64d-68a0-4fc9-8bc9-790b66b8c304.png)
+
+*Caption: Perodic workflow to generate new forecasts.*
+
+A forecast will be produced by looking at the last 7 days of data and generating a forecast for the next 14 days and store it as something like this:
 
 ```txt
 {
@@ -51,7 +67,7 @@ A forecast will be produced by looking at the last 7 days of data and generating
 
 We should be cautious in the storage format as in V2 we would be storing a forecast for *every* issue older than 30 days and any issues marked by the customer to be archived-until-escalating. Issues with less than 7 days of data will have a flat ceiling forecast which will be refreshed on the weekly forecast update.
 
-An analysis on how expensive querying Snuba can be found in [here](https://www.notion.so/Support-escalating-issues-detection-1267f6bda052438e9eb1a4ed6ec1f6de).
+An analysis on how expensive querying Snuba can be found in [here](https://www.notion.so/Support-escalating-issues-detection-1267f6bda052438e9eb1a4ed6ec1f6de) (internal link).
 
 The query get the data to generate the forecast will look something like this:
 
