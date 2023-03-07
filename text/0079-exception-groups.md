@@ -40,7 +40,7 @@ In other words, given the following:
 `Group A` is an exception group caused by both `Exception 1` and `Exception 2`.
 However, it is generally _not_ true that `Exception 1` was caused by `Exception 2` or vice versa.
 
-**Additionally:**
+Furthermore:
 - `Exception 1` and `Exception 2` might be of the same type, or they might be of different types.
 - There can be `n` number of exceptions in an exception group (`n >= 1`).
 - There can be a stack trace on each of the exceptions within an exception group, as well as on the group itself.
@@ -180,7 +180,7 @@ Cons:
 - In other cases, there are already stack traces on both the exception group and the
   first child exception.  Thus the location of the exception group will be completely lost.
 
-## Option 3
+## Option 3a
 
 The SDK can send only the top-level items of an exception group in a new `exception_group` interface,
 instead of the existing `exception` interface.
