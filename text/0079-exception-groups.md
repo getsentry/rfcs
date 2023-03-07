@@ -212,6 +212,9 @@ Example:
 }
 ```
 
+_Note: The example here shows only `type` and `value`, but any of the properties of the `exception`
+interface would also be applicable to the `exception_group` (ex: `stacktrace`)._
+
 Upon receiving the event, ingest/relay would break apart the exception group and create
 separate events for each item within it.  Each event would have all information from the
 original event, except for the following:
@@ -294,6 +297,9 @@ Similar to option 3a, but reusing the `exception` interface instead of creating 
   }
 }
 ```
+
+_Note: The example here shows only `type` and `value`, but any of the properties of the `exception`
+interface would also be applicable to the `exception_group` (ex: `stacktrace`)._
 
 Pros and cons are similar to 3a, except additional benefit is that it's backward compatible.
 If sent to a Sentry self-hosted or single-tenant instance that has not been upgraded to detect
