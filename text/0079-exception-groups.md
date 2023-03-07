@@ -40,7 +40,7 @@ In other words, given the following:
 `Group A` is an exception group caused by both `Exception 1` and `Exception 2`.
 However, it is generally _not_ true that `Exception 1` was caused by `Exception 2` or vice versa.
 
-Additionally:
+**Additionally:**
 - `Exception 1` and `Exception 2` might be of the same type, or they might be of different types.
 - There can be `n` number of exceptions in an exception group (`n >= 1`).
 - There can be a stack trace on each of the exceptions within an exception group, as well as on the group itself.
@@ -116,11 +116,10 @@ Issue Title: "RuntimeError: Something went wrong!"
 +==============================
 ```
 
-## Additional Concerns
+This design is linear, and thus cannot support exception groups having more than one exception.
+But even in that case, the exception presented in Sentry would not be titled or grouped correctly.
 
-The above design for exceptions is linear, and thus cannot support exception groups
-having more than one exception. Even in that case, the exception presented in Sentry
-would not be titled or grouped correctly.  Consider:
+Consider:
 
 ```json
 {
