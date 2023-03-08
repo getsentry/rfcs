@@ -12,7 +12,7 @@ including changes to SDKs, protocol schema, ingestion, and UI.
 
 Several programming languages have a concept of an unrelated group of multiple exception, aggregated into a single exception.
 
-- Python [`exception_group`](https://docs.python.org/3/library/exceptions.html#exception-groups) ([PEP 654](https://peps.python.org/pep-0654/))
+- Python [`ExceptionGroup`](https://docs.python.org/3/library/exceptions.html#exception-groups) ([PEP 654](https://peps.python.org/pep-0654/))
 - .NET [`AggregateException`](https://docs.microsoft.com/dotnet/api/system.aggregateexception)
 - JavaScript [`AggregateError`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/AggregateError)
 - Go [`Unwrap() []error`](https://pkg.go.dev/errors) ([see also](https://tip.golang.org/doc/go1.20#errors))
@@ -128,13 +128,13 @@ Consider:
       {"type": "TypeError", "value": "Invalid Type!"},
       {"type": "ValueError", "value": "Invalid Value!"},
       {"type": "RuntimeError", "value": "Something went wrong!"},
-      {"type": "exception_group", "value": "Exception Group (1 sub-exception)"}
+      {"type": "ExceptionGroup", "value": "Exception Group (1 sub-exception)"}
     ]
   }
 }
 ```
 
-Sending this to Sentry would result in an issue titled `"exception_group: Exception Group (1 sub-exception)"`,
+Sending this to Sentry would result in an issue titled `"ExceptionGroup: Exception Group (1 sub-exception)"`,
 which is unactionable.
 
 # Supporting Data
