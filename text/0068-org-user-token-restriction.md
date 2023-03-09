@@ -76,4 +76,5 @@ Secret or API token leaks are commonplace:
 
 - Allow organizations to require an SSO flow to authorize a user token before use.
 - Instead of a simple on/off toggle, we could create a more complex _policy_ system
-  allowing user API tokens to be used for certain scopes within an org
+  allowing user API tokens to be used for certain scopes within an org, meet
+  required maximum lifetimes, etc.
