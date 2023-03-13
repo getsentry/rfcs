@@ -38,7 +38,7 @@ There are two places where we could store thread information - either on the spa
 
 # Drawbacks
 
-Spans can span (pun not intended) multiple threads and could be started or stopped by different threads than they originated from. If we wanted to be more precision, we would need to track which thread a span was ended by which thread - this seems excessive and something we can add later.
+Spans may span (pun not intended) multiple threads and could be started or stopped by different threads than they originated from. If we wanted to be more precision, we would need to track which thread a span was ended by which thread - this seems excessive and something we can add later.
 
 One obvious drawback is that by design, we would also be collecting some of the data twice (at least the thread ids) which is inefficient. The better solution and one optimized for payload size/performance would have probably been to create some sort of shared structure that both profiling and performance could reference, I think if we wanted to go that way it would be a part of a larger effort and should be out of scope for this proposal.
 
@@ -76,7 +76,7 @@ python3 -m timeit -s "from threading import get_native_id" "get_native_id()"
 ```
 </details>
 
-Network payload impact
+**Network payload impact**
 - ~7 bytes for the field, depends exactly what we pick "thread_id", thread.id" or maybe the shorter version "tid"?
 - 4 bytes for uint64.
 
@@ -84,8 +84,8 @@ Assuming constant thread.id collection, this pans out to roughly ~10 bytes per s
 
 I took a sample transaction from our sentry.io dashboard and and added a random tid (from a limited set of 10 random tids) to each span. The transaction had 33 spans and adding the thread.id field + in some cases also initializing the data field resulted in a raw size increase of 1.5KB. After compressing with gzip (-6 level), the difference between the two was only 230B or about 0.03% increase compared to total size.
 
-Possible format optimization:
-Since spans already include a link to their parent span via the parent_span_id field value, the tid information could be omitted as long as it matches that of the parent span. This way we could save some bytes of transfer. One pitfall of this approach is that it makes the raw format more obscure and forces everyone to construct the span tree or follow long chains of parent/child relationships to figure out what span the thread was started on. Seeing how fast the calls to get thread identifiers are, this would also be sensitive to a performance impact greater than the one of just calling the get handlers each time.
+**Possible format optimization:**
+Since spans already include a link to their parent span via the parent_span_id field value, the tid information could be omitted as long as it matches that of the parent span. One pitfall of this approach is that it would make the raw format more obscure and force everyone to construct the span tree in order to figure out what span the thread was started on. Seeing how fast the calls to get thread identifiers are, this could also be sensitive to a performance impact greater than the one of just calling the get thread information handlers each time. #tradeoffs
 
 # Unresolved questions
 - Should breadcrumbs also track thread ids?
