@@ -75,8 +75,9 @@ This information is similar to `sdk.integrations`, but instead of always contain
 ### Cons <a name="option-2-cons"></a>
 
 1. Doesn't work for spans.
-2. Extend protocol and data structures
-3. Doesn't give insight into which types of transactions/spans our users are interacting with.
+2. Extend protocol and data structures.
+3. `type` is already available in Discover via `issue.category`.
+4. Doesn't give insight into which types of transactions/spans our users are interacting with.
 
 ## Option 3: Transaction Info Type <a name="option-3"></a>
 
