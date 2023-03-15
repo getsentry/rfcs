@@ -27,10 +27,13 @@ This repository contains RFCs and DACIs. Lost?
 - [0042-gocd-succeeds-freight-as-our-cd-solution](text/0042-gocd-succeeds-freight-as-our-cd-solution.md): Plan to replace freight with GoCD
 - [0043-instruction-addr-adjustment](text/0043-instruction-addr-adjustment.md): new StackTrace Protocol field that controls adjustment of the `instruction_addr` for symbolication
 - [0044-heartbeat](text/0044-heartbeat.md): Heartbeat monitoring
-- [0046-ttfd-automatic-transaction-span](text/0046-ttfd-automatic-transaction-span.md): Provide a new `time-to-full-display` span to the automatic UI transactions 
+- [0046-ttfd-automatic-transaction-span](text/0046-ttfd-automatic-transaction-span.md): Provide a new `time-to-full-display` span to the automatic UI transactions
 - [0047-introduce-profile-context](text/0047-introduce-profile-context.md): Add Profile Context
 - [0048-move-replayid-out-of-tags](text/0048-move-replayid-out-of-tags.md): Plan to replace freight with GoCD
 - [0062-controlling-pii-and-credentials-in-sd-ks](text/0062-controlling-pii-and-credentials-in-sd-ks.md): Controlling PII and Credentials in SDKs
 - [0063-sdk-crash-monitoring](text/0063-sdk-crash-monitoring.md): SDK Crash Monitoring
+- [0070-document-sensitive-data-collected](text/0070-document-sensitive-data-collected.md): Document sensitive data collected
 - [0071-continue-trace-over-process-boundaries](text/0071-continue-trace-over-process-boundaries.md): Continue trace over process boundaries
+- [0072-kafka-schema-registry](text/0072-kafka-schema-registry.md): Kafka Schema Registry
 - [0073-usage-of-transaction-types](text/0073-usage-of-transaction-types.md): Usage of transaction types
+
