@@ -101,7 +101,7 @@ Most transactions/spans already contain enough information to identify the type.
 2. [Opposite of con 3 of option 1](#option-1-cons).
 3. Gives insight into which types of transactions/spans our users are interacting with.
 
-### Pros <a name="option-4-pros"></a>
+### Cons <a name="option-4-cons"></a>
 
 1. It might not work for all different transactions and spans, as they could miss information to identify what created them or of which type they are.
 
