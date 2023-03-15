@@ -55,7 +55,7 @@ The property is optional and of type string. Examples:
 
 1. Doesn't work for spans.
 2. Doesn't work for performance issues.
-3. Extend protocol and data structures.
+3. Extends protocol and data structures.
 4. Doesn't give insight into which types of transactions/spans our users are interacting with.
 
 ## Option 2: Event Origin <a name="option-2"></a>
@@ -75,27 +75,26 @@ This information is similar to `sdk.integrations`, but instead of always contain
 ### Cons <a name="option-2-cons"></a>
 
 1. Doesn't work for spans.
-2. Extend protocol and data structures.
+2. Extends protocol and data structures.
 3. `type` is already available in Discover via `issue.category`.
 4. Doesn't give insight into which types of transactions/spans our users are interacting with.
 
 ## Option 3: Transaction Info Type <a name="option-3"></a>
 
-Add a new property to the [transaction info](https://develop.sentry.dev/sdk/event-payloads/transaction/#transaction-annotations) named `origin`
-
+Add a new property to the [transaction info](https://develop.sentry.dev/sdk/event-payloads/transaction/#transaction-annotations) named `origin`.
 
 ### Cons <a name="option-3-cons"></a>
 
 1. Doesn't work for spans.
 2. Naming is similar to `source` and can be confusing.
 3. Only works for transactions.
-4. Extend protocol and data structures..
+4. Extends protocol and data structures.
 5. Doesn't give insight into which types of transactions/spans our users are interacting with.
 
 
 ## Option 4: Use Amplitude <a name="option-4"></a>
 
-Most transactions/spans already contain enough information to identify the type. We can use Amplitude to grab that information, such as transaction and span names and operations, to classify them. This option works great in combination with any other option and is not mutually exclusive..
+Most transactions/spans already contain enough information to identify the type. We can use Amplitude to grab that information, such as transaction and span names and operations, to classify them. This option works great in combination with any other option and is not mutually exclusive.
 
 ### Pros <a name="option-4-pros"></a>
 
@@ -131,6 +130,7 @@ The property is optional and of type str. Examples:
 
 1. Most of the time, the spans already contain enough information to know if they were auto or manually created. The extra property is redundant in most cases.
 2. Doesn't give insight into which types of transactions/spans our users are interacting with.
+3. Extends protocol and data structures.
 
 Please add your option here: ...
 
