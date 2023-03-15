@@ -55,8 +55,8 @@ The property is optional and of type string. Examples:
 
 1. Doesn't work for spans.
 2. Doesn't work for performance issues.
-3. Extend protocol and data structures
-4. [Opposite of pro 3 of option 4](#option-4-pros).
+3. Extend protocol and data structures.
+4. Doesn't give insight into which types of transactions/spans our users are interacting with.
 
 ## Option 2: Event Origin <a name="option-2"></a>
 
@@ -74,8 +74,9 @@ This information is similar to `sdk.integrations`, but instead of always contain
 
 ### Cons <a name="option-2-cons"></a>
 
-1. [Con 1 of option 1](#option-1-cons).
-2. [Con 3-4 of option 1](#option-1-cons).
+1. Doesn't work for spans.
+2. Extend protocol and data structures
+3. Doesn't give insight into which types of transactions/spans our users are interacting with.
 
 ## Option 3: Transaction Info Type <a name="option-3"></a>
 
@@ -84,11 +85,11 @@ Add a new property to the [transaction info](https://develop.sentry.dev/sdk/even
 
 ### Cons <a name="option-3-cons"></a>
 
-1. [Con  of option 1](#option-1-cons).
+1. Doesn't work for spans.
 2. Naming is similar to `source` and can be confusing.
 3. Only works for transactions.
-4. [Con 3-4 of option 1](#option-1-cons).
-5. [Opposite of pro 3 of option 4](#option-4-pros).
+4. Extend protocol and data structures..
+5. Doesn't give insight into which types of transactions/spans our users are interacting with.
 
 
 ## Option 4: Use Amplitude <a name="option-4"></a>
@@ -97,8 +98,8 @@ Most transactions/spans already contain enough information to identify the type.
 
 ### Pros <a name="option-4-pros"></a>
 
-1. [Opposite of con 1 of option 1](#option-1-cons).
-2. [Opposite of con 3 of option 1](#option-1-cons).
+1. Works for spans.
+2. No need to extend protocol and data structures.
 3. Gives insight into which types of transactions/spans our users are interacting with.
 
 ### Cons <a name="option-4-cons"></a>
@@ -128,7 +129,7 @@ The property is optional and of type str. Examples:
 ### Cons <a name="option-5-cons"></a>
 
 1. Most of the time, the spans already contain enough information to know if they were auto or manually created. The extra property is redundant in most cases.
-2. [Opposite of pro 3 of option 4](#option-4-pros).
+2. Doesn't give insight into which types of transactions/spans our users are interacting with.
 
 Please add your option here: ...
 
