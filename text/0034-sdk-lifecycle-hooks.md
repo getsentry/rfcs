@@ -8,12 +8,20 @@
 
 This PR proposes the introduction of lifecycle hooks in the SDK, improving extensibility and usability of SDKs at Sentry.
 
-Lifecyle hooks can be registered as a top level method, and allow for integrations/sdk users to have finely grained control over the event lifecycle in the SDK.
+To test out this RFC, we implemented it in the [JavaScript SDK](https://github.com/getsentry/sentry-javascript/blob/7aa20d04a3d61f30600ed6367ca7151d183a8fc9/packages/types/src/client.ts#L153) with great success, so now we are looking to propose and implement it in the other SDKs.
+
+Lifecyle hooks can be registered on a Sentry client, and allow for integrations/sdk users to have finely grained control over the event lifecycle in the SDK.
 
 ```ts
-Sentry.on("hook-name", (...args) => {
-  someLogic();
-});
+interface Client {
+  // ...
+
+  on(hookName: string, callback: (...args: unknown) => void) => void;
+
+  emit(hookName: string, ...args: unknown[]) => void;
+
+  // ...
+}
 ```
 
 # Motivation
@@ -42,65 +50,76 @@ The SDKs provide a few ways to extend this pipeline:
 
 But these are all top level options in someway, and are part of the unified API as a result. This means that in certain scenarios, they are not granular enough as extension points.
 
+The following are some examples of how sdk hooks can unblock new features and integrations, but not a definitive list:
+
+- Integrations want to add information to spans when they start or finish. This is what [RFC #75 is running into](https://github.com/getsentry/rfcs/pull/75), where they want to add thread information to each span.
+- Integrations want to add information to envelopes before they are sent to Sentry.
+- Integrations want to run code on transaction/span finish (to add additional spans to the transaction, for example).
+- Integrations want to mutate an error on `captureException`
+- Integrations want to override propagation behaviour (extracing/injecting outgoing headers)
+
 # Proposal
 
 SDK hooks live on the client, and are **stateless**. They are called in the order they are registered. SDKs can opt-in to whatever hooks they use, and there can be hooks unique to an SDK.
 
+Hooks are meant to be mostly internal APIs for integration authors, but we can also expose them to SDK users if there is a use case for it.
+
+As hook callbacks are not processed by the client, they can be async functions.
+
 ```ts
+// Example implementation in JavaScript
+
+type HookCallback = (...args: unknown[]): void;
+
 class Client {
   hooks: {
     [hookName: string]: HookCallback[];
   };
 
-  on(hookName: string, callback: HookCallback) {
+  on(hookName: string, callback: HookCallback): void {
     this.hooks[hookName].push(callback);
+  }
+
+  emit(hookName: string, ...args: unknown[]): void {
+    this.hooks[hookName].forEach(callback => callback(...args));
   }
 }
 ```
 
+SDKs are expected to have a common set of hooks, but can also have SDK specific hooks.
+
 ## Hooks
 
-Hooks can return `null` to short-circuit the pipeline.
+These following are a set of example hooks that would unblock some use cases listed above. The names/schema of the hooks are not final, and are meant to be used as a starting point for discussion.
 
-- `captureException`
+To document and approve new hooks, we will create a new page in the develop docs that lists all the hooks, and what they are used for.
 
-```ts
-type onCaptureException<T = any> = (
-  exception: T,
-  hint?: EventHint,
-  scope?: Scope
-) => T | null;
-```
-
-- `captureMessage`
+`startTransaction`:
 
 ```ts
-type onCaptureMessage = (
-  message: string,
-  level?: Severity,
-  hint?: EventHint,
-  scope?: Scope
-) => string | null;
+on('startTransaction', callback: (transaction: Transaction) => void) => void;
 ```
 
-- `captureEvent`
+`finishTransaction`:
 
 ```ts
-type onCaptureEvent = (
-  event: Event,
-  hint?: EventHint,
-  scope?: Scope
-) => string | null;
+on('finishTransaction', callback: (transaction: Transaction) => void) => void;
 ```
 
-- `capture
+`startSpan`:
 
-# Drawbacks
+```ts
+on('startSpan', callback: (span: Span) => void) => void;
+```
 
-Why should we not do this? What are the drawbacks of this RFC or a particular option if
-multiple options are presented.
+`finishSpan`:
 
-# Unresolved questions
+```ts
+on('finishSpan', callback: (span: Span) => void) => void;
+```
 
-- What parts of the design do you expect to resolve through this RFC?
-- What issues are out of scope for this RFC but are known?
+`beforeEnvelope`:
+
+```ts
+on('beforeEnvelope', callback: (envelope: Envelope) => void) => void;
+```
