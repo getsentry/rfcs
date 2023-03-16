@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Running this script finds all RFCs that are in the `text` folder but not
 referenced by the `README.md` file.  These RFCs can be harder to find as
@@ -8,7 +9,7 @@ import re
 import sys
 
 
-_link_re = re.compile(r'\[[^\]]*\]\(([^)]*)\)')
+_link_re = re.compile(r"\[[^\]]*\]\(([^)]*)\)")
 
 
 def get_first_sentence(lines):
@@ -52,20 +53,20 @@ def main():
 
     unlinked = exists.keys() - linked
     if unlinked:
-        print('Files not linked in README:')
+        print("Files not linked in README:")
         for filename in sorted(unlinked):
-            print(f' * {filename}')
+            print(f" * {filename}")
 
         print()
-        print('Proposed additions to README:')
+        print("Proposed additions to README:")
         print()
         for filename in sorted(unlinked):
             short = filename[:-3]
             summary = exists[filename]
-            print(f'* [{short}](text/{filename}): {summary}')
+            print(f"* [{short}](text/{filename}): {summary}")
         sys.exit(1)
     else:
-        print('All files added to README')
+        print("All files added to README")
 
 
 if __name__ == "__main__":
