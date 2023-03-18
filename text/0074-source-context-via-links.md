@@ -19,15 +19,15 @@ The source context is currently composed of three [`Frame` attributes](https://d
 Showing a source code context and a link to it (e.g. to GitHub) currently works only if the source code itself is
 available during symbolication, thus the attributes are filled in at that time, or if they were already sent with the event by the SDK.
 
-There are, however, situations where we do have a URL where the source code resides, but not the contents (without downloading it), for example:
+There are, however, situations where we do have a URL representing the source code contents, but not the contents itself (without downloading it), for example:
 
 - Portable-PDB source-link (.NET, see [this `symbolic` issue](https://github.com/getsentry/symbolic/issues/735))
 - Debuginfod servers (we don’t support these yet)
 - SourceMaps (either embedded sourcesContent or using individual source files)
 - via a repository integration in combination with associated commit
 
-In these cases, the actual source code is not necessary to do symbolication (as opposed to source maps and other types of obfuscated source containers) but it is useful for end-user
-when evaluating the issue in the UI.
+In these cases, the actual source code is not necessary to do symbolication (as opposed to source maps and other types
+of obfuscated source containers) but it is useful for end-user when evaluating the issue in the UI.
 
 ## Related GH feature requests
 
@@ -67,6 +67,9 @@ as needed or just display the link.
 - Sources not available in the database -> can't [search-by-code](https://github.com/getsentry/sentry/issues/3755).
 - Accessing private sources may be problematic. We could still show the source link, though.
 
-# Unresolved questions
+# Selected Option - Combined approach
 
-- Neither approach is a clear winner, any suggestions?
+Because neither option is a clear winner, we went for a combined approach, i.e.
+
+- Add a `source_link` field to the frame.
+- Resolve source context from remote URLs, but only for in-app frames.
