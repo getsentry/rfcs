@@ -40,3 +40,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0074-source-context-via-links](text/0074-source-context-via-links.md): Source context via links
 - [0078-escalating-issues](text/0078-escalating-issues.md): Escalating Issues
 - [0080-issue-states](text/0080-issue-states.md): Issue States
+- [0081-sourcemap-debugid](text/0081-sourcemap-debugid.md): Reliable JavaScript/SourceMap processing via `DebugId`
