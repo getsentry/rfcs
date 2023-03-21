@@ -30,7 +30,7 @@ For every option, Looker picks up the field, but we don't need to index it and m
 - [Option 3: Transaction Info Type](#option-3)
 - [Option 4: Use Amplitude](#option-4)
 - [Option 5: Span Origin](#option-5)
-- [Option 6: Trace Context](#option-6)
+- [Option 6: Trace Context and Span Origin](#option-6)
 
 
 ## Option 1: Event SDK Origin <a name="option-1"></a>
@@ -188,9 +188,9 @@ The property is optional and of type str. Examples:
 2. Doesn't give insight into which types of transactions/spans our users are interacting with.
 3. Extends protocol and data structures.
 
-## Option 6: Trace Context <a name="option-6"></a>
+## Option 6: Trace Context and Span Origin <a name="option-6"></a>
 
-Same as [option 5](#option-5), but add the `origin` property to the [trace context](https://develop.sentry.dev/sdk/event-payloads/contexts/#trace-context).
+Same as [option 5](#option-5), but also add a `origin` property to the [trace context](https://develop.sentry.dev/sdk/event-payloads/contexts/#trace-context).
 
 ```json
 {
@@ -209,12 +209,12 @@ Same as [option 5](#option-5), but add the `origin` property to the [trace conte
 
 ### Pros <a name="option-6-pros"></a>
 
-1. Helps users to understand which transactions where auto or manually instrumented.
+1. Helps users to understand which parts of transactions where auto or manually instrumented.
 2. This addition can help the performance product to build new features and performance issues.
 
 ### Cons <a name="option-6-cons"></a>
 
-1. Only works for transactions.
+1. Two different locations for the same information.
 
 # Drawbacks
 
