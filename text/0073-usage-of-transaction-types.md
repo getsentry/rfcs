@@ -216,8 +216,6 @@ Same as [option 5](#option-5), but add the `origin` property to the [trace conte
 
 1. Only works for transactions.
 
-Please add your option here: ...
-
 # Drawbacks
 
 - Each solution except [option 4](#option-4) requires extending the protocol.
