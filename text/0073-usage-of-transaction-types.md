@@ -84,6 +84,15 @@ This information is similar to `sdk.integrations`, but instead of always contain
 
 Add a new property to the [transaction info](https://develop.sentry.dev/sdk/event-payloads/transaction/#transaction-annotations) named `origin`.
 
+```json
+{
+  "transaction_info": {
+    "source": "route", 
+    "origin": "manual"
+  }
+}
+```
+
 ### Cons <a name="option-3-cons"></a>
 
 1. Doesn't work for spans.
