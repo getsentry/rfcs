@@ -26,8 +26,7 @@ giving us insights into how many transactions/spans stem from a specific parts o
 
 On 2023-03-21, we decided unanimously to move forward with [Option 5: Add Origin to Trace Context and Span](#option-5) and [Option 4: Use Amplitude](#option-4). The outcome of option 4 will be better once the SDKs start sending data from option 5. We still need an approval from Ingest and the data team.
 
-Approval by ingest: _pending_
-
+Approval by ingest: _pending_ </br>
 Approval by the data team: _pending_
 
 Participants of the decision:
