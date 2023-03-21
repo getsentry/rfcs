@@ -132,9 +132,11 @@ Most transactions/spans already contain enough information to identify the type.
 
 ## Option 5: Add Origin to Trace Context and Span<a name="option-5"></a>
 
-Add a `origin` property to the [span interface](https://develop.sentry.dev/sdk/event-payloads/span/), so both transactions and spans get the benefit of it. The SDK sets this property, and it's not exposed to the user to avoid high cardinality. 
+Add a `origin` property to the [trace context](https://develop.sentry.dev/sdk/event-payloads/contexts/#trace-context)
+and [span](https://develop.sentry.dev/sdk/event-payloads/span/), so both transactions and spans get the benefit
+of it. The SDKs set this property, and it's not exposed to the user to avoid high cardinality. 
 
-The property is optional and of type str. The RFCs goal isn't to align on the following definition. This will be done in a PR to the develop docs. Examples:
+The property is optional and of type str. Possible examples (The exact definition will be done in a PR to the develop docs):
 
 - `manual`
 - `auto`
@@ -145,6 +147,8 @@ The property is optional and of type str. The RFCs goal isn't to align on the fo
 - `auto.app-start`
 - `auto.jetpack-compose`
 
+
+### [Trace Context](https://develop.sentry.dev/sdk/event-payloads/contexts/#trace-context)
 ```json
 {
     "contexts": {
@@ -165,6 +169,7 @@ The property is optional and of type str. The RFCs goal isn't to align on the fo
 }
 ```
 
+### [Span](https://develop.sentry.dev/sdk/event-payloads/span/)
 ```json
 {
   "spans": [
