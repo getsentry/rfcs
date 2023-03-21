@@ -2,6 +2,8 @@
 - RFC Type: decision
 - RFC PR: https://github.com/getsentry/rfcs/pull/73
 - RFC Status: in progress
+- RFC Driver: [Philipp Hofmann](https://github.com/philipphofmann)
+- RFC Approver: Karl Heinz Struggl
 
 # Summary
 
@@ -20,6 +22,19 @@ use the SDK integration list to determine which organizations have specific perf
 integrations enabled. The downside is that the SDK sends this list for each event, not
 giving us insights into how many transactions/spans stem from a specific parts of the SDK. 
 
+# Option Chosen
+
+On 2023-03-21, we decided unanimously to move forward with [Option 5: Add Origin to Trace Context and Span](#option-5) and [Option 4: Use Amplitude](#option-4). The outcome of option 4 will be better once the SDKs start sending data from option 5. We still need an approval from Ingest and the data team.
+
+Approval by ingest: _pending_
+Approval by the data team: _pending_
+
+Participants of the decision:
+
+- Philipp Hofmann
+- Manoel Aranda
+- Karl Heinz Struggl
+- Markus Hintersteiner
 
 # Options Considered
 
@@ -29,8 +44,7 @@ For every option, Looker picks up the field, but we don't need to index it and m
 - [Option 2: Event Origin](#option-2)
 - [Option 3: Transaction Info Type](#option-3)
 - [Option 4: Use Amplitude](#option-4)
-- [Option 5: Span Origin](#option-5)
-- [Option 6: Trace Context and Span Origin](#option-6)
+- [Option 5: Add Origin to Trace Context and Span](#option-5)
 
 
 ## Option 1: Event SDK Origin <a name="option-1"></a>
@@ -116,11 +130,11 @@ Most transactions/spans already contain enough information to identify the type.
 
 1. It might not work for all different transactions and spans, as they could miss information to identify what created them or of which type they are.
 
-## Option 5: Span Origin <a name="option-5"></a>
+## Option 5: Add Origin to Trace Context and Span<a name="option-5"></a>
 
 Add a `origin` property to the [span interface](https://develop.sentry.dev/sdk/event-payloads/span/), so both transactions and spans get the benefit of it. The SDK sets this property, and it's not exposed to the user to avoid high cardinality. 
 
-The property is optional and of type str. Examples:
+The property is optional and of type str. The RFCs goal isn't to align on the following definition. This will be done in a PR to the develop docs. Examples:
 
 - `manual`
 - `auto`
@@ -132,18 +146,22 @@ The property is optional and of type str. Examples:
 - `auto.jetpack-compose`
 
 ```json
-"trace": {
-    "trace_id": "40072a6227d648449aa8665307a1fde3",
-    "span_id": "f2e763bf95c640df",
-    "op": "ui.load",
-    "status": "ok",
-    "exclusive_time": 23.461104,
-    "hash": "e2839639c27b6393",
-    "sampled": "true",
-    "start_timestamp": 1679374744.0518713,
-    "timestamp": 1679374744.6143088,
-    "type": "trace",
-    "origin": "auto.ui-view-controller",
+{
+    "contexts": {
+        "trace": {
+            "trace_id": "40072a6227d648449aa8665307a1fde3",
+            "span_id": "f2e763bf95c640df",
+            "op": "ui.load",
+            "status": "ok",
+            "exclusive_time": 23.461104,
+            "hash": "e2839639c27b6393",
+            "sampled": "true",
+            "start_timestamp": 1679374744.0518713,
+            "timestamp": 1679374744.6143088,
+            "type": "trace",
+            "origin": "auto.ui-view-controller",
+        }
+    }
 }
 ```
 
@@ -188,8 +206,9 @@ The property is optional and of type str. Examples:
 
 ### Pros <a name="option-5-pros"></a>
 
-1. Helps users to understand which parts of transactions where auto or manually instrumented.
-2. This addition can help the performance product to build new features and performance issues.
+1. Helps to understand which parts of transactions where auto or manually instrumented.
+2. Can help the performance product to build new features and performance issues.
+3. Helps SDK developers debugging issues.
 
 ### Cons <a name="option-5-cons"></a>
 
@@ -197,42 +216,13 @@ The property is optional and of type str. Examples:
 2. Doesn't give insight into which types of transactions/spans our users are interacting with.
 3. Extends protocol and data structures.
 
-## Option 6: Trace Context and Span Origin <a name="option-6"></a>
-
-Same as [option 5](#option-5), but also add a `origin` property to the [trace context](https://develop.sentry.dev/sdk/event-payloads/contexts/#trace-context).
-
-```json
-{
-  "contexts": {
-    "trace": {
-      "op": "navigation",
-      "description": "User clicked on <Link />",
-      "trace_id": "743ad8bbfdd84e99bc38b4729e2864de",
-      "span_id": "a0cfbde2bdff3adc",
-      "status": "ok",
-      "origin": "auto.user-interaction-tracing",
-    }
-  }
-}
-```
-
-### Pros <a name="option-6-pros"></a>
-
-1. Helps users to understand which parts of transactions where auto or manually instrumented.
-2. This addition can help the performance product to build new features and performance issues.
-
-### Cons <a name="option-6-cons"></a>
-
-1. Two different locations for the same information.
-
 # Drawbacks
 
 - Each solution except [option 4](#option-4) requires extending the protocol.
-
-Please comment if you see any drawbacks.
 
 # Unresolved questions
 
 - How does Looker pick up these properties?
 - Should we make the option searchable in Discover?
 - What extra data do we need to send to Amplitude to be able to move forward with [option 4](#option-4)?
+- Is `origin` the approrate name for the property in option 5? This will be clarified when opening a develop docs PR.
