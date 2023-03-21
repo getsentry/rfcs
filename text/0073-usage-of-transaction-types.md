@@ -1,7 +1,7 @@
 - Start Date: 2023-02-10
 - RFC Type: decision
 - RFC PR: https://github.com/getsentry/rfcs/pull/73
-- RFC Status: draft
+- RFC Status: in progress
 
 # Summary
 
