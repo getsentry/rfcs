@@ -1,9 +1,8 @@
 - Start Date: 2023-02-10
 - RFC Type: decision
 - RFC PR: https://github.com/getsentry/rfcs/pull/73
-- RFC Status: in progress
+- RFC Status: active
 - RFC Driver: [Philipp Hofmann](https://github.com/philipphofmann)
-- RFC Approver: Karl Heinz Struggl
 
 # Summary
 
