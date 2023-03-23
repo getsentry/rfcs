@@ -36,4 +36,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0071-continue-trace-over-process-boundaries](text/0071-continue-trace-over-process-boundaries.md): Continue trace over process boundaries
 - [0072-kafka-schema-registry](text/0072-kafka-schema-registry.md): Kafka Schema Registry
 - [0073-usage-of-transaction-types](text/0073-usage-of-transaction-types.md): Usage of transaction types
-
+- [0078-escalating-issues](text/0078-escalating-issues.md): Escalating Issues
