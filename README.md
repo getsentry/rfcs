@@ -37,3 +37,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0072-kafka-schema-registry](text/0072-kafka-schema-registry.md): Kafka Schema Registry
 - [0078-escalating-issues](text/0078-escalating-issues.md): Escalating Issues
 - [0080-issue-states](text/0080-issue-states.md): Issue States
+- [0082-combined-replay-envelope-item](text/0082-combined-replay-envelope-item.md): Combined Replay Envelope Item
