@@ -440,6 +440,14 @@ When doing so, it should try to generate at least one event of each _different_ 
   will display the exception group as formatted JSON.  This could be a bit confusing to the user,
   until such time they upgrade their Sentry instance to a version that includes the UI changes.
 
+# Unresolved questions
+
+We'll need to decide an order of precedence for languages that can capture exceptions independently
+from a cause (`cause` not necessarily `exceptions[0]`).  This is currently being discussed for Python
+at https://github.com/getsentry/sentry-python/issues/1788#issuecomment-1483247910
+
+JavaScript and other languages should follow suit, once decided.
+
 # Other Options Considered
 
 We considered the following, each had pitfalls that led to the plan described above.
