@@ -440,11 +440,6 @@ When doing so, it should try to generate at least one event of each _different_ 
   will display the exception group as formatted JSON.  This could be a bit confusing to the user,
   until such time they upgrade their Sentry instance to a version that includes the UI changes.
 
-# Unresolved questions
-
-- Should we put a maximum limit on the number of exceptions allowed within an exception group?
-  (If so, SDKs would truncate.)
-
 # Other Options Considered
 
 We considered the following, each had pitfalls that led to the plan described above.
