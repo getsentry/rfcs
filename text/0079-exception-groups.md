@@ -25,8 +25,9 @@ Sentry needs a way to capture exception groups, and present them in a meaningful
 Simply raising the exception group as a single issue is insufficient.
 
 See also:
-- [Python customer feedback](https://github.com/getsentry/sentry/issues/37716)
-- [.NET customer feedback](https://github.com/getsentry/sentry-dotnet/issues/270)
+- [Python user feedback](https://github.com/getsentry/sentry/issues/37716)
+- [.NET user feedback](https://github.com/getsentry/sentry-dotnet/issues/270)
+- [JavaScript user feedback](https://github.com/getsentry/sentry-javascript/issues/5469)
 
 # Background
 
