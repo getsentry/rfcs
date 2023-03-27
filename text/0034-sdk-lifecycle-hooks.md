@@ -10,7 +10,9 @@ This PR proposes the introduction of lifecycle hooks in the SDK, improving exten
 
 To test out this RFC, we implemented it in the [JavaScript SDK](https://github.com/getsentry/sentry-javascript/blob/7aa20d04a3d61f30600ed6367ca7151d183a8fc9/packages/types/src/client.ts#L153) with great success, so now we are looking to propose and implement it in the other SDKs.
 
-Lifecyle hooks can be registered on a Sentry client, and allow for integrations/sdk users to have finely grained control over the event lifecycle in the SDK.
+Lifecyle hooks can be registered on a Sentry client, and allow for integrations to have finely grained control over the event lifecycle in the SDK.
+
+Currently hooks are meant to be completely internal to SDK implementors - but we can re-evaluate this in the future.
 
 ```ts
 interface Client {
@@ -64,7 +66,7 @@ SDK hooks live on the client, and are **stateless**. They are called in the orde
 
 Hooks are meant to be mostly internal APIs for integration authors, but we can also expose them to SDK users if there is a use case for it.
 
-As hook callbacks are not processed by the client, they can be async functions.
+As hook callbacks are not processed by the client. Data passed into can be mutated, which can have side effects on the event pipeline, and consquences for hooks with async callbacks. As such, we recommend using hooks for synchronous operations only, but SDK authors can choose to implement them as async if they need to.
 
 ```ts
 // Example implementation in JavaScript
@@ -85,6 +87,12 @@ class Client {
   }
 }
 ```
+
+For languages that cannot use dynamic strings as hook names, alternate options should be considered. For example, we could use a `Hook` enum, or a `Hook` class with static properties.
+
+The primary hook functions named `on` and `emit` can also change based on implementor SDK. For example, using `addObserver` and `notifyObserver` may work better in the Java and Apple SDKs (since those are the names of the observer pattern in those languages).
+
+Hook callbacks are recommended to be forwards compatible, and forward any arguments they don't use. This allows us to add new arguments to hooks without breaking integrations. For example in Python we should catch and forward extra keyword arguments to the callback.
 
 SDKs are expected to have a common set of hooks, but can also have SDK specific hooks.
 
@@ -123,3 +131,5 @@ on('finishSpan', callback: (span: Span) => void) => void;
 ```ts
 on('beforeEnvelope', callback: (envelope: Envelope) => void) => void;
 ```
+
+Other possible hooks inlcude `beforeBreadcrumb`, `beforeSend`, `startSession` and `endSession`.
