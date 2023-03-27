@@ -5,15 +5,44 @@
 
 # Summary
 
-One paragraph explanation of the feature or document purpose.
+Right now Session Replays data is sent from the SDK via two envelope item types:
+
+ReplayEvent and ReplayRecording.
+
+- ReplayEvent contains indexable metadata that is stored in our clickhouse table.
+- ReplayRecording contains a large, usually compressed blob that is written to our Filestore (GCS as of now)
+
+These are always sent in the same envelope by the sdk. We'd like to combine these two envelope item types into one.
+
+We'd first write a compatibility layer in relay that takes the old format and converts them into a single item type.
+We'd then modify the sentry-sdk to send combined item types going forward
 
 # Motivation
 
-Why are we doing this? What use cases does it support? What is the expected outcome?
+```mermaid
+graph
+    A([SDK Generated Event])-->|HTTP Request| Z{Relay}
+    Z-->|Published to Kafka topic|B[Replays Kafka Cluster]
+    B-->|ingest-replay|J[Replay Consumer]
+    J-->|Buffered Bulk Commit|K[(Clickhouse)]
+    B-->|ingest-replay-recordings|E[Recording Consumer]
+    E-->C[Recording Chunk Processor]
+    C-->|Chunk Stashed|D[(Redis)]
+    E-->Q[Recording Event Processor]
+    Q-->F[Chunk Assembly]
+    I[(Redis)]-->|Chunks Fetched|F
+    F-->|Assembled Chunks Stored|G[(Blob Storage)]
+    F-->|File Metadata Saved|H[(PostgreSQL)]
+```
 
-# Background
+We'd like to combine these envelope payloads into one for the following reasons:
 
-The reason this decision or document is required. This section might not always exist.
+- Now that we're decompressing, parsing, and indexing data in the recording, the dileniation between the two events no longer makes sense
+- Right now there exists a race condition between ReplayEvent and ReplayRecording -- if a ReplayEvent makes it to clickhouse and is stored before the ReplayRecording, it can result in a bad user experience as a user can navigate to the replay, but the replay's blobs may not be stored yet. We'd like to change it so the snuba writes happen _downstream_ from the recording consumer, as we don't want to make a replay available for search until it's corresponding recording blob has been stored.
+- With our recent changes to our replay blob storage mechansim, we now retrieve metadata for blobs from clickhouse. We'd like to take advantage of this to get rid of our in-memory chunking for large replay segments, and a combined payload would allow us to emit the number of chunks to be stored in clickhouse
+- Right now our rate limits are separated per Itemtype. It would be less confusing if the rate limit applied to a single event type.
+- It is very hard to do telemetry on the recordings consumer now as we do not have SDK version. combining the envelopes allows us to have metadata in our recordings consumer in an easily accesible way.
+- We want to use segment_id in our kafka partition key for these topics. We only partition by replay_id at the moment, which can cause our partitions to be unbalanced. It is difficult to extract this from our current recording ItemType.
 
 # Supporting Data
 
@@ -21,8 +50,48 @@ The reason this decision or document is required. This section might not always 
 
 # Options Considered
 
-If an RFC does not know yet what the options are, it can propose multiple options. The
-preferred model is to propose one option and to provide alternatives.
+New Proposed Flow:
+
+```mermaid
+graph
+    A([SDK Generated Combined Replay Envelope Item])--> Z[Relay, Combines Envelope Items if needed]
+    AA([Legacy SDK Generated Separate Items]) --> Z
+    Z-->|Published to Kafka topic, using random partition key|B[Replays Kafka Cluster]
+    T-->|ingest-replay-events|J[Snuba Consumer]
+    J-->|Buffered Bulk Commit|K[(Clickhouse)]
+    B-->|ingest-replay-recordings|E[Recording Consumer]
+    E-->Q[Parse Replay for Click Events, etc.]
+    Q-->R[Emit Outcome if segment = 0]
+    Q-->S[Store Replay Blob in Storage, GCS in SaaS ]
+    S-->T[ Emit Kafka Message for Snuba Consumer]
+```
+
+### Relay Changes:
+
+1. Create a new ItemType `CombinedReplayRecordingEvent`
+2. in `processor.rs` https://github.com/getsentry/relay/blob/606166fca57a84ca1b9240253013871d13827de3/relay-server/src/actors/processor.rs#L1134, replace the `process_replays` function that will combine the envelope items if its the old format using `take_item_by` and `add_item` Envelope functions, or leave them if its the new format. This function would then process the two items and set the item payload.
+
+- The combined Payload will have the format of
+
+```
+ReplayEventJSON\nCompressedReplayRecording
+```
+
+That the downstream consumer can easily parse by splittin on newline.
+
+### SDK Changes
+
+Emit a new item type "replay_recording_event" with the format
+
+```
+ReplayEventJSON\nCompressedReplayRecording
+```
+
+### Replay Recording Consumer Changes
+
+1. Create a new ReplayRecording consumer that can run along-side the existing consumer, as there will be a change-over period
+2. This consumer will do all the same things as the previous recordings consumer with the addition of:
+   - emitting
 
 # Drawbacks
 
