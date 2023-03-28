@@ -23,10 +23,7 @@ giving us insights into how many transactions/spans stem from a specific parts o
 
 # Option Chosen
 
-On 2023-03-21, we decided unanimously to move forward with [Option 5: Add Origin to Trace Context and Span](#option-5) and [Option 4: Use Amplitude](#option-4). The outcome of option 4 will be better once the SDKs start sending data from option 5. We still need an approval from Ingest and the data team.
-
-Approval by ingest: [Joris Bayer](https://github.com/jjbayer)
-Approval by the data team: _pending_
+On 2023-03-21, we decided unanimously to move forward with [Option 5: Add Origin to Trace Context and Span](#option-5) and [Option 4: Use Amplitude](#option-4). The outcome of option 4 will be better once the SDKs start sending data from option 5.
 
 Participants of the decision:
 
@@ -34,6 +31,10 @@ Participants of the decision:
 - Manoel Aranda
 - Karl Heinz Struggl
 - Markus Hintersteiner
+
+Approval by ingest: [Joris Bayer](https://github.com/jjbayer).
+
+After starting to send `origin`, the data team can help to make the property available in Looker, as discussed with [Vinay Pullepy](https://github.com/pullepuvinay).
 
 # Options Considered
 
