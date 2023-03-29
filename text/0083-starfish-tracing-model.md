@@ -111,7 +111,8 @@ provide at least the following pieces of information:
 * `trace_id`: a span relates to one trace by ID
 * `parent_span_id`: a span optionally points back to a parent trace which could be from a different
   service
-* `segment_id`: a span that is part of a segment, always refers back to it.
+* `segment_id`: a span that is part of a segment, always refers back to it by the segment's
+  `span_id`.
 * `is_segment`: when set to `true` this span is a segment.
 * `start_time` and `end_time` to give the span time information.
 * `tags`: a key/value pair of arbitrary tags that are set per-span.  Conceptually however spans
@@ -148,7 +149,7 @@ The primary user experience in the product can narrow down on certain segments a
 explorable via that segment.
 
 **Locality:** All the spans that are attached to a segment thus must be local to the service and process.  It's
-still possible for a span to relate to a child of a segment or a segment directly via the `parent_id`,
+still possible for a span to relate to a child of a segment or a segment directly via the `parent_span_id`,
 but the `segment_id` must not be set.
 
 **Joining:** At the end of a segment an implicit join is taking place.  Any span
@@ -170,6 +171,38 @@ gantt
     GET /assistent/poll                              :done, 450, 120ms
     POST /api/analytics                              :done, 580, 70ms
 ```
+
+**Logical Tag Promotion:** tags attached to a segment logically also belong to the
+spans contained within.  This does not mean that tags are actually duplicated down
+to all child spans, but for instance it means that if a `release` or `environment`
+tag is attached to a segment, then it also automatically extends to all the child
+spans that are attached to that segment.  This is particularly relevant for metrics
+extraction.
+
+**Logical Metrics Promotion:** certain metrics relating to the composition of child
+attached child spans are promoted to the segment.  For instance the break downs
+(how much time was spent in db vs http) that previously was a transaction level
+property now is calculated onto the segment.  Likewise we might consider counting
+number of spans of a certain category per segment and have these counters be
+promoted into the segment.
+
+## Batches
+
+TODO: document me.
+
+# Metrics
+
+The starfish tracing model does not enable metrics ingestion, but it allows attaching
+metrics to spans.  Span bound metrics are called "measurements".  Every span gets a
+default measurement called `duration` attached to it but other measurements can be
+added.  For instance LCP and other important web vitals can be attached directly to a
+segment as measurement.  SDKs can add further measurements to spans if they see
+value in it.  For instance if the SDK understands how long it waited for the
+establishing of a connection it could attach a `socket.connect_time` or similar
+numbers.  Other examples might be things like `cache.result_size` etc.
+
+Measurements are ingested broken down by segment and span level tags before dynamic
+sampling throws away data.
 
 # Drawbacks
 
