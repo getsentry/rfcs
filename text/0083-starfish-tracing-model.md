@@ -112,11 +112,18 @@ provide at least the following pieces of information:
 * `parent_id`: a span optionally points back to a parent trace which could be from a different
   service
 * `segment_id`: a span that is part of a segment, always refers back to it.
+* `is_segment`: when set to `true` this span is a segment.
+* `start_time` and `end_time` to give the span time information.
 * `tags`: a key/value pair of arbitrary tags that are set per-span.  Conceptionally however spans
   also inherit the tags of the segments they are contained in.
+* `measurements`: are span specific metrics that are stored with the span.  There is a natural
+  measurement of a span which is the `duration` which is automatically calculated from the difference
+  of the end to the start timestamp.
 
 Spans always belong to a trace, but not all spans belong to a segment. A span not belonging to a
 segment are referred to as "detached" spans, spans that belong to a segment are "attached" spans.
+A span must only be attached to a segment if it belongs to the same process and service.  Remote
+spans must never be attached to a segment.
 
 ## Transaction
 
@@ -140,12 +147,35 @@ to conclude, even if what triggered the task is no longer interested in it's res
 The primary user experience in the product can narrow down on certain segments and make the trace
 explorable via that segment.
 
+**Locality:** All the spans that are attached to a segment thus must be local to the service and process.  It's
+still possible for a span to relate to a child of a segment or a segment directly via the `parent_id`,
+but the `segment_id` must not be set.
+
+**Joining:** At the end of a segment an implicit join is taking place.  Any span
+*that has not concluded
+yet will be detached from the segment.  In the following example the `<App/>`
+span is part of the segment `/checkout` still where as the HTTP request related
+spans that did not finish when the `/checkout` segment ended are then detached:
+
+```mermaid
+gantt
+    title Trace Showing Attached and Detached Spans
+    dateFormat x
+    axisFormat %S.%L
+
+    section Frontend
+    /checkout                                        :crit, 0, 500ms
+    <App/>                                           :300, 180ms
+    POST /api/analytics                              :done, 450, 70ms
+    GET /assistent/poll                              :done, 450, 120ms
+    POST /api/analytics                              :done, 580, 70ms
+```
+
 # Drawbacks
 
-Why should we not do this? What are the drawbacks of this RFC or a particular option if
-multiple options are presented.
+# TODO
 
-# Unresolved questions
+* metrics extraction
+* tag propagation
+* transitional mapping
 
-- What parts of the design do you expect to resolve through this RFC?
-- What issues are out of scope for this RFC but are known?
