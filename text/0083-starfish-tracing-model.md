@@ -16,13 +16,13 @@ evolution of the current transaction based approach.
 Today Sentry has a strong concept of a "transaction" which appears in multiple parts of the
 product.  It is both the transport of span data, the billable entity and the only indexed
 part of the product experience.  This means that spans that exist outside of the transaction
-cannot be represented and it also means that spans within a transaction are not indexed itself.
+cannot be represented and it also means that spans within a transaction are not indexed.
 
 The existing model has worked well for us to get started with evolving the Sentry errors
-product to capture performance traces, but it has restricted out ability to evolve the product
+product to capture performance traces, but it has restricted our ability to evolve the product
 forward.  It has created some restrictions on the SDK technology side (from high
-memory pressure, payload size limits) and also has promoted a separate of transaction to
-span on the API layer which is untypical for tracing products.  It also has meant that Sentry
+memory pressure, payload size limits) and also has promoted a separation of transactions and
+spans on the API layer which is untypical for tracing products.  It also has meant that Sentry
 has challenges with accepting traces coming directly from an OpenTelemetry exporter as the
 transaction concept is not a concept that OpenTelemetry has.
 
@@ -48,7 +48,7 @@ We want to lay out a better path forward that
 
 # Terms
 
-The new tracing model is an extension to our existing tracing model.  As such we try go adhere
+The new tracing model is an extension to our existing tracing model.  As such we try to adhere
 to some of the existing terms.  Note that this document is intentionally glossing over some of
 the details to better describe the desired end result.  Individual RFCs will have to be written
 to narrow down on specific schema definitions.
@@ -100,7 +100,7 @@ gantt
 
 ## Span
 
-Spans are very similar to how the function today, but they get elevated to a more significant
+Spans behave very similar to how the function today, but they get elevated to a more significant
 level.  They largely follow the general semantics in the wider tracing eco system.  To drive
 our product ideas we are going to ensure that the quality of the spans is high and that they
 provide at least the following pieces of information:
@@ -109,12 +109,12 @@ provide at least the following pieces of information:
 * `description`: the most significant description of what this operation is (eg: the database query).
   The description also gets processed and cleaned in the process.
 * `trace_id`: a span relates to one trace by ID
-* `parent_id`: a span optionally points back to a parent trace which could be from a different
+* `parent_span_id`: a span optionally points back to a parent trace which could be from a different
   service
 * `segment_id`: a span that is part of a segment, always refers back to it.
 * `is_segment`: when set to `true` this span is a segment.
 * `start_time` and `end_time` to give the span time information.
-* `tags`: a key/value pair of arbitrary tags that are set per-span.  Conceptionally however spans
+* `tags`: a key/value pair of arbitrary tags that are set per-span.  Conceptually however spans
   also inherit the tags of the segments they are contained in.
 * `measurements`: are span specific metrics that are stored with the span.  There is a natural
   measurement of a span which is the `duration` which is automatically calculated from the difference
@@ -141,8 +141,8 @@ Conceptionally segments fall into two categories: "transactions" which are quite
 clearly defined operations and "interactions" which are user triggered operations.  The difference
 is that an "interaction" has a human user as an actor in it, that might influence it, whereas a
 "transaction" is unlikely to be interrupted once started.  A user for instance is quite likely to
-navigate again even before the previous interaction finished, whereas a task is more likely than no
-to conclude, even if what triggered the task is no longer interested in it's result.
+navigate again even before the previous interaction finished, whereas a task is more likely than not
+to conclude, even if what triggered the task is no longer interested in the result of the task.
 
 The primary user experience in the product can narrow down on certain segments and make the trace
 explorable via that segment.
