@@ -22,7 +22,7 @@ available during symbolication, thus the attributes are filled in at that time, 
 There are, however, situations where we do have a URL representing the source code contents, but not the contents itself (without downloading it), for example:
 
 - Portable-PDB source-link (.NET, see [this `symbolic` issue](https://github.com/getsentry/symbolic/issues/735))
-- Debuginfod servers (we don’t support these yet)
+- [Debuginfod servers](https://www.mankier.com/8/debuginfod#Webapi-/buildid/BUILDID/source/SOURCE/FILE) (we don’t support these yet)
 - SourceMaps (either embedded sourcesContent or using individual source files)
 - via a repository integration in combination with associated commit
 
