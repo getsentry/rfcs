@@ -491,20 +491,14 @@ the grouping.  In other words, if there is more than one distinct top-level exce
 
 ## Sentry UI Changes
 
-The [Issue Details](https://docs.sentry.io/product/issues/issue-details/) page will be augmented as follows:
+The Issue Details page will be updated to improve usability of exception groups.  The exact details are at the discretion of the design team,
+however the following should be considered:
 
-- A new section for the exception group will be added just above the exceptions list.  It will display a condensed tree-like
-  visualization of the exception group, with an in-page link to each exception.  Clicking such a link should jump to that
-  exception, and ensure it is expanded.
-
-- Some exceptions should be collapsed by default, including any where `mechanism.is_exception_group === true`,
-  and perhaps others.  The exact logic can be determined by the designer, after seeing how it impacts the usability of the page.
-
+- A condensed tree-like visualization of the exception group should be added somewhere on the page.
+  Each exception in the tree should have an in-page link to jump to that exception and ensure it is expanded.
+- Some exceptions should be collapsed by default, including any where `mechanism.is_exception_group === true`, and perhaps others.
 - The `mechanism.source` field, if available, should be displayed on each exception in the exceptions section.
-
-- Optional: We may want to include a way to navigate from each exception to its parent exception, or back to the exception group.
-
-(A UI design is forthcoming. A mockup will be added here when ready.)
+- We may want to include a way to navigate from each exception to its parent exception, or back to the exception group.
 
 # Drawbacks 
 
