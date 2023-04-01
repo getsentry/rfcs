@@ -195,259 +195,327 @@ The exception group type in JavaScript is [`AggregateError`](https://developer.m
 
 # Proposed Solution
 
-We will break down the problem into two phases, as described in the following sections.
+**NOTE**: _This has changed significantly from prior versions of the draft RFC._
 
-## Phase 1
+We will focus having the SDKs capture all available information, and adjust the issue grouping rules in Sentry to use that new information.
 
-In this phase, we will focus on having the "primary issue" of the exception group surfaced in Sentry in a meaningful way.
-Instead of representing every possible exception in the group, we will build an issue by walking only the first path through
-the exception tree.  In other words, SDKs will follow the chain from the captured exception to its _first_ inner exception,
-repeatedly until there are no more inner exceptions.  As with the current Sentry design, these exceptions will be sent in the
-[`exception`](https://develop.sentry.dev/sdk/event-payloads/exception/) interface of the event message - ordered from oldest to newest.
+**The SDKs will do the following:**
 
-As an example, if the exception tree is:
+- Capture the entire tree of exceptions represented by the exception group.
+- Capture any other chained exceptions that are not part of the exception group.
+- Use the existing `exception` value of the Sentry event.
+- Add a few new fields to each exception's `mechanism` data, as described below.
 
-- A
-  - B
-    - C
-      - D
-  - E
-    - F
-      - G
+**Sentry will do the following:**
 
-The corresponding issues sent in the `exceptions` interface would be `[D, C, B, A]` in that order.
-The issue title would be based on exception `A`, and issue grouping would consider exceptions `A`, `B`, `C`, and `D` only.
+- Take the new mechanism fields into account when grouping issues.  See [Sentry Issue Grouping](#sentry-issue-grouping) below for more details.
+- Present a user interface that depicts the structure of the exception group on the issue details page.  See [Sentry UI Changes](#sentry-ui-changes) below for more details.
 
-Exceptions `E`, `F`, and `G` _should not_ be sent in the `exceptions` interface.  The reasons for this are:
-- They may be representing completely different issues that shouldn't be grouped together in Sentry.
-- They may be representing different quantities of the _same_ issue, and the quantity should not affect issue grouping in Sentry either.
-- Sending them all in one list would imply a causal relationship between `D` and `E` (in that example), which does not exist.
+## Important Notice
 
-However, we don't want to completely lose track of these other exceptions either.  Thus they should still be sent
-with the event, but in another section instead.  We will add it to the `extras` property of the event.
+The new grouping rules _MUST_ be fully implemented in Sentry.io and a published version of self-hosted
+Sentry before any SDK can release a non-preview version that includes these changes.  The SDK's release notes
+should mention the required version of Sentry.
 
-The format should be as follows:
+Although the protocol changes are backwards compatible, the current problems
+with exception groups will persist or be exacerbated without the new grouping rules in place.
 
-```json
-"extras": {
-  "exception_group": {
-    "exception": {},
-    "is_exception_group_type": true,
-    "items": []
+SDKs that currently require the user to opt-in to send chained exceptions can continue to do so without side-effects.
+SDKs that send chained exceptions _by default_ may see an immediate change to exception grouping after implementing this feature.
+
+## New Mechanism Fields
+
+The [Exception Mechanism Interface](https://develop.sentry.dev/sdk/event-payloads/exception/#exception-mechanism)
+will have the following new fields added:
+
+### `source`
+
+An optional string value describing the source of the exception.
+
+- The SDK should populate this with the name of the property or attribute of the parent exception that this exception
+  was acquired from.  In the case of an array, it should include the zero-based array index as well.
+- Python Examples: `"__context__"`, `"__cause__"`, `"exceptions[0]"`, `"exceptions[1]"`
+- .NET Examples:  `"InnerException"`, `"InnerExceptions[0]"`, `"InnerExceptions[1]"`
+- JavaScript Examples: `"cause"`, `"errors[0]"`, `"errors[1]"`
+
+### `is_exception_group`
+
+An optional boolean value, set `true` when the exception is the exception group type specific to the platform or language.
+The default is `false` when omitted.
+
+- For example, exceptions of type `ExceptionGroup` (Python), `AggregateException` (.NET), and `AggregateError` (JavaScript)
+  should have `"is_exception_group": true`.  Other exceptions can omit this field.
+
+### `exception_id`
+
+An optional numeric value providing an ID for the exception relative to this specific event.
+
+- The SDK should assign simple incrementing integers to each exception in the tree, starting with `0` for the root of the tree.
+  In other words, when flattened into the list provided in the `exception` values on the event, the last exception
+  in the list should have ID `0`, the previous one should have ID `1`, the next previous should have ID `2`, etc.
+
+### `parent_id`
+
+An optional numeric value pointing at the `exception_id` that is the parent of this exception.
+
+- The SDK should assign this to all exceptions _except_ the root exception (the last to be listed in the `exception` values).
+
+## Interpretation
+
+The `exception_id` and `parent_id` fields work in conjunction to represent the hierarchical nature of the tree of exceptions.
+If not provided, the previous interpretation will be assumed - which is that each exception in the list of `exception` values
+is a child of the one immediately following it in the list.
+
+The [Exception Interface](https://develop.sentry.dev/sdk/event-payloads/exception/) will not change in structure,
+but it will change in _interpretation_ with regard to multiple exception values.
+
+- The previous interpretation was: _"Multiple values represent chained exceptions."_.
+- The new interpretation will be: _"Multiple values are related by the optional `mechanism.exception_id`
+  and `mechanism.parent_id` fields. When not present, multiple values represent chained exceptions."_
+
+
+## Additional SDK Requirements
+
+### Mechanism Type
+
+When setting the `mechanism.type` field, SDKs should use the following guidelines:
+
+- For the root exception (the last to be in the `exception.values` list), set `mechanism.type` to the name
+  of the integration that produced the exception (as was the case before this proposal).  If the exception was
+  captured manually, set the `mechanism.type` to `"generic"`.
+
+- For all other exceptions in the list, set the `mechanism.type` to `"chained"`.  This will indicate that the exception
+  is part of the chain of exceptions stemming from the root exception (regardless of whether it is in an exception group or not).
+
+Do not omit the `mechanism.type` field, nor send it empty or null.
+
+### Exception Value
+ 
+When setting the `value` field of the exception for an exception group type, SDKs should only deliver the meaningful part
+of the exception message, excluding any string that may have been automatically added by their platform.
+
+For example:
+
+- In Python, the `value` field should not contain details such as `" (2 sub-exceptions)"`.  Use the `message` attribute to get the raw message from an `ExceptionGroup`.  If there is no message, omit the `value` and just send `type`.
+
+- In .NET, the `value` field should not contain details such as `" (Exception 1) (Exception 2)"`.  The following extension method can be used to get the raw message:
+
+  ```csharp
+  internal static string GetRawMessage(this AggregateException exception)
+  {
+    var message = exception.Message;
+    return exception.InnerException is { } inner
+      ? message[..message.IndexOf($" ({inner.Message})", StringComparison.Ordinal)]
+      : message;
   }
-}
+  ```
+
+### Keep Aggregate Exceptions
+
+The .NET SDK previously had implemented an option called `KeepAggregateExceptions`.  This flag should be deprecated,
+in favor of _always_ sending the entire chain of aggregate exceptions as explained in this SDK.  This may affect
+existing issue grouping, and should be noted in the change log when released.
+
+Other SDKs should _not_ implement a similar option.
+
+## Example Event
+
+Given the Python code:
+
+```python
+try:
+  raise RuntimeError("something")
+except:
+  raise ExceptionGroup("nested",
+    [
+      ValueError(654),
+      ExceptionGroup("imports",
+        [
+          ImportError("no_such_module"),
+          ModuleNotFoundError("another_module"),
+        ]
+      ),
+      TypeError("int"),
+    ]
+  )
 ```
 
-- The name of the key within the `extras` object will be `exception_group`.
-- Its value will be an object containing two properties: `exception` and `items`.
-  - The `exception` property is _required_.  It is an object that conforms to the [`exception` interface](https://develop.sentry.dev/sdk/event-payloads/exception/).
-  - The `is_exception_group_type` is required to be set `true` for exceptions that are actually exception groups.  In other words, `ExceptionGroup`, `AggregateException`, `AggregateError`, etc.
-    - To conserve space, it should be omitted for other types of exceptions. (The default is `false` when omitted.)
-  - The `items` array is _optional_.  It is an array of additional exception group objects.
-- The number of nested objects is not constrained.  However, data may be truncated if the total size exceeds 16kB.
-
-_Note: We chose `extras` over `contexts`, because items in `contexts` are limited to 8kB, whereas items in `extras` are limited to 16kB, per [documentation](https://develop.sentry.dev/sdk/data-handling/#variable-size)._
-
-### Additional SDK requirements
-
-The SDK should set a pre-formatted message on the event (via `logentry.formatted`) to the following text:
-> _"This issue was raised as part of an exception group. See the Additional Data section for details."_
-
-The SDK should also provide an option to control whether top-level exception groups are kept with the list of exceptions, or stripped away.
-- The name of this option should be platform specific.  For example, `KeepAggregateExceptions` in .NET, or `keep_exception_groups` in Python.
-- When `false`, after deriving the `exceptions` array as previously described, the array is trimmed until reaching an exception that is not the exception group type.
-- The default should be `false`, such that exception groups themselves do not become the titles of issues by default.
-
-For example, if the exception group is:
-
-- `ExceptionGroup`
-  - `ExceptionGroup`
-    - `ValueError`
-      - `ExceptionGroup`
-        - `TypeError`
-        - `ReferenceError`
-    - `SyntaxError`
-      - `NameError`
-  - `MemoryError`
-    - `BufferError`
-      - `ArithmeticError`
-
-Then:
-- When `keep_exception_groups` is `true`:
-  - `exceptions` is `[TypeError, ExceptionGroup, ValueError, ExceptionGroup, ExceptionGroup]`
-- When `keep_exception_groups` is `false`:
-  - `exceptions` is `[TypeError, ExceptionGroup, ValueError]`
-
-Recall that exceptions are sent to Sentry from oldest to newest, and that we discard all but the first-path through the tree.
-Also note that exception groups in the middle of the first-path chain should be retained.  Only the end is trimmed.
-
-### Example Event
-
-The following shows the properties sent on a Sentry `event` object related to this specification.
-
-In this .NET example, the title of the issue is `"System.InvalidOperationException: An invalid operation occurred."`.
-The exception chain has two exceptions in it, and the extras contains the full exception tree, including the top-level
-`AggregateException`, and an ancillary `NullReferenceException`.  A log entry message is also added to the event to assist the user.
-
-Note that for brevity of this example, only `type` and `value` have been supplied for each exception.
-In practice, the entire `exception` interface is valid for each object, including `type`, `value`, `stacktrace`, `module`, `mechanism`, and `thread_id`.
+The event would contain:
 
 ```json
 {
-  "logentry": {
-    "formatted": "This issue was raised as part of an exception group. See the Additional Data section for details."
-  },
   "exception": {
     "values": [
-      { "type": "System.IO.FileNotFoundException", "value": "A file was not found." },
-      { "type": "System.InvalidOperationException", "value": "An invalid operation occurred." }
-    ]
-  },
-  "extras": {
-    "exception_group": {
-      "exception": { "type": "System.AggregateException", "value": "One or more exceptions occurred." },
-      "is_exception_group_type": true,
-      "items": [
-        {
-          "exception": { "type": "System.InvalidOperationException", "value": "An invalid operation occurred." },
-          "items": [
-            {
-              "exception": { "type": "System.IO.FileNotFoundException", "value": "A file was not found." }
-            }
-          ]
-        },
-        {
-          "exception": { "type": "System.NullReferenceException", "value": "Object reference not set to an instance of an object." }
+      {
+        "type": "TypeError",
+        "value": "int",
+        "mechanism": {
+          "type": "chained",
+          "source": "exceptions[2]",
+          "exception_id": 6,
+          "parent_id": 0
         }
-      ]
-    }
+      },
+      {
+        "type": "ModuleNotFoundError",
+        "value": "another_module",
+        "mechanism": {
+          "type": "chained",
+          "source": "exceptions[1]",
+          "exception_id": 5,
+          "parent_id": 3
+        }
+      },
+      {
+        "type": "ImportError",
+        "value": "no_such_module",
+        "mechanism": {
+          "type": "chained",
+          "source": "exceptions[0]",
+          "exception_id": 4,
+          "parent_id": 3
+        }
+      },
+      {
+        "type": "ExceptionGroup",
+        "value": "imports",
+        "mechanism": {
+          "type": "chained",
+          "source": "exceptions[1]",
+          "is_exception_group": true,
+          "exception_id": 3,
+          "parent_id": 0
+        }
+      },
+      {
+        "type": "ValueError",
+        "value": "654",
+        "mechanism": {
+          "type": "chained",
+          "source": "exceptions[0]",
+          "exception_id": 2,
+          "parent_id": 0
+        }
+      },
+      {
+        "type": "RuntimeError",
+        "value": "something",
+        "mechanism": {
+          "type": "chained",
+          "source": "__context__",
+          "exception_id": 1,
+          "parent_id": 0
+        }
+      },
+      {
+        "type": "ExceptionGroup",
+        "value": "nested",
+        "mechanism": {
+          "type": "generic",
+          "handled": false,
+          "is_exception_group": true,
+          "exception_id": 0
+        }
+      },
+    ]
   }
 }
 ```
 
-### Sentry UI Changes
+**Reminder:** In .NET, `InnerException` is always the same as `InnerExceptions[0]`, thus it does not need to be reported separately.
+However, Python's `__cause__` and `__context__`, and JavaScript's `cause`, are independent and thus _should_ be reported separately
+if they have values.
 
-The `exception_group` section added to `extras` may generally be difficult to read in JSON format, especially if the individual
-exceptions contain `stacktrace` elements.  To support Phase 2 (described below), we need all of the exception information to be
-retained with the event.  However, we only need the UI to show a minimal representation.
+## Sentry Issue Grouping
 
-In general, the design should have the following features:
-- Tree-like, with expand/collapse features.
-- The first level should be expanded by default.
-- The `type` and `value` of each exception should be visible.
-- The design _may_ incorporate features of the stack trace (such as the first line containing file name, function name, etc.)
-  - However, the design shall not require symbolication to have occurred.
-    (Only the exception in the `exceptions` section will be symbolicated, not the exception within `exception_group`.)
+Issue grouping rules for exception groups are complex, because the nature of exception groups is that they may or may not represent
+more than one distinct issue.  While this may require some further experimentation to get right, the initial plan is as follows:
 
-A UI design is forthcoming. A mockup will be added here when ready.
+First, determine the list of "top-level" exceptions.  These are the exceptions that represent distinct issues contained in
+the exception group.
 
+1. Start from the exception having `mechanism.exception_id:0`.
+2. If it has `mechanism.is_exception_group:true`, then recursively search each child.
+3. When reaching one where `mechanism.is_exception_group:false` (or not present), include it as a "top-level" exception,
+   and do not traverse any of its child exceptions.
 
-## Phase 2
+Next, determine from the top-level exceptions which of them would have been grouped together, had they been in separate events.
 
-_NOTE: This phase describes work that would add additional value, but is not a firm requirement.
-Sentry has not yet committed implementing this._
+- Apply grouping rules between the top-level exception to determine the distinct number of issues represented by the group.
+- For each top-level exception, only consider the first-path through any child exceptions.
 
-In the first phase, the focus was on ensuring that all of the exception group information was captured, and that
-the issue which appears in Sentry represents one single item to focus on.  In this second phase, Sentry will
-generate additional issues using the extra exception group information.
+Finally:
 
-### Mechanism
+- If there is only one distinct group of top-level exceptions, group the event with other events based on that top-level exception only.
+  Ignore any parent exception groups.
 
-During Sentry's event processing, if the `exception_groups` section is present, then a message will be added to a queue.
-A background event processor will receive incoming messages from that queue.  It's focus is to identify additional events to create.
-An event will be generated for any event that is part of a top-level exception group, other than primary event (since it already exists).
+- If more than one distinct top-level exception exists, then group the event based on the parent exception group that they have in common.
+  This will often be the root-level exception group.
 
-The event processor should consider whether the primary event was generated with or without the leading exception groups
-(as controlled by `keep_exception_groups` in the SDKs) and follow suit.
+As an example, consider simplified issue grouping rules that only considered the exception `type`.  When applied to an exception group such as:
 
-As an example, if the exception tree is:
+- `ExceptionGroup`
+  - `ValueError`
+  - `TypeError`
+  - `TypeError`
 
-- A
-  - B
-    - C
-      - D
-  - E
-    - F
-      - G
+There are two distinct top-level exceptions, `ValueError` and `TypeError`.  They have the `ExceptionGroup` in common.
+Thus the three exceptions considered for issue grouping are `ExceptionGroup`, `ValueError`, and the first `TypeError`.
 
-If the primary event contained exceptions `[D, C, B, A]`, then the processor should generate a new event containing exceptions `[G, F, E, A]`.
-
-However, if the primary event contained exceptions `[D, C, B]`, then the processor should generate a new event containing exceptions `[G, F, E]`.
-
-Consider another more detailed example:
+Now consider this example:
 
 - `ExceptionGroup`
   - `ExceptionGroup`
     - `ValueError`
-      - `ExceptionGroup`
-        - `TypeError`
-        - `ReferenceError`
-    - `SyntaxError`
-      - `NameError`
-  - `MemoryError`
-    - `BufferError`
-      - `ArithmeticError`
+    - `ValueError`
+      - `TypeError`
+    - `ValueError`
+  - `ValueError`
+  - `ValueError`
 
-Assuming the SDK had `keep_exception_groups=false` it would have sent the primary event with exceptions `[TypeError, ExceptionGroup, ValueError]`.
-The processor shall create additional events having exceptions as follows:
+Then there are 5 top-level exceptions, all of type `ValueError`.  Thus, the event should only be grouped based on a single `ValueError`,
+and the others should be ignored for purposes of issue grouping.  That one of them has a chained `TypeError` is not relevant,
+at least not in this initial plan.
 
-- `[NameError, SyntaxError]`
-- `[ArithmeticError, BufferError, MemoryError]`
+A further modification to the plan might consider all possible branches of chained exceptions, but that is not proposed at this time.
 
-Note that it does _not_ need to create an event for `[ReferenceError, ExceptionGroup, ValueError]`, because there was already an event whose
-latest exception was `ValueError`.  This means that not every possible path through the tree will lead to a separate event.
+### Additional Issue Grouping Requirements
 
-The processor should only create a new event for each new top-level exception.  In other words, it will traverse the tree from the
-root node until it finds an exception where the `is_exception_group_type` flag is `false` (or absent).
+SDKs typically set `mechanism.type` and `mechanism.handled` on the root exception only (the last item in the `exception.values` list).
+These fields must _always_ be considered as part of issue grouping, even if the rest of the exception group is being ignored.
 
-Lastly, consider that if `keep_exception_groups` had been `true`, then the primary event would have had exceptions
-`[TypeError, ExceptionGroup, ValueError, ExceptionGroup, ExceptionGroup]`.  Thus the two new events should have exceptions as follows:
+## Issue Titles
 
-- `[NameError, SyntaxError, ExceptionGroup, ExceptionGroup]`
-- `[ArithmeticError, BufferError, MemoryError, ExceptionGroup]`
+As a side-effect of issue grouping, issues will be titled (and subtitled) based on the top-most exception that is not ignored from
+the grouping.  In other words, if there is more than one distinct top-level exception, the issue will be titled by the exception group itself.  In the above examples, the first issue would be titled as `ExceptionGroup`, and the second issue would be titled as `ValueError`.
 
-### Additional Processing Requirements
+## Sentry UI Changes
 
-When the processor generates new issues, most of the of the information the SDK sent with the original issue shall be retained, including:
+The [Issue Details](https://docs.sentry.io/product/issues/issue-details/) page will be augmented as follows:
 
-- Event level properties such as `timestamp`, `platform`, `level`, etc.
-- `breadcrumbs`
-- `contexts`
-- `debug_meta`
-- `extras` (including `exception_group`)
-etc.
+- A new section for the exception group will be added just above the exceptions list.  It will display a condensed tree-like
+  visualization of the exception group, with an in-page link to each exception.  Clicking such a link should jump to that
+  exception, and ensure it is expanded.
 
-The only new information on the event shall be `event_id` and `exception`.
+- Some exceptions should be collapsed by default, including any where `mechanism.is_exception_group === true`,
+  and perhaps others.  The exact logic can be determined by the designer, after seeing how it impacts the usability of the page.
 
-Any fields of the fields generated via processing of the original event should be omitted (such as title, culprit, and issue grouping details).
-The event will then be put back through processing to generate remaining data based on the new set of exceptions.
-A flag can be added to `_meta` with the new event, which can be subsequently checked to prevent reprocessing loops.
+- The `mechanism.source` field, if available, should be displayed on each exception in the exceptions section.
 
-Additionally, the processor may impose some arbitrary limits on the number of events it will generate from a given exception group.
-When doing so, it should try to generate at least one event of each _different_ top-level exception `type` in the group.
+- Optional: We may want to include a way to navigate from each exception to its parent exception, or back to the exception group.
 
-## Summary
-
-- At the end of Phase 1, only one "primary exception" from an exception group will be present as a Sentry issue.
-- At the end of Phase 2, all remaining top-level exceptions represented by an exception group will be present as Sentry issues.
+(A UI design is forthcoming. A mockup will be added here when ready.)
 
 # Drawbacks 
 
 - Modifying the way Exceptions are sent to Sentry will affect existing issue grouping rules
   that customers may have set up.  This change could create new alerts when first deployed.
 
-- The design proposed above does retain backwards compatibility with older versions of Sentry.
+- The design proposed above retains backwards compatibility with older versions of Sentry.
   However, without the proposed UI changes, previous versions (self-hosted, etc.) of Sentry
-  will display the exception group as formatted JSON.  This could be a bit confusing to the user,
-  until such time they upgrade their Sentry instance to a version that includes the UI changes.
-
-# Unresolved questions
-
-We'll need to decide an order of precedence for languages that can capture exceptions independently
-from a cause (`cause` not necessarily `exceptions[0]`).  This is currently being discussed for Python
-at https://github.com/getsentry/sentry-python/issues/1788#issuecomment-1483247910
-
-JavaScript and other languages should follow suit, once decided.
+  will treat the exceptions list as if they were all one long chain of direct exceptions.
+  This could be a bit confusing to the user, until such time they upgrade their Sentry
+  instance to a version that includes the UI and issue grouping changes.
 
 # Other Options Considered
 
@@ -463,35 +531,52 @@ Pros:
 
 Cons:
 
-- Issues created by SDKs other than .NET are titled and grouped by the exception group instead of an actionable exception,
-  and do not necessarily include the entire chain of exceptions.
-- Issues created by the .NET SDK have the issues described in the next section, "Unwinding the Exception Tree".
 - Overall, reduced ability to use Sentry for error monitoring, as the usage of exception groups increases.
+- Events created by the .NET SDK have several problems for exception groups (`AggregateException`), such as:
+  - There's no structure represented by the chain of events, so every relationship appears as parent/child, even
+    those that should actually be siblings.
+  - In some cases, some stack traces are relocated from the exception group to the first child exception,
+    otherwise no code location will be represented.  Doing so grossly misrepresents the true nature of the
+    exception caused at the highlighted stack frame.
+  - In other cases, there are already stack traces on both the exception group and the
+    first child exception.  Thus the location of the exception group is lost completely.
+  - The `KeepAggregateException` option is global for the entire application, and can't be adjusted on a case-by-case basis.
+- Issues created by other SDKs such as Python and JavaScript are not prepared to deal with exception groups at all.
+  - Issues are always titled and grouped by the exception group, even when there's only a single type of exception contained within.
+  - Because none of the items in the `exceptions` or `errors` lists are part of the _cause_, they're currently not passed to Sentry at all.
+    This makes it impossible to identify the actual cause of an exception raised via an exception group.
 
-## Unwinding the Exception Tree
+## Sending Hierarchical Data
 
-Without any modification to ingest or UI, the SDKs can attempt to unwind the tree of exception groups,
-flattening them into a single list of exceptions.  Then, the containing exception group can (optionally) be discarded.
-
-The .NET SDK currently does this (as of v3.18.0, June 2022), but it is considered a hack and
-has many disadvantages.  This option would have the other SDKs copy these hacks from .NET.
+This approach was seriously considered.  It would involve creating a new tree-like data structure that more closely
+resembles the original tree of exceptions.  It would have been placed on either a new `exception_group` interface,
+or added to the existing `contexts` or `extra` collections.
 
 Pros:
 
-- SDK changes are straightforward.
-- Already implemented in the .NET SDK.
-- Doesn't require any protocol, ingest, or UI changes.
+- The event would contain a more direct representation of the exception data.
+- Less work for the SDKs.
 
 Cons:
 
-- Doesn't accurately represent the exception group.
-- Implies a causal relationship between sibling exception that doesn't exist.
-- Obscures the actual causal relationships between parent and child exceptions.
-- In some cases, requires relocating stack traces from the exception group to the first
-  child exception, otherwise no code location will be represented.  Doing so grossly
-  misrepresents the true nature of the exception caused at the highlighted stack frame.
-- In other cases, there are already stack traces on both the exception group and the
-  first child exception.  Thus the location of the exception group will be completely lost.
+- Much of the server-side processing would have to be reconsidered, including relay, symbolication, and trimming.
+- It would not be backwards compatible, without duplicating significant data into the exceptions list anyway.
+
+## Sending One Exception Chain Only
+
+This approach would involve not capturing the entire exception group, but trying to determine which top-level
+exception was worth capturing, from within the SDK.
+
+Pros:
+
+- Fully compatible with existing Sentry, without any changes to grouping rules or UI.
+- Fully backwards compatible as well.
+
+Cons:
+
+- Potential to loose a lot of useful data.
+- Misrepresents the exception that was actually raised.
+- Looses track of the actual location in source code where the exception group was raised.
 
 ## Splitting Events in the SDK
 
@@ -525,35 +610,17 @@ Cons:
 - Could back up overall ingestion throughput.
 - Would not be backwards compatible with the existing event schema.
 
-## Presenting the Entire Exception Group in one Issue
+## Using Synthetic Exceptions
 
-This approach would involve keeping the exception group intact as a single issue, rather than splitting
-it apart anywhere.  Like the previous option, it would require the creation of a new `exception_group`
-interface, placed directly on the incoming event.  However it would also require a new workflow in Sentry
-and a new user interface.
+This approach would set `mechanism.synthetic:true` on exception groups types, to attempt to keep them from
+being considered during issue grouping.
 
 Pros:
 
-- One event passed all the way through the system.
+- If it worked, issue grouping would need less adjustment.
 
 Cons:
 
-- Requires an entirely new way to think about events and issues.
-- Significant UI work, most likely leading to a UI that is not very user friendly.
-- Would not be backwards compatible with the existing event schema.
-
-## Using "Synthetic" Exceptions
-
-This would remove the `keep_exception_groups` SDK option, and instead _always_ keep
-exception groups - but mark them as `synthetic` (in the `mechanism` details).
-
-Pros:
-
-- One less option in the SDK.
-- Only one way to display and process exception groups.
-- Renders stack trace of the exception group types.
-
-Cons:
-
-- Title of issue would be incorrect, referring to the first in-app frame of the exception group.
-- Issue grouping would be incorrect, including details of the exception group.
+- It doesn't work for this use case.
+  - Title of issue would be incorrect, referring to the first in-app frame of the exception group.
+  - Issue grouping would be incorrect, including details of the exception group.
