@@ -22,7 +22,7 @@ There may be others. We will use the term "exception group" throughout the desig
 It applies to the concept, regardless of language.
 
 Sentry needs a way to capture exception groups, and present them in a meaningful way.
-Simply raising the exception group as a single issue is insufficient.
+Simply capturing the exception group by itself is insufficient, and current workarounds are problematic.
 
 See also:
 - [Python user feedback](https://github.com/getsentry/sentry/issues/37716)
