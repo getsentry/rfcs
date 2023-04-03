@@ -86,8 +86,16 @@ It should be a 128 bit (16 byte), formatted to a string using base-16 hex encodi
 
 ## How to generate `DebugId`s?
 
-There is two options of choosing a `DebugId`: Making it completely random, or make it reproducible by deriving it from
-a content hash.
+There is two options of choosing a `DebugId`: Making it completely random, or make it reproducible / deterministic, derived
+from the build.
+
+Different approaches and examples are shown below, but in summary, we would like the `DebugId` to be reproducible and
+deterministic for a build. Building the exact same project and original code should always result in the same assets.
+This means the same minified JS files (with embedded `DebugId`), and the same SourceMap file.
+
+As long as the `DebugId` is deterministic, it does not matter how it is being derived. Different tools will use different
+methods. And a `DebugId` may differ from one tool to the next, just as the exact output files may differ between tools,
+and even tool versions.
 
 ### Based on JavaScript Content-hash
 
