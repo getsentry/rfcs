@@ -92,17 +92,15 @@ Thus, other valid examples that could occur in an application include the follow
 
 ## Interpreting Exception Groups
 
-The meaning of a _normal_ exception or is pretty straightforward:
+The meaning of a _normal_ exception is fairly straightforward:
 - An exception is something that went wrong in the application, and thus represents an issue to resolve.
 - If there is another exception that occurred to cause this one, that is assigned to the "inner exception" or "cause".
 - The chain of exceptions thus is linear.
 
-This changes with an exception group:
+This gets more complicated when an exception group is involved:
 - The exception group _might_ represent the issue to resolve, or the issue might better be represented by one or more of the inner exceptions within the group.
 - Depending on language, there might be a cause that is separate from the _any_ of the exceptions in the group.
 - Thus, the chain of exceptions is more tree-like than linear.
-
-Note that exception
 
 ## Exception Handling in Sentry
 
