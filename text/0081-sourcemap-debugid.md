@@ -257,11 +257,16 @@ async function attachDebugMeta(event) {
 One solution here is to inject a small snippet of JS which will be executed when the JavaScript file is loaded, and adds
 the `DebugId` to a global map.
 
+Any snippet would need to be injected in the _top_ of JS files, to account for errors that happen during execution of
+top-level statements. Additional care needs to be taken for any possible `"use strict"` annotation on the top of the file.
+Doing injection on the top of the file would also mean that changes to the SourceMap are needed, more specifically, all
+the `line` offsets need to shift down by `1`, for a 1-line snippet.
+
 An example snippet is here:
 
 <!-- prettier-ignore -->
 ```js
-!function(){try{var e="undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:{},n=(new Error).stack;n&&(e._sentryDebugIds=e._sentryDebugIds||{},e._sentryDebugIds[n]="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX")}catch(e){}}()
+!function(){try{var e="undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:{},f="_sentryDebugIds",n=(new Error).stack;n&&(e[f]=e[f]||{},e[f][n]="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX")}catch(e){}}()
 ```
 
 This snippet adds a complete `Error.stack` to a global called `_sentryDebugIds`.
@@ -270,9 +275,11 @@ Further post-processing at time of capturing an `Error` is required to extract t
 **pros**
 
 - Does not require any async fetching at time of capturing an `Error`.
+- Compatible with current JS runtimes.
 
 **cons**
 
+- Injection needs to modify the mappings of the SourceMap itself.
 - It does however require parsing of the `Error.stack`s in `_sentryDebugIds` at time of capturing the `Error`.
 - However this should be cached and only happen once.
 
