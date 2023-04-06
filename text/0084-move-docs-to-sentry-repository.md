@@ -32,14 +32,14 @@ As we want to go ahead and add a selection of products to all javascript platfor
 
 1. There is [a script](https://github.com/getsentry/sentry-docs/blob/16f1e2b115e50a677e03e19a71ad3b3b5fd9df51/src/gatsby/onPostBuild.ts#L132) that we use to convert the markdown files from the [sentry-docs](https://github.com/getsentry/sentry-docs) to a JSON that is fetched later on by our Sentry application.
 2. These markup files cannot render content dynamically and if we need something more dynamic we have to create different versions for each change, [here is an example](https://github.com/getsentry/sentry-docs/pull/6497). As we add different versions of the content for each platform, [we also have to update the script](https://github.com/getsentry/sentry-docs/blob/16f1e2b115e50a677e03e19a71ad3b3b5fd9df51/src/gatsby/onPostBuild.ts#L76-L129) so that it creates the JSON in the correct format for these files.
-3. Sentry has an automation in place that fetches the JSON file mentioned above and based on that generates other JSON files for each platform, storing them in the folder `integration-docs`. This automation is dependent on the JSON format coming from the [sentry-docs](https://github.com/getsentry/sentry-docs) repository, and removing the `index.md` for instance effectively removes the platform root and breaks the deployments, [here is an example](https://github.com/getsentry/sentry-docs/pull/6434).
-4. On top of that, the [platforms](https://github.com/getsentry/sentry/blob/1902d6be1ee18c4ce22c0c09f6a6a1fa18128fad/static/app/data/platforms.tsx#L29-L72) const used in the front end have to be filtered to not display wrong/extra platforms in the onboarding, project creation, and in other places.
+3. Sentry has an automation in place that fetches the JSON file mentioned above and based on that generates other JSON files for each platform, storing them in the folder `integration-docs`. This automation is dependent on the JSON format coming from the [sentry-docs](https://github.com/getsentry/sentry-docs) repository, and removing the `index.md` for instance effectively removes the platform root and breaks the deployments, [here is an example of when we had to reverse a PR because of this](https://github.com/getsentry/sentry-docs/pull/6434).
+4. On top of that, the [platforms](https://github.com/getsentry/sentry/blob/1902d6be1ee18c4ce22c0c09f6a6a1fa18128fad/static/app/data/platforms.tsx#L29-L72) list used in the front end have to be filtered to not display wrong/extra platforms in the onboarding, project creation, and in other places.
 
 # Options considered
 
-1. Gradually move the introductory docs for the integration from the sentry-docs repository to sentry, where we'll write everything in MDX.
+1. Gradually move the get started docs for the onboarding from the sentry-docs repository to sentry, where we'll write everything in MDX.
 
-   That way, we can write everything in React and possibly reuse components from our component library, like alerts, in the documents. This will allow us to be more consistent with styles used in our application, remove several functions we have in place for the documents to render, and use best practices.
+   That way, we can write everything in React and possibly reuse components from our component library, like alerts. This will allow us to be more consistent with styles used in our application, remove several functions we have in place for he current mechanism, and use best practices.
 
    We can still ask the docs team for reviews on our Pull Requests when needed.
 
