@@ -296,17 +296,7 @@ For example:
 
 - In Python, the `value` field should not contain details such as `" (2 sub-exceptions)"`.  Use the `message` attribute to get the raw message from an `ExceptionGroup`.  If there is no message, omit the `value` and just send `type`.
 
-- In .NET, the `value` field should not contain details such as `" (Exception 1) (Exception 2)"`.  The following extension method can be used to get the raw message:
-
-  ```csharp
-  internal static string GetRawMessage(this AggregateException exception)
-  {
-    var message = exception.Message;
-    return exception.InnerException is { } inner
-      ? message[..message.IndexOf($" ({inner.Message})", StringComparison.Ordinal)]
-      : message;
-  }
-  ```
+- In .NET, the `value` field should not contain details such as `" (Exception 1) (Exception 2)"`.  The `Message` property may need to be modified to remove the appended inner messages.
 
 ### Keep Aggregate Exceptions
 
