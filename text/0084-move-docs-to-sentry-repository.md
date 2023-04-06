@@ -42,6 +42,7 @@ As we want to go ahead and add a selection of products to all javascript platfor
    This helps with a few things:
 
    a) That way, we can write everything in React and possibly reuse components from our component library, like alerts.
+
    b) This will allow us to be more consistent with styles used in our application, remove several functions we have in place for the current mechanism, and use best practices.
 
    We can still ask the docs team for reviews on our Pull Requests when needed.
@@ -55,6 +56,7 @@ As we want to go ahead and add a selection of products to all javascript platfor
    This helps with a few things:
 
    a) Makes it much easier to add docs changes, we just need to npm link to test out onboarding instruction changes locally
+
    b) We can use whatever libraries we want for mdx, and even write tests for them without needing to burden the sentry frontend repo.
 
    In addition this opens us up to expanding the docs monorepo to publish other packages that other consumers could use.
