@@ -39,7 +39,7 @@ As we want to go ahead and add a selection of products to all javascript platfor
 
 1. Gradually move the get started docs for the onboarding from the sentry-docs repository to sentry, where we'll write everything in MDX.
 
-   That way, we can write everything in React and possibly reuse components from our component library, like alerts. This will allow us to be more consistent with styles used in our application, remove several functions we have in place for he current mechanism, and use best practices.
+   That way, we can write everything in React and possibly reuse components from our component library, like alerts. This will allow us to be more consistent with styles used in our application, remove several functions we have in place for the current mechanism, and use best practices.
 
    We can still ask the docs team for reviews on our Pull Requests when needed.
 
