@@ -461,7 +461,7 @@ Now consider this example:
   - `ValueError`
   - `ValueError`
 
-Then there are 5 top-level exceptions, all of type `ValueError`.  Thus, the event should only be grouped based on a single `ValueError`,
+There are 5 top-level exceptions, all of type `ValueError`.  Thus, the event should only be grouped based on a single `ValueError`,
 and the others should be ignored for purposes of issue grouping.  That one of them has a chained `TypeError` is not relevant,
 at least not in this initial plan.
 
