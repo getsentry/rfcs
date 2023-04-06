@@ -33,7 +33,7 @@ See also:
 
 ## About Exception Groups
 
-An exception group is an exception unto itself.  It is caused by the exceptions in the group,
+An exception group is an exception unto itself.  It may have been caused by the exceptions in the group,
 but there is no implied causal relationship between those exceptions.
 
 In other words, given the following:
@@ -42,7 +42,7 @@ In other words, given the following:
   - Exception 1
   - Exception 2
   
-`Group A` is an exception group caused by both `Exception 1` and `Exception 2`.
+`Group A` is an exception group that may have been caused by either `Exception 1`, `Exception 2`, or both of them.
 However, it is generally _not_ true that `Exception 1` was caused by `Exception 2` or vice versa.
 
 Furthermore:
