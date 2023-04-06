@@ -469,13 +469,20 @@ A further modification to the plan might consider all possible branches of chain
 
 ### Additional Issue Grouping Requirements
 
-SDKs typically set `mechanism.type` and `mechanism.handled` on the root exception only (the last item in the `exception.values` list).
-These fields must _always_ be considered as part of issue grouping, even if the rest of the exception group is being ignored.
+As mentioned earlier, SDKs will set a meaningful `mechanism.type` on the root exception only (the last item in the `exception.values` list).
+Other exceptions will have type `"chained"` to indicate that they are a chained exception stemming from the root exception.
+
+For purposes of issue grouping, `"chained"` mechanism typed should be excluded.  Additionally, the mechanism type of the root exception must
+_always_ be considered as part of issue grouping, even if the rest of the exception group is being ignored.
 
 ## Issue Titles
 
 As a side-effect of issue grouping, issues will be titled (and subtitled) based on the top-most exception that is not ignored from
 the grouping.  In other words, if there is more than one distinct top-level exception, the issue will be titled by the exception group itself.  In the above examples, the first issue would be titled as `ExceptionGroup`, and the second issue would be titled as `ValueError`.
+
+However, the `mechanism.handled` field (which determines `error.handled` and `error.unhandled` event attributes in Sentry) should always be
+taken from the root exception, even if the title and subtitle are derived from one of the chained exceptions.
+This is because SDKs are only expected to supply the `mechanism.handled` field on the root exception.
 
 ## Sentry UI Changes
 
