@@ -48,8 +48,6 @@ a lot more reliable.
 
 # Supporting Data
 
-TODO: please fill in the gaps here!
-
 Sentry has used the `release (+ dist) + abs_path` solution for quite some time and found it inadequate.
 A lot of events are not being resolved correctly due to these mismatches, and problems with source-mapping are very
 common in customer-support interactions. Up to X% of customer-support questions are related to SourceMaps.
@@ -93,34 +91,23 @@ Different approaches and examples are shown below, but in summary, we would like
 deterministic for a build. Building the exact same project and original code should always result in the same assets.
 This means the same minified JS files (with embedded `DebugId`), and the same SourceMap file.
 
+## Deterministic
+
 As long as the `DebugId` is deterministic, it does not matter how it is being derived. Different tools will use different
 methods. And a `DebugId` may differ from one tool to the next, just as the exact output files may differ between tools,
 and even tool versions.
 
-### Based on JavaScript Content-hash
+We do not want content hashes to be only based on the minified JavaScript file to also pick up on the original source
+cahnges.  For a source hash only approach the solutions outlined in [RFC 85](https://github.com/getsentry/rfcs/pull/85)
+apply.
 
-This creates a new `DebugId` by hashing the contents of the (minified) JavaScript file.
-
-**pros**
-
-- Is fully reproducible. The same JavaScript file will always have the same `DebugId`.
-- Works well with existing caching solutions.
-
-**cons**
-
-- Increases overhead in server-side SourceMap processing, as one file can potentially be included in multiple _bundles_.
-  See [_What is an `ArtifactBundle`_](#what-is-an-artifactbundle) below.
-- A difference in a source file might not be reflected in the JavaScript file. An example of this might be changes to
-  whitespace, comments, or code that was dead-code-eliminated by bundlers.
-
-### Based on SourceMap Content-hash
-
-This creates a new `DebugId` by hashing the contents of the SourceMap file. The reasoning for this is primarily
-motivated by a drawback of the previous option.
-It is possible that non-essential changes to the source file, such as whitespace or comments, will be completely
-removed by a minifier, and will result in an identical minified output file.
-These changes would however create different mappings in the SourceMap file, making it possible to resolve to the
-correct original source.
+Instead we recommend to generate a new `DebugId` by hashing the contents of the
+SourceMap file. The reasoning for this is primarily motivated by a drawback of
+the previous option.  It is possible that non-essential changes to the source
+file, such as whitespace or comments, will be completely removed by a minifier,
+and will result in an identical minified output file.  These changes would
+however create different mappings in the SourceMap file, making it possible to
+resolve to the correct original source.
 
 It is also possible to use a combined content-hash of both the (minified) JavaScript file, and its corresponding SourceMap.
 
@@ -133,7 +120,7 @@ It is also possible to use a combined content-hash of both the (minified) JavaSc
 
 - Does lead to slightly more cache invalidation.
 
-### Random `DebugId`
+### Random
 
 This option would create a new random `DebugId` for each file, on each build.
 
@@ -386,12 +373,7 @@ to call this at the appropriate time depending on their unique build pipeline.
 
 In this scenario, injection happens at the time of `sentry-cli upload`, and will also modify the files at that time.
 
-**pros**
-
-- Makes sure that assets uploaded to Sentry have a `DebugId`.
-- No additional command and invocation needed.
-
-**cons**
+This however is rejected due to the many downsides:
 
 - Violates expectations of file immutability and integrity.
 - Does not work with bundlers that integrate fingerprinting.
@@ -417,8 +399,6 @@ access and modification of a chunks `code` and `map` (SourceMap) output.
 This hook runs before the `augmentChunkHash` and `generateBundle` hooks which are responsible for fingerprinting and
 generating the _final_ output for each chunk.
 
-TODO: further investigation and experimentation for this is needed
-
 #### Webpack
 
 Webpack documentation for plugin hooks is not as extensive, and there is no broad overview of the internal pipeline and
@@ -429,10 +409,6 @@ It might be possible to use the [`processAssets`](https://webpack.js.org/api/com
 for this purpose. Documentation mentions the `PROCESS_ASSETS_STAGE_DEV_TOOLING` phase which is responsible for
 extracting SourceMaps, or the `PROCESS_ASSETS_STAGE_OPTIMIZE_HASH` which looks to be responsible for generating the
 final fingerprint of an asset.
-
-TODO: further investigation and experimentation for this is needed
-
-#### TODO: other popular bundlers and build tools
 
 #### Implementation in bundlers directly
 
@@ -456,6 +432,26 @@ their `"sourcesContent"`.
 Additionally, to simplify `DebugId` generation, and to reduce implementation complexity, we strongly encourage to use
 "flat" SourceMaps, as opposed to "indexed" SourceMaps, which themselves contain other nested SourceMaps.
 
+## Protocol Changes
+
+The Sentry protocol gains a new debug image type called `sourcemap` which can be used to refer to source maps
+by `DebugId` in the following format:
+
+```json
+{
+  "images": [
+    {
+      "type": "sourcemap",
+      "code_file": "http://example.com/file.min.js",
+      "debug_id": "dd6a14d1-fd08-48a5-b827-b87d8e9856bc"
+    }
+  ]
+}
+```
+
+The two keys defined are `code_file` which needs to match the frame's `abs_path` and `debug_id` which needs to
+match the `DebugId` of the file.
+
 # Drawbacks
 
 The main drawback is that this might feel like an invasive change to the JavaScript ecosystem. It is a huge implementation
@@ -467,37 +463,7 @@ The effectiveness and success of this initiative needs to be proved out first, a
 
 # Unresolved questions
 
-- ~~Why do we call the new SourceMap field `debug_id` and not `debugId`?
-  All existing fields in SourceMaps are camelCase, and so is the general convention in the JS ecosystem.~~
-
-# Implementation
-
-- TODO: link to some implementation breadcrumbs and PRs.
-- TODO: change the existing SourceMap implementation to use a camelCased `debugId` instead of the snake_cased `debug_id` field.
-- TODO: make the injected `DebugId`s deterministic / reproducible.
-- TODO: experiment with bundler plugins.
-
----
-
-# Appendix
-
-## What is an `ArtifactBundle`
-
-Sentry bundles up all the assets of one release / build into a so-called `ArtifactBundle` (also called `SourceBundle`, or `ReleaseBundle`).
-
-This is a special ZIP file which includes all the minified / production JavaScript files, their corresponding SourceMap,
-and the original source files as referenced by the SourceMaps in whatever format (TypeScript or other).
-
-It also has a `manifest.json`, which has more metadata per file, like the type of a file, its `DebugId`, and an optional
-`SourceMap` reference from minified files to their SourceMap.
-
-**pros**
-
-- Customers naturally think in _releases_, so having one archive per release is good.
-- Only needing to download / cache / process a single file for one release can be more efficient.
-
-**cons**
-
-- Does not work well with content-hash based `DebugId`s, as one `DebugId` can appear in a multitude of archives.
-  Picking the one archive that covers all needed files is non-trivial.
-- Feels like a workaround for inefficiencies in other parts of the processing pipeline when dealing with more smaller files.
+- We so far only leverage our injected code, we are not yet fetching `debugId`s via XHR.  Is this a good path?
+- We have not yet made any advances for standardizing Debug IDs in the wider ecosystem
+- The proposal does not yet support sources not being inlined in the source map.
+- This RFC does not specify the changes to the artifact bundle or manifest in it.
