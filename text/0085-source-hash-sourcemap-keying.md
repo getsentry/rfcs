@@ -96,10 +96,12 @@ reserve `x-sentry-file-hash-sha256` (header) and `x_sentry_fileHashSha256` (key)
 ```json
 {
   "file": "foo.min.js",
-  // use likely discouraged, see note below on header
   "x_sentry_fileHashSha256": "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881"
 }
 ```
+
+Note that they use of the embedded key for now is likely discouraged for the
+made up header as we do not plan on standardizing the file hashes.
 
 To avoid re-calculating the SHA 256 hashes of the minified files constantly we
 also want to add them to the manifest.  For this we could leverage the digest
