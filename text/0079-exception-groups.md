@@ -1,12 +1,19 @@
 - Start Date: 2023-03-26
 - RFC Type: feature
 - RFC PR: https://github.com/getsentry/rfcs/pull/79
-- RFC Status: draft
+- RFC Status: approved
 
 # Summary
 
 This RFC is intended to capture the changes required to Sentry to handle *exception groups*,
 including changes to SDKs, protocol schema, event processing, and UI.
+
+### Important
+
+This RFC is `approved`, however SDKs should not release this feature until the back-end work is completed.
+The status will be changed to `active` at that time.
+
+If desired, SDK teams _may_ implement this in an unmerged draft PR if they choose, or release in "preview" form.
 
 # Motivation
 
