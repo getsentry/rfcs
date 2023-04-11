@@ -1,9 +1,9 @@
 - Start Date: 2023-04-06
 - RFC Type: decision
 - RFC PR: -
-- RFC Status: active
+- RFC Status: approved
 - RFC Driver: [Priscila Oliveira](https://github.com/priscilawebdev)
-- RFC Approver: -
+- RFC Approver: [Frontend TSC Committee](https://www.notion.so/sentry/2349fa7dfc5a4e9b95eda0961725896d)
 
 # Introduction
 
