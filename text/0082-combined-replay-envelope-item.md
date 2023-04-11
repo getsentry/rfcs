@@ -37,16 +37,10 @@ graph
 
 We'd like to combine these envelope payloads into one for the following reasons:
 
-- Now that we're decompressing, parsing, and indexing data in the recording, the dileniation between the two events no longer makes sense
+- Now that we're decompressing, parsing, and indexing data in the recording, the dileniation between the two events no longer makes sense.
 - Right now there exists a race condition between ReplayEvent and ReplayRecording -- if a ReplayEvent makes it to clickhouse and is stored before the ReplayRecording, it can result in a bad user experience as a user can navigate to the replay, but the replay's blobs may not be stored yet. We'd like to change it so the snuba writes happen _downstream_ from the recording consumer, as we don't want to make a replay available for search until it's corresponding recording blob has been stored.
-- With our recent changes to our replay blob storage mechansim, we now retrieve metadata for blobs from clickhouse. We'd like to take advantage of this to get rid of our in-memory chunking for large replay segments, and a combined payload would allow us to emit the number of chunks to be stored in clickhouse
 - Right now our rate limits are separated per Itemtype. It would be less confusing if the rate limit applied to a single event type.
 - It is very hard to do telemetry on the recordings consumer now as we do not have SDK version. combining the envelopes allows us to have metadata in our recordings consumer in an easily accesible way.
-- We want to use segment_id in our kafka partition key for these topics. We only partition by replay_id at the moment, which can cause our partitions to be unbalanced. It is difficult to extract this from our current recording ItemType.
-
-# Supporting Data
-
-[Metrics to help support your decision (if applicable).]
 
 # Options Considered
 
@@ -87,18 +81,18 @@ Emit a new item type "replay_recording_event" with the format
 ReplayEventJSON\nCompressedReplayRecording
 ```
 
+replacing the previous transport calls.
+
 ### Replay Recording Consumer Changes
 
 1. Create a new ReplayRecording consumer that can run along-side the existing consumer, as there will be a change-over period
 2. This consumer will do all the same things as the previous recordings consumer with the addition of:
-   - emitting
+   - emitting a JSON event to the snuba-replay-events kafka topic
 
 # Drawbacks
 
-Why should we not do this? What are the drawbacks of this RFC or a particular option if
-multiple options are presented.
+This is a decent chunk of engineering work.
 
 # Unresolved questions
 
-- What parts of the design do you expect to resolve through this RFC?
-- What issues are out of scope for this RFC but are known?
+- Is there a better format for the combined envelope item type? If we split on \n, this means the replay_event should never have a newline in it. I belive this is acceptable, but is there a better format for sending a combined JSON / binary piece of data?
