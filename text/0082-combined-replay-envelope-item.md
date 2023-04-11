@@ -39,10 +39,10 @@ graph
 
 We'd like to combine these envelope payloads into one for the following reasons:
 
-- Now that we're decompressing, parsing, and indexing data in the recording, the dileniation between the two events no longer makes sense.
+- Now that we're decompressing, parsing, and indexing data in the recording, the delineation between the two events no longer makes sense.
 - Right now there exists a race condition between ReplayEvent and ReplayRecording -- if a ReplayEvent makes it to clickhouse and is stored before the ReplayRecording, it can result in a bad user experience as a user can navigate to the replay, but the replay's blobs may not be stored yet. We'd like to change it so the snuba writes happen _downstream_ from the recording consumer, as we don't want to make a replay available for search until it's corresponding recording blob has been stored.
 - Right now our rate limits are separated per Itemtype. It would be less confusing if the rate limit applied to a single event type.
-- It is very hard to do telemetry on the recordings consumer now as we do not have SDK version. combining the envelopes allows us to have metadata in our recordings consumer in an easily accesible way.
+- It is very hard to do telemetry on the recordings consumer now as we do not have SDK version. combining the envelopes allows us to have metadata in our recordings consumer in an easily accessible way.
 
 # Options Considered
 
@@ -74,7 +74,7 @@ graph
 ReplayEventJSON\nCompressedReplayRecording
 ```
 
-That the downstream consumer can easily parse by splittin on newline.
+That the downstream consumer can easily parse by splitting on newline.
 
 ### SDK Changes
 
@@ -98,5 +98,5 @@ This is a decent chunk of engineering work.
 
 # Unresolved questions
 
-- Is there a better format for the combined envelope item type? If we split on \n, this means the replay_event should never have a newline in it. I belive this is acceptable, but is there a better format for sending a combined JSON / binary piece of data?
+- Is there a better format for the combined envelope item type? If we split on \n, this means the replay_event should never have a newline in it. I believe this is acceptable, but is there a better format for sending a combined JSON / binary piece of data?
 - If rate limits are applied before processing, it seems like we'll need to add a new rate limit for this combined item. This should be okay, anything else to think about here?
