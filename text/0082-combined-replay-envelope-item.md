@@ -19,6 +19,8 @@ We'd then modify the sentry-sdk to send combined item types going forward
 
 # Motivation
 
+## The Current Flow:
+
 ```mermaid
 graph
     A([SDK Generated Event])-->|HTTP Request| Z{Relay}
@@ -64,6 +66,7 @@ graph
 
 1. Create a new ItemType `CombinedReplayRecordingEvent`
 2. in `processor.rs` https://github.com/getsentry/relay/blob/606166fca57a84ca1b9240253013871d13827de3/relay-server/src/actors/processor.rs#L1134, replace the `process_replays` function that will combine the envelope items if its the old format using `take_item_by` and `add_item` Envelope functions, or leave them if its the new format. This function would then process the two items and set the item payload.
+3. We can begin rejecting replay segments over 10 megabytes, which will allow us to not need chunking in our recording consumer.
 
 - The combined Payload will have the format of
 
@@ -96,3 +99,4 @@ This is a decent chunk of engineering work.
 # Unresolved questions
 
 - Is there a better format for the combined envelope item type? If we split on \n, this means the replay_event should never have a newline in it. I belive this is acceptable, but is there a better format for sending a combined JSON / binary piece of data?
+- If rate limits are applied before processing, it seems like we'll need to add a new rate limit for this combined item. This should be okay, anything else to think about here?
