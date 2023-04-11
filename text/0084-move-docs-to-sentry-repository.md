@@ -67,3 +67,7 @@ As we want to go ahead and add a selection of products to all javascript platfor
 
 1. If we go with option one (1) proposed above, we will have to live with 2x different mechanisms for a while until we port all the documentation over to Sentry and we will have to install a few `@mdx-js/*` dependencies
 2. Right now to update onboarding instructions you can do it in a single PR in the docs repo. If we make the second change proposed (2), it will mean that devs have to first merge docs, and after update Sentry. If any of these two are delayed/out of sync, it could be confusing to users who don't understand why the product shows something different that the actual docs themselves
+
+# Conclusion
+
+[As per the TSC Frontend Meeting on Tuesday, April 4, 2023](https://www.notion.so/sentry/2349fa7dfc5a4e9b95eda0961725896d), we discussed the problem and proposed solutions described in this RFC and concluded that we would like to proceed with the first proposal. We have yet to inform the docs team about this decision, but initially we would like to gradually move the onboarding docs from the sentry-docs repository to the sentry repository and no longer use markdown, but MDX or pure react components. A proof of concept will be created and shared with Frontend TSC members.
