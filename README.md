@@ -20,6 +20,7 @@ This repository contains RFCs and DACIs. Lost?
 - [0022-response-context](text/0022-response-context.md): Response context
 - [0033-view-hierarchy](text/0033-view-hierarchy.md): View Hierarchy
 - [0027-manual-disabling-of-flaky-tests](text/0027-manual-disabling-of-flaky-tests.md): Processes for manually disabling flaky tests in `sentry` and `getsentry`
+- [00034-sdk-lifecycle](text/0034-sdk-lifecycle-hooks.md): SDK Lifecycle hooks
 - [0036-auto-instrumentation-ui-thread](text/0036-auto-instrumentation-ui-thread.md): auto-instrumentation UI thread
 - [0037-anr-rates](text/0037-anr-rates.md): Calculating accurate ANR rates
 - [0038-scrubbing-sensitive-data](text/0038-scrubbing-sensitive-data.md): Scrubbing sensitive data - how to improve
@@ -36,3 +37,9 @@ This repository contains RFCs and DACIs. Lost?
 - [0070-document-sensitive-data-collected](text/0070-document-sensitive-data-collected.md): Document sensitive data collected
 - [0071-continue-trace-over-process-boundaries](text/0071-continue-trace-over-process-boundaries.md): Continue trace over process boundaries
 - [0072-kafka-schema-registry](text/0072-kafka-schema-registry.md): Kafka Schema Registry
+- [0073-usage-of-transaction-types](text/0073-usage-of-transaction-types.md): Usage of transaction types
+- [0074-source-context-via-links](text/0074-source-context-via-links.md): Source context via links
+- [0078-escalating-issues](text/0078-escalating-issues.md): Escalating Issues
+- [0079-exception-groups](text/0079-exception-groups.md): Exception Groups
+- [0080-issue-states](text/0080-issue-states.md): Issue States
+- [0084-move-docs-to-sentry-repository](text/0084-move-docs-to-sentry-repository.md): Move onboarding docs from sentry-docs over to sentry repository
