@@ -42,4 +42,5 @@ This repository contains RFCs and DACIs. Lost?
 - [0078-escalating-issues](text/0078-escalating-issues.md): Escalating Issues
 - [0079-exception-groups](text/0079-exception-groups.md): Exception Groups
 - [0080-issue-states](text/0080-issue-states.md): Issue States
+- [0081-sourcemap-debugid](text/0081-sourcemap-debugid.md): Reliable JavaScript/SourceMap processing via `DebugId`
 - [0084-move-docs-to-sentry-repository](text/0084-move-docs-to-sentry-repository.md): Move onboarding docs from sentry-docs over to sentry repository
