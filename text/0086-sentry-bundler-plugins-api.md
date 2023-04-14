@@ -43,10 +43,11 @@ interface Options {
   silent?: boolean; // default: false - Whether to print anything at all.
   errorHandler?: (err: Error) => void; // when provided will swallow errors unless the provided function throws itself - By default any error will stop compilation to abort
   telemetry?: boolean; // default: true - whether to send telemetry to Sentry
+  disable?: boolean; // default: false - just a quick way to entirely disable the plugin - purely for convenience
 
   // General configuration for source maps uploading - if not provided, source map uploading will be disabled
   sourcemaps?: {
-    jsAssets: string | string[]; // globs pointing to the javascript files that should be uploaded to Sentry with their source maps - these are the built assets and not the source files
+    assets: string | string[]; // globs pointing to the javascript files that should be uploaded to Sentry with their source maps - these are the built assets and not the source files
     ignore?: string | string[]; // globs to exclude javascript files from being uploaded (will also not upload their source maps)
     sourcesRoot?: string | null; // default: process.cwd() - We rewrite the `sources` field in source maps to point to sources relative to this value. Set to `null` to disable this rewriting.
   };
@@ -85,14 +86,20 @@ interface SetCommitsOptions {
 
 Some removed options:
 
-- `dryRun` - Instead, just not use the plugin.
-- `configFile` - The config file is very intransparent in combination with the plugin and generally not well documented. Let's remove this feature to lower maintenance burden.
+- `dryRun` - Current assumption is that this option is unnecessary:
+  - Debug information can be printed with the `debug` option instead.
+  - Executing the plugin is **very** low stakes. Releases and artifact bundles can be deleted with ease and without any lasting side-effects.
+  - This option comes with maintenance effort that scales linearly with new features and there is a high chance implementing is overlooked for new features.
+  - We introduce a `disabled` option instead that still is a convenient way of disabling the plugin without any continuous maintenance effort.
+- `configFile`
+  - Generally we would like to abstract away the fact that Sentry CLI is used under the hood.
+  - The config file is very intransparent in combination with the plugin and generally not well documented. Let's remove this feature to lower maintenance burden.
 - `injectReleasesMap` - Was used to support some micro frontends setups. This is not needed anymore with the introduction of debug IDs.
 - `releaseInjectionTargets` - This was used to disable/enable release injection for a particular set of files. This is not really useful and cannot be used in all bundlers (esbuild). Additionally, for technical reasons we need to inject the release into every processed module anyhow (it will be deduped) so this option simply doesn't make a lot of sense anymore.
 
 # Drawbacks
 
-- Users will have to jump through a few hoops upgrading to the new Webpack plugin major just based on changing the options type.
+- Users will have to jump through a few hoops upgrading to the new Webpack plugin major just based on changing the options type. We have the theory that a good migration guide will solve most of this though.
 - Users may have to adjust their code AND build system if we drop environment variables as a way of configuring the plugin.
 - We are maintaining two systems of uploading source maps.
 
@@ -100,4 +107,4 @@ Some removed options:
 
 - Should the options we intend to remove really be removed or do we see use cases for them?
 - Should we remove environment variables and `.sentryclirc` as a means to configure the plugin?
-- Should we deprecate the legacy source maps upload system entirely?
+- ~~Should we deprecate the legacy source maps upload system entirely?~~ No. We think it still has its use cases so we keep it.
