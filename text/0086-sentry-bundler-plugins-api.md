@@ -49,7 +49,7 @@ interface Options {
   sourcemaps?: {
     assets: string | string[]; // globs pointing to the javascript files that should be uploaded to Sentry with their source maps - these are the built assets and not the source files
     ignore?: string | string[]; // globs to exclude javascript files from being uploaded (will also not upload their source maps)
-    sourcesRoot?: string | null; // default: process.cwd() - We rewrite the `sources` field in source maps to point to sources relative to this value. Set to `null` to disable this rewriting.
+    rewriteSources?: (source: string) => string; // Hook to rewrite individual entries in the sourcemaps's `sources` field. By default, if not defined, the plugin will try to rewrite the entries to be relative to `process.cwd()`.
   };
 
   // General configuration for release creation and release injection - we decouple this from the debug ID source maps upload because they're technically not related anymore.
