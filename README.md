@@ -44,3 +44,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0080-issue-states](text/0080-issue-states.md): Issue States
 - [0081-sourcemap-debugid](text/0081-sourcemap-debugid.md): Reliable JavaScript/SourceMap processing via `DebugId`
 - [0084-move-docs-to-sentry-repository](text/0084-move-docs-to-sentry-repository.md): Move onboarding docs from sentry-docs over to sentry repository
+- [0086-sentry-bundler-plugins-api](text/0086-sentry-bundler-plugins-api.md): Sentry Bundler Plugins API
