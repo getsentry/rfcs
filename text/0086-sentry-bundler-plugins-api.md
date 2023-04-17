@@ -1,7 +1,9 @@
 - Start Date: 2023-04-13
 - RFC Type: feature
 - RFC PR: https://github.com/getsentry/rfcs/pull/86
-- RFC Status: draft
+- RFC Status: approved
+- RFC Driver: [Luca Forstner](https://github.com/lforst)
+- RFC Approver: JavaScript SDK Team
 
 # Summary
 
