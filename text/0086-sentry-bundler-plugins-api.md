@@ -9,7 +9,7 @@ This RFC intends to discuss the future API of the [Sentry JavaScript Bundler Plu
 
 # Motivation
 
-With the major bump to v2 of the bunlder plugins, we have the opportunity to rethink the existing API that was orignially built on top of the [Sentry Webpack Plugin](https://github.com/getsentry/sentry-webpack-plugin).
+With the major bump to v2 of the bundler plugins, we have the opportunity to rethink the existing API that was orignially built on top of the [Sentry Webpack Plugin](https://github.com/getsentry/sentry-webpack-plugin).
 
 Facts to consider when deciding on an API:
 
