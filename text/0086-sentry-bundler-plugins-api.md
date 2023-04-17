@@ -34,9 +34,9 @@ Proposed API (TypeScript typedef):
 
 ```ts
 interface Options {
-  org: string; // Previously this was optional and could have been set with `env.SENTRY_ORG` or `.sentryclirc` - for the sake of explicity, we remove these configuration methods
-  project: string; // Previously this was optional and could have been set with `env.SENTRY_ORG` or `.sentryclirc` - for the sake of explicity, we remove these configuration methods
-  authToken: string; // Previously this was optional and could have been set with `env.SENTRY_ORG` or `.sentryclirc` - for the sake of explicity, we remove these configuration methods
+  org?: string; // Can also be set via `env.SENTRY_ORG`
+  project?: string; // Can also be set via `env.SENTRY_PROJECT`
+  authToken?: string; // Can also be set via `env.SENTRY_AUTH_TOKEN`
   url?: string; // A way to configure self-hosted instances: unchanged
   headers?: Record<string, string>; // Headers added to every outgoing network request.
   debug?: boolean; // default: false - Whether to print debug information.
@@ -100,11 +100,15 @@ Some removed options:
 # Drawbacks
 
 - Users will have to jump through a few hoops upgrading to the new Webpack plugin major just based on changing the options type. We have the theory that a good migration guide will solve most of this though.
-- Users may have to adjust their code AND build system if we drop environment variables as a way of configuring the plugin.
 - We are maintaining two systems of uploading source maps.
 
 # Unresolved questions
 
-- Should the options we intend to remove really be removed or do we see use cases for them?
-- Should we remove environment variables and `.sentryclirc` as a means to configure the plugin?
-- ~~Should we deprecate the legacy source maps upload system entirely?~~ No. We think it still has its use cases so we keep it.
+- ~~Should the options we intend to remove really be removed or do we see use cases for them?~~
+  - We remove `dryRun` for the reasons listed above
+  - We remove `injectReleasesMap` for the reasons listed above
+  - We remove `releaseInjectionTargets` for the reasons listed above
+- ~~Should we remove environment variables and `.sentryclirc` as a means to configure the plugin?~~
+  - We keep the env var configuration options because they aren't that high of a configuration effort, but we remove support for .sentryclirc
+- ~~Should we deprecate the legacy source maps upload system entirely?~~
+  - No. We think it still has its use cases so we keep it. Also self-hosted might still need this.
