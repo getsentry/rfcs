@@ -25,7 +25,7 @@ We'd then modify the sentry-sdk to send combined item types going forward
 graph
     A([SDK Generated Event])-->|HTTP Request| Z{Relay}
     Z-->|Published to Kafka topic|B[Replays Kafka Cluster]
-    B-->|ingest-replay|J[Replay Consumer]
+    B-->|ingest-replay-events|J[Snuba Consumer]
     J-->|Buffered Bulk Commit|K[(Clickhouse)]
     B-->|ingest-replay-recordings|E[Recording Consumer]
     E-->C[Recording Chunk Processor]
