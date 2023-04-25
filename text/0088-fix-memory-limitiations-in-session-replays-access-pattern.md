@@ -40,7 +40,7 @@ Any option may be accepted in whole or in part. Multiple options can be accepted
 
 **Proposal**
 
-Our current solution works well but there are escape hatches which require us to issue the aggregation query over the whole dataset. Those escape hatches should be closed.
+The current subquery solution is the appropriate way to scan our dataset. However, there are escape hatches which require us to issue an aggregation query over the whole dataset. Those escape hatches should be closed.
 
 - Remove ability to filter and sort by aggregated values (e.g. count_errors, activity_score).
 - Remove ability to filter by negation values which change (e.g. urls).
@@ -124,12 +124,12 @@ The ingestion process can be described as follows:
   - This has scalability limitations but those limitations are likely to be less than existing limitations.
   - Aggregation states can be updated atomicly with some databases. See "Use Alternative Databases" proposal.
   - Alternatively we can tolerate losing aggregation states and continue using parallel consumers.
-- Kafka will sometimes produce duplicate messages. We will need a de-duplication step. If we assume order we can set a requirement on segment_id > previous_segment_id.
+- Kafka will sometimes produce duplicate messages. If we assume order we can set a requirement on segment_id > previous_segment_id.
   - Order can not be assumed. Valid aggregation states could be lost.
   - A delay in scheduling in Relay could cause segment_id 1 to be processed prior to segment_id 0.
   - This is expected to be uncommon but not impossible.
   - Alternatively, we could tolerate duplicates and accept that segment_count and other values have some margin of error.
-- To eliminate the need for grouping queries would need to supply the `FINAL` keyword.
+- To eliminate the need for grouping queries we would need to supply the `FINAL` keyword.
 - Our column types are not ideal for this use case.
 
 **Questions**
@@ -154,7 +154,7 @@ The ingestion process can be described as follows:
 
 **Proposal**
 
-OLAP Databases such as Apache Pinot support upserts. An aggregation state schema can be defined for merging columns. https://docs.pinot.apache.org/basics/data-import/upsert
+ClickHouse is not a sufficiently sophisticated database for our use case. OLAP Databases such as Apache Pinot support upserts which appear to be a key requirement for the Replays product. An aggregation state schema can be defined for merging columns in real-time https://docs.pinot.apache.org/basics/data-import/upsert.
 
 **Drawbacks**
 
