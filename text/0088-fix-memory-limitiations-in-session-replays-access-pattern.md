@@ -91,6 +91,8 @@ The current aggregation query is the appropriate way to model the data. However,
 
 **Proposal**
 
+The current data structure is not the appropriate way to model the data.
+
 **Drawbacks**
 
 **Questions**
@@ -122,7 +124,7 @@ The ingestion process can be described as follows:
 - The aggregation process is not expected to be atomic and we will encounter race-conditions where two segments with the same replay-id attempt to mutate the same key at the same time.
   - To solve this we will need to partition our Kafka messages by replay-id and process sequentially.
   - This has scalability limitations but those limitations are likely to be less than existing limitations.
-  - Aggregation states can be updated atomicly with some databases. See "Use Alternative Databases" proposal.
+  - Aggregation states can be updated atomicly with some databases. See "Use Alternative OLAP Database" proposal.
   - Alternatively we can tolerate losing aggregation states and continue using parallel consumers.
 - Kafka will sometimes produce duplicate messages. If we assume order we can set a requirement on segment_id > previous_segment_id.
   - Order can not be assumed. Valid aggregation states could be lost.
@@ -166,7 +168,7 @@ Older versions of ClickHouse are not sufficiently sophisticated for our use case
 
 **Questions**
 
-### Use Alternative Databases
+### Use an Alternative OLAP Database
 
 **Proposal**
 
@@ -181,6 +183,25 @@ ClickHouse is not a sufficiently sophisticated database for our use case. OLAP D
 - The Replays team is not large enough or experienced enough to manage a Pinot installation.
   - This would require another team assuming the burden for us.
   - Otherwise, additional budget would need to be allocated to the Replays team to hire outside experts.
+- We need to re-write our application logic for querying the datastore.
+- Migration pains.
+
+**Questions**
+
+### Use an Alternative OLTP Database
+
+**Proposal**
+
+OLAP databases are not suitable for our use case. OLTP databases such as PostgreSQL and AlloyDB support updates which appear to be a key requirement for the Replays product.
+
+**Drawbacks**
+
+- Race conditions will require single-threaded processing of replay events.
+- Duplicate messages will necessitate ordering requirements.
+- Always a possibility for dropped and duplicated data regardless of safe guards.
+- AlloyDB is still in developer preview on Google Cloud.
+- We need to re-write our application logic for querying the datastore.
+- Migration pains.
 
 **Questions**
 
