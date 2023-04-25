@@ -32,10 +32,6 @@ The non-aggregated query does not allow **exclusive** filter conditions against 
 
 The non-aggregated query does not allow multiple, **inclusive** filter conditions against **non-static** columns. For example, we can not say "find a replay where this url exists and this other url exists". It will find rows which have both urls but not replays which have both urls. Transforming the `AND` operator to an `OR` operator does not satisfy the condition because it will match replays which contain one of the urls - not both.
 
-# How To Read Each Proposal
-
-Each proposal is prefixed with an assumption and a solution that is perceived to logically follow from it. The assumption does not exist to state a fact. It only exists to say that the world must be so in order for the following solution to be applicable. If the assumption is incorrect then the solution is discarded. If the assumption is correct then the solution must be evaluated on its merits before acceptance or rejection.
-
 # Options Considered
 
 Any option may be accepted in whole or in part. Multiple options can be accepted to achieve the desired outcome. The options are ordered from perceived ease to perceived difficulty.
@@ -44,7 +40,7 @@ Any option may be accepted in whole or in part. Multiple options can be accepted
 
 **Proposal**
 
-The current subquery solution is the appropriate way to scan our dataset. However, there are escape hatches which require us to issue an aggregation query over the whole dataset. Those escape hatches should be closed.
+Our current subquery solution works very well. However, there are escape hatches which require us to issue an aggregation query over the whole dataset. Those escape hatches should be closed.
 
 - Remove ability to filter and sort by aggregated values (e.g. count_errors, activity_score).
 - Remove ability to filter by negation values which change (e.g. urls).
@@ -67,7 +63,7 @@ The current subquery solution is the appropriate way to scan our dataset. Howeve
 
 **Proposal**
 
-The current aggregation query is the appropriate way to model the data. However, the range we allow it to scan is too large. We should validate the timestamp range such that it does not exceed a 24-hour period. This would satify every organization which ingests fewer than 1 billion replay-segments every 90 days.
+The number of rows aggregated can be reduced by restricting the maximum time range we query over. We should validate the timestamp range such that it does not exceed a 24-hour period. This would satify every organization which ingests fewer than 1 billion replay-segments every 90 days.
 
 **Drawbacks**
 
@@ -82,7 +78,7 @@ The current aggregation query is the appropriate way to model the data. However,
 
 **Proposal**
 
-The current aggregation query is the appropriate way to model the data. However, the range we allow it to scan is too large. For select queries the backend can issue multiple queries on subsets of the range. For example, if we assume that no sort value was provided or that the sort value was applied to the timestamp column then the back end can transparently query a subset of the window attempting to populate the result set without querying the entire range.
+The number of rows aggregated can be reduced by restricting the maximum time range we query over. For select queries the backend can issue multiple queries on subsets of the range. For example, if we assume that no sort value was provided or that the sort value was applied to the timestamp column then the back end can transparently query a subset of the window attempting to populate the result set without querying the entire range.
 
 **Drawbacks**
 
@@ -95,7 +91,12 @@ The current aggregation query is the appropriate way to model the data. However,
 
 **Proposal**
 
+- Normalize schema.
+- Use joins.
+
 **Drawbacks**
+
+- Performance.
 
 **Questions**
 
@@ -103,7 +104,7 @@ The current aggregation query is the appropriate way to model the data. However,
 
 **Proposal**
 
-The current aggregation query is not the appropriate way to model the data. Aggregating in Clickhouse has proven to be too expensive to be scalable. Instead of aggregating in ClickHouse we should maintain a stateful representation of the Replay in an alternative service (such as a key, value store). Additionally, we will migrate to the "VersionedCollapsingMergeTree" table engine and write our progress incrementally.
+Instead of aggregating in ClickHouse we should maintain a stateful representation of the Replay in an alternative service (such as a key, value store). Additionally, we will migrate to the "VersionedCollapsingMergeTree" table engine and write our progress incrementally.
 
 The versioned engine works as follows:
 
@@ -142,7 +143,7 @@ The ingestion process can be described as follows:
 
 **Proposal**
 
-The current aggregation query is not the appropriate way to model the data. Aggregating in Clickhouse has proven to be too expensive to be scalable. Instead we should aggregate our replays in a stateful service such as Apache Spark before writing the final result to ClickHouse.
+Instead of aggregating in ClickHouse we should aggregate our replays in a stateful service such as Apache Spark before writing the final result to ClickHouse.
 
 TODO: Josh to fill in specifics.
 
@@ -160,7 +161,7 @@ TODO: Josh to fill in specifics.
 
 **Proposal**
 
-Older versions of ClickHouse are not sufficiently sophisticated for our use case. Upgrading to a newer version of ClickHouse will enable us to use experimental features such as "Live View" and "Window View".
+Upgrading to a newer version of ClickHouse will enable us to use experimental features such as "Live View" and "Window View".
 
 **Drawbacks**
 
@@ -174,7 +175,7 @@ Older versions of ClickHouse are not sufficiently sophisticated for our use case
 
 **Proposal**
 
-ClickHouse is not a sufficiently sophisticated database for our use case. OLAP Databases such as Apache Pinot support upserts which appear to be a key requirement for the Replays product. An aggregation state schema can be defined for merging columns in real-time https://docs.pinot.apache.org/basics/data-import/upsert.
+OLAP Databases such as Apache Pinot support upserts which appear to be a key requirement for the Replays product. An aggregation state schema can be defined for merging columns in real-time https://docs.pinot.apache.org/basics/data-import/upsert.
 
 **Drawbacks**
 
@@ -194,7 +195,7 @@ ClickHouse is not a sufficiently sophisticated database for our use case. OLAP D
 
 **Proposal**
 
-OLAP databases are not suitable for our use case. OLTP databases such as PostgreSQL and AlloyDB support updates which appear to be a key requirement for the Replays product.
+OLTP databases such as PostgreSQL and AlloyDB support updates which appear to be a key requirement for the Replays product.
 
 **Drawbacks**
 
