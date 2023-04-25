@@ -5,31 +5,68 @@
 
 # Summary
 
-One paragraph explanation of the feature or document purpose.
+The Session Replay index page will run out of memory when processing queries for our largest customers. This document contains proposed solutions for addressing this short-coming.
 
 # Motivation
 
-Why are we doing this? What use cases does it support? What is the expected outcome?
+Our goal is to make the Session Replay product highly scalable. We expect changes to the product will eliminate our OOM issues and increase performance for customers with large amounts of ingested data.
 
 # Background
 
-The reason this decision or document is required. This section might not always exist.
-
-# Supporting Data
-
-[Metrics to help support your decision (if applicable).]
+The Session Replay index page runs out of memory when processing request for large customers. Improvements have been made to the situation by running subqueries prior to execution of the main query event. This is not always possible due to our current product requirements.
 
 # Options Considered
 
-If an RFC does not know yet what the options are, it can propose multiple options. The
-preferred model is to propose one option and to provide alternatives.
+### Change the Product's Query Access Pattern
 
-# Drawbacks
+**Proposal**
 
-Why should we not do this? What are the drawbacks of this RFC or a particular option if
-multiple options are presented.
+**Drawbacks**
 
-# Unresolved questions
+**Questions**
 
-- What parts of the design do you expect to resolve through this RFC?
-- What issues are out of scope for this RFC but are known?
+### Remove Ability to Query Aggregated Data on the Index Page
+
+**Proposal**
+
+**Drawbacks**
+
+**Questions**
+
+### Migrate to CollapsingMergeTree Table Engine and Pre-Aggregate Data in Key-Value Store
+
+**Proposal**
+
+so the ingest flow essentially goes -> get a segment -> look up replay_id in KV store -> if replay_id exists, then collate the new data with the data in the KV -> flip the sign then write it to clickhouse
+
+**Drawbacks**
+
+**Questions**
+
+### Stateful Streaming using Apache Spark or Similar Service
+
+**Proposal**
+
+**Drawbacks**
+
+**Questions**
+
+### Upgrade ClickHouse Version to Utilize Experimental Features
+
+**Proposal**
+
+**Drawbacks**
+
+**Questions**
+
+### Investigate Alternative Databases
+
+**Proposal**
+
+**Drawbacks**
+
+**Questions**
+
+# Selected Outcome
+
+No outcome has been decided.
