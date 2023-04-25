@@ -36,7 +36,7 @@ The non-aggregated query does not allow multiple, **inclusive** filter condition
 
 Any option may be accepted in whole or in part. Multiple options can be accepted to achieve the desired outcome. The options are ordered from perceived ease to perceived difficulty.
 
-### Change the Product's Query Access Pattern
+### 1. Change the Product's Query Access Pattern
 
 **Proposal**
 
@@ -59,7 +59,7 @@ Our current subquery solution works very well. However, there are escape hatches
 
 **Questions**
 
-### Reduce the Scan Range on the Front End
+### 2. Reduce the Scan Range on the Front End
 
 **Proposal**
 
@@ -74,7 +74,7 @@ The number of rows aggregated can be reduced by restricting the maximum time ran
 
 **Questions**
 
-### Reduce the Scan Range on the Back End
+### 3. Reduce the Scan Range on the Back End
 
 **Proposal**
 
@@ -87,7 +87,7 @@ The number of rows aggregated can be reduced by restricting the maximum time ran
 
 **Questions**
 
-### Normalize Schema and Remove Snuba Join Restriction
+### 4. Normalize Schema and Remove Snuba Join Restriction
 
 **Proposal**
 
@@ -97,10 +97,11 @@ The number of rows aggregated can be reduced by restricting the maximum time ran
 **Drawbacks**
 
 - Performance.
+- Requires Snuba work.
 
 **Questions**
 
-### Migrate to CollapsingMergeTree Table Engine and Pre-Aggregate Data in Key-Value Store
+### 5. Migrate to CollapsingMergeTree Table Engine and Pre-Aggregate Data in Key-Value Store
 
 **Proposal**
 
@@ -139,7 +140,7 @@ The ingestion process can be described as follows:
 
 **Questions**
 
-### Stateful Streaming using Apache Spark or Similar Service
+### 6. Stateful Streaming using Apache Spark or Similar Service
 
 **Proposal**
 
@@ -157,7 +158,7 @@ TODO: Josh to fill in specifics.
 
 **Questions**
 
-### Upgrade ClickHouse Version to Utilize Experimental Features
+### 7. Upgrade ClickHouse Version to Utilize Experimental Features
 
 **Proposal**
 
@@ -171,7 +172,7 @@ Upgrading to a newer version of ClickHouse will enable us to use experimental fe
 
 **Questions**
 
-### Use an Alternative OLAP Database
+### 8. Use an Alternative OLAP Database
 
 **Proposal**
 
@@ -191,7 +192,7 @@ OLAP Databases such as Apache Pinot support upserts which appear to be a key req
 
 **Questions**
 
-### Use an Alternative OLTP Database
+### 9. Use an Alternative OLTP Database
 
 **Proposal**
 
