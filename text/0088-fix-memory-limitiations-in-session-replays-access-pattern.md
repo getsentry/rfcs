@@ -32,6 +32,10 @@ The non-aggregated query does not allow **exclusive** filter conditions against 
 
 The non-aggregated query does not allow multiple, **inclusive** filter conditions against **non-static** columns. For example, we can not say "find a replay where this url exists and this other url exists". It will find rows which have both urls but not replays which have both urls. Transforming the `AND` operator to an `OR` operator does not satisfy the condition because it will match replays which contain one of the urls - not both.
 
+# How To Read Each Proposal
+
+Each proposal is prefixed with an assumption and a solution that is perceived to logically follow from it. The assumption does not exist to state a fact. It only exists to say that the world must be so in order for the following solution to be applicable. If the assumption is incorrect then the solution is discarded. If the assumption is correct then the solution must be evaluated on its merits before acceptance or rejection.
+
 # Options Considered
 
 Any option may be accepted in whole or in part. Multiple options can be accepted to achieve the desired outcome. The options are ordered from perceived ease to perceived difficulty.
@@ -90,8 +94,6 @@ The current aggregation query is the appropriate way to model the data. However,
 ### Normalize Schema and Remove Snuba Join Restriction
 
 **Proposal**
-
-The current data structure is not the appropriate way to model the data.
 
 **Drawbacks**
 
