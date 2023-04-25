@@ -28,6 +28,8 @@ We have introduced a second, non-aggregated query which precedes our main aggreg
 
 **Drawbacks**
 
+There are aggregated values which users want to sort and filter on. Columns such as count_errors and activity which are prominently featured on our index page. Sorting and filtering by these values disables the preflight query and only runs the aggregated query.
+
 The non-aggregated query does not allow **exclusive** filter conditions against **non-static** columns. For example, we can not say "find a replay where this url does not exist". The query will find _rows_ where that condition is true but it will not find _replays_ where that is condition true.
 
 The non-aggregated query does not allow multiple, **inclusive** filter conditions against **non-static** columns. For example, we can not say "find a replay where this url exists and this other url exists". It will find **ROWS** which have both urls but not **REPLAYS** which have both urls. Transforming the `AND` operator to an `OR` operator does not satisfy the condition because it will match replays which contain one of the urls - not both.
