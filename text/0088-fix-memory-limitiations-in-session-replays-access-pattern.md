@@ -19,7 +19,7 @@ The Session Replay data model is different from most at Sentry. Replays are rece
 
 - Replay segments are not guaranteed to be received in order.
 - Replay segments are typically sent every 5 seconds while the session is active.
-- Replays can be "idle" for up to 30 minutes before sending a new segment when user activity resumes.
+- Replays can be "idle" for up to 15 minutes before sending a new segment when user activity resumes.
 - Replays can be up to 1 hour in duration.
 
 # Existing Solution
