@@ -142,23 +142,24 @@ The ingestion process can be described as follows:
 
 **Questions**
 
+- Bruno Garcia asked: How does the sequential message processing requirement impact scale?
+  - The performance of a single consumer will be dominated by the performance of our Key, Value store. If we assume 10ms to process each message then we will process 100 messages per second per consumer. Because we can partition our consumers on replay_id we can achieve some multiple of that throughput through partitioning.
+
 ### 6. Stateful Streaming using Apache Spark or Similar Service
 
 **Proposal**
 
-Instead of aggregating in ClickHouse we should aggregate our replays in a stateful service such as Apache Spark before writing the final result to ClickHouse.
-
-TODO: Josh to fill in specifics.
+Instead of aggregating in ClickHouse we should aggregate our replays in a stateful service such as Apache Spark before writing the final result to ClickHouse. With Spark, we can view our Kafka topic as a streaming DataFrame. Spark has a mechanism for stateful streaming based on windows, https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html#window-operations-on-event-time. We would use a "Session Window", with the timeout being the same as the one we define on the client to aggregate data per replay-id. we'd then take advantage of watermarking to ensure that late data still gets grouped accordingly.
 
 **Drawbacks**
 
 - Replays are not available until they have finished.
-- There are no existing Apache Spark installations within the Sentry org.
-- The Replays team is not large enough or experienced enough to manage a Spark installation.
-  - This would require another team assuming the burden for us.
-  - Otherwise, additional budget would need to be allocated to the Replays team to hire outside experts.
+- The probability of data loss from an outage goes up.
+  - If there are problems upstream we have to take action to pause the job.
 
 **Questions**
+
+- Bruno Garcia asks: How do we integrate this feature for self-hosted users?
 
 ### 7. Upgrade ClickHouse Version to Utilize Experimental Features
 
@@ -198,7 +199,7 @@ OLAP Databases such as Apache Pinot support upserts which appear to be a key req
 
 **Proposal**
 
-OLTP databases such as PostgreSQL and AlloyDB support updates which appear to be a key requirement for the Replays product.
+OLTP databases such as PostgreSQL and AlloyDB support updates which appear to be a key requirement for the Replays product. Our scale is small enough that a shared PostgreSQL database could handle it. Read volume is low relative to write volume. We could optimize our database for this use case.
 
 **Drawbacks**
 
@@ -208,6 +209,21 @@ OLTP databases such as PostgreSQL and AlloyDB support updates which appear to be
 - AlloyDB is still in developer preview on Google Cloud.
 - We need to re-write our application logic for querying the datastore.
 - Migration pains.
+
+**Questions**
+
+- Colton Allen asks: Is it possible to write to tables partitioned by the hour? When the hour expires the table is indexed for fast read performance. Replays on the most recent hour partition would be unavailable while we are writing to it. Does PostgreSQL expose behavior that allows us to query over multiple partitions transparently? Is this even necessary given our scale? Currently processing 200 messages per second.
+
+### 10. Manually Manage An Aggregated Materialized View
+
+**Proposal**
+
+Use a cron job, which runs at some interval (e.g. 1 hour), that would select the finished replays from the last hour, aggregate them, and write them to a materialized view or some destination table. We then alter the index page to reflect two different dataset. The "live" dataset and the "video-on-demand" dataset. A "live" page would fetch replays from the last hour. A "video-on-demand" dataset would function similarly to the current replays index page however it would only contain data that has been aggregated by the cron job.
+
+**Drawbacks**
+
+- The cron job is another process which can fail. This would not lead to data loss per say but depending on the implementation of the query we may skip rows when recovering from an outage.
+  - A record could be kept of the time-windows the cron job has processed. This record could exist in ClickHouse or another datastore. By using this dataset the cron job could recover from an outage without skipping rows.
 
 **Questions**
 
