@@ -138,7 +138,17 @@ The ingestion process can be described as follows:
 
 **Proposal**
 
+The current aggregation query is not the appropriate way to model the data. Aggregating in Clickhouse has proven to be too expensive to be scalable. Instead we should aggregate our replays in a stateful service such as Apache Spark before writing the final result to ClickHouse.
+
+TODO: Josh to fill in specifics.
+
 **Drawbacks**
+
+- Replays are not available until they have finished.
+- There are no existing Apache Spark installations within the Sentry org.
+- The Replays team is not large enough or experienced enough to manage a Spark installation.
+  - This would require another team assuming the burden for us.
+  - Otherwise, additional budget would need to be allocated to the Replays team to hire outside experts.
 
 **Questions**
 
@@ -146,7 +156,13 @@ The ingestion process can be described as follows:
 
 **Proposal**
 
+Older versions of ClickHouse are not sufficiently sophisticated for our use case. Upgrading to a newer version of ClickHouse will enable us to use experimental features such as "Live View" and "Window View".
+
 **Drawbacks**
+
+- Would require Sentry to manage the ClickHouse installation.
+  - Feature is not present in a stable release.
+  - Feature is not present on any version of ClickHouse in Altinity.
 
 **Questions**
 
@@ -161,7 +177,7 @@ ClickHouse is not a sufficiently sophisticated database for our use case. OLAP D
 - Changes to the data model would be necessary. We will not be able to aggregate array columns.
 - Pinot has ordering constraints.
   - If segments arrive after their successor has already been ingested the aggregated state will not contain those rows.
-- No existing Pinot installations within the Sentry org.
+- There are no existing Apache Pinot installations within the Sentry org.
 - The Replays team is not large enough or experienced enough to manage a Pinot installation.
   - This would require another team assuming the burden for us.
   - Otherwise, additional budget would need to be allocated to the Replays team to hire outside experts.
