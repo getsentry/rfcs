@@ -34,6 +34,8 @@ The non-aggregated query does not allow multiple, **inclusive** filter condition
 
 # Options Considered
 
+Any option may be accepted in whole or in part. Multiple options can be accepted to achieve the desired outcome. The options are ordered from perceived ease to perceived difficulty.
+
 ### Change the Product's Query Access Pattern
 
 **Proposal**
@@ -61,7 +63,14 @@ Our current solution works well but there are escape hatches which require us to
 
 **Proposal**
 
+The current aggregation query is the appropriate way to model the data. However, the range we allow it to scan is too large. We should validate the timestamp range such that it does not exceed a 24-hour period. This would satify every organization which ingests fewer than 1 billion replay-segments every 90 days.
+
 **Drawbacks**
+
+- To search for a unique value a user would need to issue a query for each day of the retention period or until the value was found.
+- Small customers would not see any replays on their index page due to the limited window size.
+  - Necessitates a special flag for large customers to enable this optimization.
+  - We may not know who needs this flag in advance and we may present a degraded customer experience without realizing.
 
 **Questions**
 
@@ -69,7 +78,12 @@ Our current solution works well but there are escape hatches which require us to
 
 **Proposal**
 
+The current aggregation query is the appropriate way to model the data. However, the range we allow it to scan is too large. For select queries the backend can issue multiple queries on subsets of the range. For example, if we assume that no sort value was provided or that the sort value was applied to the timestamp column then the back end can transparently query a subset of the window attempting to populate the result set without querying the entire range.
+
 **Drawbacks**
+
+- Requires O(retention_days) queries to satisfy the result set in the worst case.
+- Adds an additional layer of complexity and does not solve our OOM issue.
 
 **Questions**
 
@@ -85,9 +99,38 @@ Our current solution works well but there are escape hatches which require us to
 
 **Proposal**
 
-so the ingest flow essentially goes -> get a segment -> look up replay_id in KV store -> if replay_id exists, then collate the new data with the data in the KV -> flip the sign then write it to clickhouse
+The current aggregation query is not the appropriate way to model the data. Aggregating in Clickhouse has proven to be too expensive to be scalable. Instead of aggregating in ClickHouse we should maintain a stateful representation of the Replay in an alternative service (such as a key, value store). Additionally, we will migrate to the "VersionedCollapsingMergeTree" table engine and write our progress incrementally.
+
+The versioned engine works as follows:
+
+- A sign is used to determine whether the row is a state row or cancel row.
+- A row can be canceled by re-writing the row with a negative sign.
+- New state rows can be written by incrementing the version and assigning a positive sign.
+- The version and row state must be stored or otherwise fetched from ClickHouse before each write.
+
+The ingestion process can be described as follows:
+
+- A replay-segment is received.
+- The replay-id is used to look up previously aggregated data in the KV store.
+  - If data was returned collate it with the new data and store.
+  - If data was not returned store the new data.
+- The new row is written to ClickHouse with the version column incremented by 1.
+- The old row is re-written to ClickHouse with the sign value set to -1.
 
 **Drawbacks**
+
+- The aggregation process is not expected to be atomic and we will encounter race-conditions where two segments with the same replay-id attempt to mutate the same key at the same time.
+  - To solve this we will need to partition our Kafka messages by replay-id and process sequentially.
+  - This has scalability limitations but those limitations are likely to be less than existing limitations.
+  - Aggregation states can be updated atomicly with some databases. See "Use Alternative Databases" proposal.
+  - Alternatively we can tolerate losing aggregation states and continue using parallel consumers.
+- Kafka will sometimes produce duplicate messages. We will need a de-duplication step. If we assume order we can set a requirement on segment_id > previous_segment_id.
+  - Order can not be assumed. Valid aggregation states could be lost.
+  - A delay in scheduling in Relay could cause segment_id 1 to be processed prior to segment_id 0.
+  - This is expected to be uncommon but not impossible.
+  - Alternatively, we could tolerate duplicates and accept that segment_count and other values have some margin of error.
+- To eliminate the need for grouping queries would need to supply the `FINAL` keyword.
+- Our column types are not ideal for this use case.
 
 **Questions**
 
@@ -107,11 +150,21 @@ so the ingest flow essentially goes -> get a segment -> look up replay_id in KV 
 
 **Questions**
 
-### Investigate Alternative Databases
+### Use Alternative Databases
 
 **Proposal**
 
+OLAP Databases such as Apache Pinot support upserts. An aggregation state schema can be defined for merging columns. https://docs.pinot.apache.org/basics/data-import/upsert
+
 **Drawbacks**
+
+- Changes to the data model would be necessary. We will not be able to aggregate array columns.
+- Pinot has ordering constraints.
+  - If segments arrive after their successor has already been ingested the aggregated state will not contain those rows.
+- No existing Pinot installations within the Sentry org.
+- The Replays team is not large enough or experienced enough to manage a Pinot installation.
+  - This would require another team assuming the burden for us.
+  - Otherwise, additional budget would need to be allocated to the Replays team to hire outside experts.
 
 **Questions**
 
