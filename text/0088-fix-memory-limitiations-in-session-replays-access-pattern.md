@@ -218,14 +218,33 @@ OLTP databases such as PostgreSQL and AlloyDB support updates which appear to be
 
 **Proposal**
 
-Use a cron job, which runs at some interval (e.g. 1 hour), that would select the finished replays from the last hour, aggregate them, and write them to a materialized view or some destination table. We then alter the index page to reflect two different dataset. The "live" dataset and the "video-on-demand" dataset. A "live" page would fetch replays from the last hour. A "video-on-demand" dataset would function similarly to the current replays index page however it would only contain data that has been aggregated by the cron job.
+Use a cron job, which runs at some `interval` (e.g. 1 hour), that would select the finished replays from the last `interval`, aggregate them, and write them to a materialized view or some destination table. We then alter the index page to reflect two different dataset. The "live" dataset and the "video-on-demand" dataset. A "live" page would fetch replays from the last `interval`. A "video-on-demand" dataset would function similarly to the current replays index page however it would only contain data that has been aggregated by the cron job.
 
 **Drawbacks**
 
-- The cron job is another process which can fail. This would not lead to data loss per say but depending on the implementation of the query we may skip rows when recovering from an outage.
-  - A record could be kept of the time-windows the cron job has processed. This record could exist in ClickHouse or another datastore. By using this dataset the cron job could recover from an outage without skipping rows.
+- Requires product changes.
+- Requires manual management of a secondary dataset.
+- Introduces fragility with a secondary post-processing step.
 
 **Questions**
+
+- Colton Allen asks: What happens if the cron job runs once, a replay is aggregated and stored, the cron runs a second time after its interval but finds new rows for the previously aggregated replay?
+  - Insert a new aggregation row. Do not group by or merge. On the read side we still WHERE query but accept that some replays that _should_ match a given condition are not returned.
+  - We will need to validate our success rate to make sure we're writing as close to one row per replay-id as possible.
+- Colton Allen asks: What happens if a new row is written to the table with an old timestamp? The aggregation process could have already run for that timestamp range.
+  - An old timestamp does not necessarily indicate an old replay. The client clock could be incorrect.
+    - Implementing a server-generated timestamp column could help with this.
+  - An old timestamp does not necessarily indicate an incorrect clock. The message could have been backlogged on a consumer.
+    - Write a new aggregation state row. We should tolerate multiple aggregation states for a replay.
+- Colton Allen asks: What happens if the cron job is down for an extended period of time?
+  - We will need to write a log of each successful run.
+    - PostgreSQL could store run_id, from_ts, to_ts columns.
+    - We query PostgreSQL for the max(to_ts) value and then bootstrap our process from there.
+  - If a cron fails mid-run then no log is written.
+    - Duplicate aggregations are possible and should be tolerated.
+    - Duplicate aggregations can be merged asynchronously and should not impact the user-experience.
+  - The cron should attempt to catch up sequentially. If the cron was down for `m` \* `n` hours and the interval is `n` hours then we will need to call the aggregation function `m` times.
+    - If the process fails then it will restart from the previously stored max(to_ts).
 
 # Selected Outcome
 
