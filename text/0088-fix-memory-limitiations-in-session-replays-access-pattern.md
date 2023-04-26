@@ -199,11 +199,11 @@ OLAP Databases such as Apache Pinot support upserts which appear to be a key req
 
 **Proposal**
 
-OLTP databases such as PostgreSQL and AlloyDB support updates which appear to be a key requirement for the Replays product. Our scale is small enough that a shared PostgreSQL database could handle it. Read volume is low relative to write volume. We could optimize our database for this use case.
+OLTP databases such as PostgreSQL and AlloyDB support updates which appear to be a key requirement for the Replays product. Our scale is small enough that a sharded PostgreSQL database could handle it. Read volume is low relative to write volume. We could optimize our database for this use case.
 
 **Drawbacks**
 
-- Race conditions will require single-threaded processing of replay events.
+- Race conditions will require single-threaded processing of like replay-id events.
 - Duplicate messages will necessitate ordering requirements.
 - Always a possibility for dropped and duplicated data regardless of safe guards.
 - AlloyDB is still in developer preview on Google Cloud.
