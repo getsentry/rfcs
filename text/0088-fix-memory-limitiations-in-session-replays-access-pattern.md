@@ -245,19 +245,26 @@ Use a cron job, which runs at some `interval` (e.g. 1 hour), that would select t
     - Duplicate aggregations can be merged asynchronously and should not impact the user-experience.
   - The cron should attempt to catch up sequentially. If the cron was down for `m` \* `n` hours and the interval is `n` hours then we will need to call the aggregation function `m` times.
     - If the process fails then it will restart from the previously stored max(to_ts).
-- Ryan Albrect asks: Can we extract the segment-0 replay_id, push it to a Kafka queue with a processing delay of 1 hour (the maximum length of a replay), and then aggregate the replay_id (after the delay) publishing it to our target table?
+- Ryan Albrecht asks: Can we extract the segment-0 replay_id, push it to a Kafka queue with a processing delay of 1 hour (the maximum length of a replay), and then aggregate the replay_id (after the delay) publishing it to our target table?
   - This has the benefit of not needing a cron job to aggregate windows of time.
     - We would be using point queries to pluck out the replays that need to be finalized.
     - Additional metadata like project_id, timestamp could be passed to reduce the impact of the replay_id lookups.
+      - Timestamps could be min, maxed to perform range scans over the key
+      - Project ID could use the IN operator.
   - As far as I'm aware Kafka does not have a concept of delayed processing. It processes each message it receives in order as quicky as it is able.
   - However, other technologies do have this concept. We could tell another process to schedule a message to the Kafka topic after `n` internal.
+    - RabbitMQ has this behavior.
     - We can use Celery to schedule a task with an ETA of 1 hour.
-  - The consumer receiving these messages would aggregate and then bulk-insert the replays.
+  - The Kafka consumer receiving these messages would aggregate and then bulk-insert the replays.
+    - A single aggregated read query is issued to retrieve the set of replays.
+    - A single bulk insert is issued to set the replays in the aggregated table.
+  - Potential load on the system is segments per second divided by 10 (average number of segments per replay). Currently this evaluates to 20 replays/second.
   - Possible problems:
     - Because consumers can backlog we want to make sure all of our messages are published to the same topic. That way a long backlog on consumer `A` will not impact the ability of message `B` to aggregate the final replay object.
     - This adds complexity to the consumer but not an unmanageable amount.
     - The replay-events consumer is a Snuba consumer so we may encounter some minor procedural challenges that a consumer wholly owned by the replays team would not.
     - Because our replay-events consumer is speedy enough I don't anticipate our "aggregation" messages to be significantly bottle-necked by our existing consumer code.
+    - Replays are always "live" for one hour. They are not eagerly closed.
 
 # Selected Outcome
 
