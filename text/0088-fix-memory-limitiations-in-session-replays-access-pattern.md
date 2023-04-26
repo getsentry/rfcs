@@ -263,8 +263,8 @@ Use a cron job, which runs at some `interval` (e.g. 1 hour), that would select t
     - Because consumers can backlog we want to make sure all of our messages are published to the same topic. That way a long backlog on consumer `A` will not impact the ability of message `B` to aggregate the final replay object.
     - This adds complexity to the consumer but not an unmanageable amount.
     - The replay-events consumer is a Snuba consumer so we may encounter some minor procedural challenges that a consumer wholly owned by the replays team would not.
-    - Because our replay-events consumer is speedy enough I don't anticipate our "aggregation" messages to be significantly bottle-necked by our existing consumer code.
     - Replays are always "live" for one hour. They are not eagerly closed.
+    - Because this uses I/O it will block our snuba consumer from running at peak efficiency. Should the message be forwarded to another topic after order has been guaranteed?
 
 # Selected Outcome
 
