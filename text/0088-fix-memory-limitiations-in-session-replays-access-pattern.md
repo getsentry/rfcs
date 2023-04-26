@@ -143,7 +143,7 @@ The ingestion process can be described as follows:
 **Questions**
 
 - Bruno Garcia asked: How does the sequential message processing requirement impact scale?
-  - The performance of a single consumer will be dominated by the performance of our Key, Value store. If we assume 10ms to process each message then we will process 100 messages per second per consumer. Because we can partition our consumers on replay_id we can achieve some multiple of that throughput through partitioning.
+  - The performance of a single consumer will be dominated by the performance of our Key, Value store. If we assume 10ms to process each message then we will process 100 messages per second per consumer. We can achieve some multiple of that throughput by partitioning on messages on replay_id.
 
 ### 6. Stateful Streaming using Apache Spark or Similar Service
 
