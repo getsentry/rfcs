@@ -65,7 +65,7 @@ Our current subquery solution works very well. However, there are escape hatches
 
 **Proposal**
 
-The number of rows aggregated can be reduced by restricting the maximum time range we query over. We should validate the timestamp range such that it does not exceed a 24-hour period. This would satify every organization which ingests fewer than 1 billion replay-segments every 90 days.
+The number of rows aggregated can be reduced by restricting the maximum time range we query over. We should validate the timestamp range such that it does not exceed a 24-hour period. This would satisfy every organization which ingests fewer than 1 billion replay-segments every 90 days.
 
 **Drawbacks**
 
