@@ -36,7 +36,7 @@ The non-aggregated query does not allow multiple, **inclusive** filter condition
 
 # Options Considered
 
-Any option may be accepted in whole or in part. Multiple options can be accepted to achieve the desired outcome. The options are ordered from perceived ease to perceived difficulty.
+Any option may be accepted in whole or in part. Multiple options can be accepted to achieve the desired outcome.
 
 ### 1. Change the Product's Query Access Pattern
 
@@ -265,6 +265,18 @@ Use a cron job, which runs at some `interval` (e.g. 1 hour), that would select t
     - The replay-events consumer is a Snuba consumer so we may encounter some minor procedural challenges that a consumer wholly owned by the replays team would not.
     - Replays are always "live" for one hour. They are not eagerly closed.
     - Because this uses I/O it will block our snuba consumer from running at peak efficiency. Should the message be forwarded to another topic after order has been guaranteed?
+
+### 11. Configure ClickHouse to Swap to Disk During Large Aggregation Queries
+
+**Proposal**
+
+`max_bytes_before_external_group_by` can be used to swap in-memory aggregations to disk.
+
+**Drawbacks**
+
+- Timeout becomes an issue.
+
+**Questions**
 
 # Selected Outcome
 
