@@ -220,6 +220,8 @@ OLTP databases such as PostgreSQL and AlloyDB support updates which appear to be
 
 Use a cron job, which runs at some `interval` (e.g. 1 hour), that would select the finished replays from the last `interval`, aggregate them, and write them to a materialized view or some destination table. We then alter the index page to reflect two different dataset. The "live" dataset and the "video-on-demand" dataset. A "live" page would fetch replays from the last `interval`. A "video-on-demand" dataset would function similarly to the current replays index page however it would only contain data that has been aggregated by the cron job.
 
+The minimum time to backfill the entire dataset will be 15 minutes per billion rows (one insert per second at 10 segments per replay at 100k replays per batch) assuming single-threaded writes. Fan out reduces this problem but requires the use of asynchronous inserts. Querying 100k aggregated replays (1 million rows) is assumed to be a major source of delay in a single-threaded ingest environment.
+
 **Drawbacks**
 
 - Requires product changes.
@@ -265,6 +267,11 @@ Use a cron job, which runs at some `interval` (e.g. 1 hour), that would select t
     - The replay-events consumer is a Snuba consumer so we may encounter some minor procedural challenges that a consumer wholly owned by the replays team would not.
     - Replays are always "live" for one hour. They are not eagerly closed.
     - Because this uses I/O it will block our snuba consumer from running at peak efficiency. Should the message be forwarded to another topic after order has been guaranteed?
+- Bruno Garcia asks: The complexity of integrating a new message queue (RabbitMQ in the above answer) into our ingest pipeline seems high. What sort of scaling issues arise, how do we handle outages of each service component, can a cron job (using a sliding window query) simplify?
+  - Scale: The message throughput for RabbitMQ will be roughly 1/10th of what we process on our Kafka consumer (we only process one message per replay_id). The messages will be small and the Celery task's only function will be to forward the message back to the Kafka consumer. The load recieved by RabbitMQ and the task process should be very managable. Additionally, there are other bottlenecks in the system which will take precedence.
+  - Outages: If Relay is down new messages are rejected and the queues are drained. If the Kafka consumer is down then the messages backlog until the consumer resumes processing. If RabbitMQ is down the Kafka consumer must pause.
+  - Simplify with cron job: If the cron job has an outage it can be resumed from a save point. However, if the Kafka consumer is down then we need to pause the cron so that it does not write incomplete aggregation rows. Both use cases require a piece of infrastructure to be paused in the event of an outage.
+    - If our Kafka consumer encounters a RabbitMQ failure it can pause processing, publish the message to a DLQ, or publish the message back to itself to retry automatically at a later time.
 
 ### 11. Configure ClickHouse to Optimize Aggregations
 
