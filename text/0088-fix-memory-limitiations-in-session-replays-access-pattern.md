@@ -266,15 +266,13 @@ Use a cron job, which runs at some `interval` (e.g. 1 hour), that would select t
     - Replays are always "live" for one hour. They are not eagerly closed.
     - Because this uses I/O it will block our snuba consumer from running at peak efficiency. Should the message be forwarded to another topic after order has been guaranteed?
 
-### 11. Configure ClickHouse to Swap to Disk During Large Aggregation Queries
+### 11. Configure ClickHouse to Optimize Aggregations
 
 **Proposal**
 
-`max_bytes_before_external_group_by` can be used to swap in-memory aggregations to disk.
+Use `optimize_aggregation_in_order` to limit the number of rows we need to aggregate. In testing this eliminates OOM errors. Queries complete somewhat speedily.
 
 **Drawbacks**
-
-- Timeout becomes an issue.
 
 **Questions**
 
