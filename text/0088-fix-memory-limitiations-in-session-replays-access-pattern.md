@@ -283,6 +283,42 @@ Use `optimize_aggregation_in_order` to limit the number of rows we need to aggre
 
 **Questions**
 
+### 12. Aggregate Replay Event Metadata in the SDK and Set Final Flag
+
+**Proposal**
+
+The SDK can maintain a buffer of the replay metadata. Once the replay has finished the SDK will flush that buffered data on the final segment. The segment marked as "final" can then be fetched without aggregation.
+
+**Drawbacks**
+
+- Requies SDK upgrade.
+- API will need to fallback to aggregating behavior if no final segments can be found (or otherwise detect old SDK usage prior to querying).
+
+**Questions**
+
+- Is it possible for the SDK to know when its done and mark the request object with a final attribute?
+- Click tracking is ingested into the same table as replay events but it is not sourced from the same location. How do we handle click tracking?
+  - The SDK could buffer this data as well and send it on the final segment.
+
+### 13. Aggregate Replay Event Metadata in the SDK and Store in Replacing Merge Tree Table
+
+**Proposal**
+
+We can leverage the SDK to buffer replay metadata. Buffered metadata is continuously aggregated and sent redundantly to the server. Old replay rows are replaced by new replay rows. Replacement is determined by the event with the most segments. The row with the most segments contains all of the information contained within the previous segments plus whatever metadata was aggregated in its time slice.
+
+**Drawbacks**
+
+- Likely requires the use of `FINAL` to fetch the most recent row.
+- Not backwards compatible. Requires SDK upgrade.
+- Requires table migration.
+  - Either double writer or materialized view.
+
+**Questions**
+
+- Will using `FINAL` be a problem? Is it a big deal relative to the problems we're experiencing currently?
+- How do we handle click tracking?
+  - The SDK could buffer this data as well and send it on the final segment.
+
 # Selected Outcome
 
 No outcome has been decided.
