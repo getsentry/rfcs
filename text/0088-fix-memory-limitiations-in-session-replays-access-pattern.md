@@ -273,13 +273,15 @@ The minimum time to backfill the entire dataset will be 15 minutes per billion r
   - Simplify with cron job: If the cron job has an outage it can be resumed from a save point. However, if the Kafka consumer is down then we need to pause the cron so that it does not write incomplete aggregation rows. Both use cases require a piece of infrastructure to be paused in the event of an outage.
     - If our Kafka consumer encounters a RabbitMQ failure it can pause processing, publish the message to a DLQ, or publish the message back to itself to retry automatically at a later time.
 
-### 11. Configure ClickHouse to Optimize Aggregations
+### 11. Configure ClickHouse to Optimize Aggregations [NOT VIABLE]
 
 **Proposal**
 
 Use `optimize_aggregation_in_order` to limit the number of rows we need to aggregate. In testing this eliminates OOM errors. Queries complete somewhat speedily.
 
 **Drawbacks**
+
+- Can not use user defined ordering.
 
 **Questions**
 
