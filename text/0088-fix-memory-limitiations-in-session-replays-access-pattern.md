@@ -34,6 +34,94 @@ The non-aggregated query does not allow **exclusive** filter conditions against 
 
 The non-aggregated query does not allow multiple, **inclusive** filter conditions against **non-static** columns. For example, we can not say "find a replay where this url exists and this other url exists". It will find **ROWS** which have both urls but not **REPLAYS** which have both urls. Transforming the `AND` operator to an `OR` operator does not satisfy the condition because it will match replays which contain one of the urls - not both.
 
+# Example Queries
+
+Current main aggregation query:
+
+```sql
+SELECT (
+    replay_id,
+    project_id,
+    arrayMap((`trace_id`) -> replaceAll(toString(`trace_id`), '-', '') AS `trace_id`, groupUniqArrayArray(trace_ids)) AS `traceIds`,
+    arrayMap((`error_id`) -> replaceAll(toString(`error_id`), '-', '') AS `error_id`, groupUniqArrayArray(error_ids)) AS `errorIds`,
+    min(replay_start_timestamp) AS `started_at`,
+    max(timestamp) AS `finished_at`,
+    dateDiff('second', started_at, finished_at) AS `duration`,
+    arrayFlatten(arraySort((`urls`, `sequence_id`) -> identity(`sequence_id`), arrayMap((`url_tuple`) -> tupleElement(`url_tuple`, 2), agg_urls), arrayMap((`url_tuple`) -> tupleElement(`url_tuple`, 1), agg_urls))) AS `urls_sorted`, groupArray(tuple(segment_id, urls)) AS `agg_urls`,
+    count(segment_id) AS `count_segments`,
+    sum(length(error_ids)) AS `count_errors`,
+    sum(length(urls)) AS `count_urls`,
+    ifNull(max(is_archived), 0) AS `isArchived`,
+    floor(greatest(1, least(10, intDivOrZero(plus(multiply(count_errors, 25), multiply(count_urls, 5)), 10)))) AS `activity`,
+    groupUniqArray(release) AS `releases`,
+    any(replay_type) AS `replay_type`,
+    any(platform) AS `platform`,
+    any(environment) AS `agg_environment`,
+    any(dist) AS `dist`,
+    any(user_id) AS `user_id`,
+    any(user_email) AS `user_email`,
+    any(user_name) AS `user_username`, IPv4NumToString(any(ip_address_v4)) AS `user_ip`,
+    any(os_name) AS `os_name`,
+    any(os_version) AS `os_version`,
+    any(browser_name) AS `browser_name`,
+    any(browser_version) AS `browser_version`,
+    any(device_name) AS `device_name`,
+    any(device_brand) AS `device_brand`,
+    any(device_family) AS `device_family`,
+    any(device_model) AS `device_model`,
+    any(sdk_name) AS `sdk_name`,
+    any(sdk_version) AS `sdk_version`,
+    groupArrayArray(tags.key) AS `tk`,
+    groupArrayArray(tags.value) AS `tv`,
+    groupArray(click_alt) AS `click_alt`,
+    groupArray(click_aria_label) AS `click_aria_label`,
+    groupArrayArray(click_class) AS `clickClass`,
+    groupArray(click_class) AS `click_classes`,
+    groupArray(click_id) AS `click_id`,
+    groupArray(click_role) AS `click_role`,
+    groupArray(click_tag) AS `click_tag`,
+    groupArray(click_testid) AS `click_testid`,
+    groupArray(click_text) AS `click_text`,
+    groupArray(click_title) AS `click_title`
+)
+FROM replays_dist
+WHERE (
+    project_id IN array(4551897674350594) AND
+    timestamp < '2023-05-08T17:48:31' AND
+    timestamp >= '2023-02-07T17:48:31'
+)
+GROUP BY project_id, replay_id
+HAVING (
+    min(segment_id) = 0 AND
+    finished_at < '2023-05-08T17:48:31'
+)
+ORDER BY started_at DESC
+LIMIT 10
+OFFSET 0
+GRANULARITY 3600
+```
+
+Current subquery optimization. The subquery collects IDs which it feeds into the main aggregation query. This is only used in a limited number of circumstances. See "Existing Solution" section.
+
+```sql
+SELECT (
+    replay_id,
+    timestamp,
+    replay_start_timestamp AS `started_at`
+)
+FROM replays_dist
+WHERE (
+    project_id IN array(4551897700564994) AND
+    timestamp < toDateTime('2023-05-08T17:55:11.850729') AND
+    timestamp >= toDateTime('2023-02-07T17:55:11.850729') AND
+    segment_id = 0
+)
+ORDER BY started_at DESC
+LIMIT 10
+OFFSET 0
+GRANULARITY 3600
+```
+
 # Options Considered
 
 Any option may be accepted in whole or in part. Multiple options can be accepted to achieve the desired outcome.
