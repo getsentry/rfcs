@@ -13,7 +13,9 @@ Our goal is to make the Session Replay product highly scalable. We expect change
 
 # Background
 
-The Session Replay data model is different from most at Sentry. Replays are received in parts referred to as "segments". One row does not represent one replay. Instead many rows are aggregated together to represent a single replay. When we ask a question such as "which replays did not visit this url?", we have to aggregate every row in the database (minus whatever rows were reduced by conditions in the WHERE clause). As it turns out the number of rows is very large and the amount of data is significant enough that we run out of memory on large customers.
+The Session Replay data model is different from most at Sentry. Replays are received in parts referred to as "segments". One row does not represent one replay. Instead many rows are aggregated together to represent a single replay. This problem is distinct from normal `GROUP BY` operations because of the high cardinality of our grouping key.
+
+When we ask a question such as "which replays did not visit this url?", we have to aggregate every row in the database (minus whatever rows were reduced by conditions in the WHERE clause). As it turns out the number of rows is very large and the amount of data is significant enough that we run out of memory on large customers.
 
 **Key Ingest Considerations**
 
@@ -411,4 +413,62 @@ We can leverage the SDK to buffer replay metadata. Buffered metadata is continuo
 
 # Selected Outcome
 
-No outcome has been decided.
+Accepted Proposal 11 "Manually Manage An Aggregated Materialized View".
+
+**Summary**
+
+We will rely on Kafka's ordering guarantees and RabbitMQ's delayed message processing semantics to create a static record of all of the aggregation states.
+
+**Key Qualifications for Acceptance**
+
+1. Backwards compatible with the possibility of a back-filling data migration.
+2. Risk of data-loss is minimized by keeping an uncompressed record of the data in the database.
+   - Row compression can be attempted as many times as necessary.
+3. All filters and sorts can be applied to non-aggregated columns.
+   - I.e. filtering in the `WHERE` clause and ordering against column literals in the `ORDER BY` clause.
+4. Duplicates can be tolerated and pruned asynchronously.
+   - Using `GROUP BY` and the `any` function you can select a scalar value from the first value you encounter.
+   - This does not use extra memory so long as we don't filter in the HAVING clause or sort by an aggregated value. Both of these conditions are unnecessary.
+5. No new services or ops resources are required.
+   - We can re-use our already provisioned RabbitMQ resources.
+
+# Rejected Proposals
+
+**Proposals 1 and 2**
+
+Worse product experience. Rejected without much consideration.
+
+**Proposal 3 and 4**
+
+Non-viable.
+
+**Proposal 5, 12, and 13**
+
+Does not fully solve the problem. All of these proposals rely on some process external to the database buffering replay event metadata. While this is a tempting solution to the problem because none of these processes can determine _when_ a replay has completed we are forced to de-duplicate in the database layer. This de-duplicatation step would have required the use of a `ReplacingMergeTree` (not `CollapsingMergeTree` as was stated for proposal 5). The query pattern would have required use of the `FINAL` keyword argument.
+
+`FINAL` has different output but functions similarly to `GROUP BY`. We build a hashmap of replay_ids, that hashmap gets too big, and the process runs out of memory. For this reason buffering within the database was considered non-viable.
+
+Adopting Redis as the buffering mechanism incurred the risk of data-loss and a more complex pipeline. It was rejected because a better alternative (our primary datastore) was found.
+
+Adopting buffering on the SDK had several challenges:
+
+- It was not backwards compatible.
+- Safe storage of the buffered events would require writing duplicates to the database which in turn requires `FINAL`.
+
+**Proposal 6 and 8**
+
+Not enough organizational resources to support the Replays team.
+
+**Proposal 7**
+
+1. Unlikely to solve the problem.
+2. Unable to access newer versions and still be in compliance with organization policies.
+3. Stability concerns.
+
+**Proposal 9**
+
+Not heavily explored but likely performance bottlenecks in this solution.
+
+**Proposal 11**
+
+Non-viable. `optimize_aggregation_in_order` requires the sort order to match the layout on disk. Adopting this feature would require removing custom sorts.
