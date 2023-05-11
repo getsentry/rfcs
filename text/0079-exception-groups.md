@@ -570,9 +570,9 @@ Pros:
 
 Cons:
 
-- Potential to loose a lot of useful data.
+- Potential to lose a lot of useful data.
 - Misrepresents the exception that was actually raised.
-- Looses track of the actual location in source code where the exception group was raised.
+- Loses track of the actual location in source code where the exception group was raised.
 
 ## Splitting Events in the SDK
 
