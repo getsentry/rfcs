@@ -413,7 +413,14 @@ We can leverage the SDK to buffer replay metadata. Buffered metadata is continuo
 
 # Selected Outcome
 
-Accepted Proposal 11 "Manually Manage An Aggregated Materialized View".
+The Snuba service will accept the `SETTINGS` query clause and the Replays query will be updated to limit the total number of unique values aggregated.  The following settings will applied to each query:
+
+1. Set max_rows_to_group_by to 1,000,000.
+2. Set group_by_overflow_mode to any.
+
+1 million was chosen as the maximum size of a representative sample of the dataset.  `SAMPLE` is not considered because we need replays to be whole.  Missing segments (that were removed by sampling) can have deep implications to the product.
+
+Should the above solution not solve the problem Proposal 11 "Manually Manage An Aggregated Materialized View" will be used as a fallback.
 
 **Summary**
 
