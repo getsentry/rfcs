@@ -61,22 +61,34 @@ _policies_.
 One of the benefits of having the tokens carry this data is that the token alone has enough
 information available to route to a Sentry installation.  This means that `sentry-cli` or
 any other tool _just_ needs the token to even determine the host that the token should be
-sent against.
+sent against.  This benefit also applies to JWT or PASETO tokens which can be considered
+for this as well.  The RFC here thus proposes two potential options: A **Biscuit** token
+format and a **JWT** token format.
 
-The token then gets a prefix `sntrys_` (sentry structure) to make it possible to
-detect it by security scrapers.  Anyone handling such a token is required to check
-for the `sntrys_` prefix and disregard it before parsing it.
-
-It's unclear at the moment if Biscuit is a good choice.  There is an alternative where
-instead of expressing everything in Biscuit tokens, the token gains a base64 encoded
-JSON payload that the client can parse containing just the facts.
+A serialized token is added a custom prefix `sntrys_` (sentry structure) to make
+it possible to detect it by security scrapers.  Anyone handling such a token is
+required to check for the `sntrys_` prefix and disregard it before parsing it.  This
+can also be used by the client side to detect a structural token if the client is
+interested in extracting data from the token.
 
 ## Token Facts
 
-Tokens in Biscuit contain facts.  Each fact can later be referenced by the policy and
-further restrictions can be placed on the token.  For instance this is a basic set of
-token facts for a token generated in the UI that has permissions to releases and
-org read.
+We want to encode certain information into the tokens.  In Biscuit terms these are called
+_facts_.  The following facts exist:
+
+* `site`: references the target API URL that should be used.  A token will always have a
+  site in it and clients are not supposed to provide a fallback.  For instance this
+  would be `https://myorg.sentry.io/`.
+* `org`: a token is uniquely bound to an org, so the slug of that org is also always
+  contained.  Note that the slug is used rather than an org ID as the clients typically
+  need these slugs to create API requests.
+* `projects`: a token can be valid for more than one project.  For operations such as
+  source map uploads it's benefitial to issue tokens bound to a single project in which
+  case the upload experience does not require providing the project slugs.
+
+### Biscuit Token Encoding
+
+For biscuit tokens the following format could be used:
 
 ```javascript
 site("https://myorg.sentry.io");
@@ -86,25 +98,29 @@ scope("project:releases");
 scope("org:read");
 ```
 
-Alternatively we we decide not to consider Biscuit the facts can be encoded into
-a JSON structure.  Note that in this case we would not transmit the scopes.
+Signed and encoded a biscuit token looks like `sntrys_{encoded_biscuit}`.
+
+### JWT Token Encoding
+
+For JWT the facts could be encoded as custom claims:
 
 ```json
 {
-    "site": "https://myorg.sentry.io",
-    "org": "myorg",
-    "projects": ["myproject"]
+    "iss": "sentry.io",
+    "iat": 1684154626,
+    "sentry_site": "https://myorg.sentry.io/",
+    "sentry_org": "myorg",
+    "sentry_projects": ["myproject"]
 }
 ```
 
-Encoded the token would either be `sntrys_{encoded_bisquit}` or
-`sntrys_{secret_key}.{base64_encoded_facts}` depending on the format chosen.  Alternatively
-that JSON stucture could be encoded into a JWT token with sufficient restrictions.
+Encoded the token would either be `sntrys_{encoded_jwt}`.
 
 ## Transmitting Tokens
 
 Tokens are sent to the target sentry as `Bearer` token like normal.  The server uses the
-`sntrys_` prefix to automatically detect a structural token.
+`sntrys_` prefix to automatically detect a structural token.  For existing tools that are
+unaware of the structure behind structural tokens nothing changes.
 
 ## Parsing Tokens
 
@@ -131,9 +147,14 @@ The proposed initial step is to only permit token issuance to support uploads an
 all users in the org to issue such tokens.  The tokens can be shown in the org's
 "Developer Settings" page under a new tab called "Tokens".
 
-Such simple token issuance can then also take place in wizards and documentation pages
+Such simple token issuance can then also take place in wizards and documentation pages.
+
+# How To Teach
+
+Structural tokens change what needs to be communicated to users quite a bit.  In particular
+less information is necessary for tools that are compatible with structural tokens.
 This for instance would change this complex webpack config from the docs which requires
-matching `org`, `project` and manually creating a sentry token:
+matching `org`, `project` and manually creating a sentry token today:
 
 ```javascript
 const SentryWebpackPlugin = require("@sentry/webpack-plugin");
@@ -153,7 +174,8 @@ module.exports = {
 };
 ```
 
-To a much more simplified version:
+With structural tokens this can be changed to a much more simplified version which also
+correctly handles Single Tenant:
 
 ```javascript
 const SentryWebpackPlugin = require("@sentry/webpack-plugin");
@@ -168,6 +190,46 @@ module.exports = {
   ],
 };
 ```
+
+There are however some cases where manual configuration would still be necessary:
+
+* **Multi project tokens:** if a token contains more than one project, it's unclear if
+  tools can handle this transparently.  In that case sentry-cli in particular is encouraged
+  to fail with an error and ask the user to explicitly configure the slug of the project
+  to use.
+* **Legacy tools:** for tools not using sentry-cli but using the API directly, there might
+  be a transitionary phase until the tool supports structural tokens.  In that case the
+  documentation would need to point out the correct way to configure this.  The same applies
+  to old installations of sentry-cli.
+
+# Order of Execution
+
+1. The most important piece is the new token.  As it behaves like any other token there is no
+   immediate necessity for a tool to add support for structural tokens.
+2. Add a user interface to issue these new tokens on an org level.
+3. Add a user interface to issue these new tokens right from the documentation.
+4. Add support for structural tokens to sentry-cli to allow `org` and `project` to be made optional.
+5. Change documentation to no longer show `org` and `project` for tool config.
+
+# Why not DSNs?
+
+Originally the idea came up to directly use DSNs for uploads.  With debug IDs there is some
+potential to enable this as most of the system is write once and most indexing is now based on
+globally unique IDs.  However this today does not work for a handful of reasons:
+
+1. Overwrites: DSNs are public and so someone who wants to disrupt a customer would be able to
+   disrupt their processing by uploading invalid source maps or other broken files to a customer.
+2. DNSs do not have enough routing information: while a DSN encodes some information, it's only
+   possible to go from a DSN to the ingestion system but not the API layer.  A system could be
+   added to relay to resolve the slugs and API URLs underpinning a DSN, but would reveal
+   previously private information (the slugs) and requires a pre-flight to relay before making
+   a request.
+3. DSN auth would really only work for source map uploads and debug file uploads, it could not be
+   extended to other CI actions such as codecov report uploads or release creation due to the
+   abuse potential caused by public DSNs.
+4. DSNs are limited to a single project and in some cases that might not be ideal.  In particular
+   for frontend + backend deployment scenarios being able to use one token to manage releases
+   across projects might be desirable.
 
 # Unresolved questions
 
