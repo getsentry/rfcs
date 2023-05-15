@@ -137,6 +137,21 @@ are:
   source map uploads it's benefitial to issue tokens bound to a single project in which
   case the upload experience does not require providing the project slugs.
 
+An example of this with a JWT token:
+
+```
+>>> import jwt
+>>> tok = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzZW50cnkuaW8iLCJpYXQiOjE2ODQxNTQ2MjYsInNlbnRyeV9zaXRlIjoiaHR0cHM6Ly9teW9yZy5zZW50cnkuaW8vIiwic2VudHJ5X29yZyI6Im15b3JnIiwic2VudHJ5X3Byb2plY3RzIjpbIm15cHJvamVjdCJdfQ.ROnK3f72jGbH2CLkmswMIxXP1qZHDish9lN6kfCR0DU"
+>>> jwt.decode(tok, options={"verify_signature": False})
+{
+  'iss': 'sentry.io',
+  'iat': 1684154626,
+  'sentry_site': 'https://myorg.sentry.io/',
+  'sentry_org': 'myorg',
+  'sentry_projects': ['myproject']
+}
+```
+
 ## Token Issuance
 
 The purpose of this change is to allow any organization member to issue tokens with little
