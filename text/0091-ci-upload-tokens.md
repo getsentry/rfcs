@@ -211,7 +211,11 @@ There are however some cases where manual configuration would still be necessary
 4. Add support for structural tokens to sentry-cli to allow `org` and `project` to be made optional.
 5. Change documentation to no longer show `org` and `project` for tool config.
 
-# Why not DSNs?
+# Discussion
+
+Addressing some questions that came up:
+
+## Why not DSNs?
 
 Originally the idea came up to directly use DSNs for uploads.  With debug IDs there is some
 potential to enable this as most of the system is write once and most indexing is now based on
@@ -230,6 +234,20 @@ globally unique IDs.  However this today does not work for a handful of reasons:
 4. DSNs are limited to a single project and in some cases that might not be ideal.  In particular
    for frontend + backend deployment scenarios being able to use one token to manage releases
    across projects might be desirable.
+
+## Why not PASETO?
+
+PASETO as an alternative to JWT can be an option.  This should probably be decided based on what
+has most support.  This proposal really only uses JWT for serialization of meta information, the
+actual validation of the JWT tokens only ever happens on the server side in which case the system
+can fully fall back to validating them based on what's stored in the database.
+
+## Why Biscuit?
+
+It's unclear if Biscuit is a great solution.  There is a lot of complexity in it and tooling support
+is not great.  However Biscuit is a potentially quite exiting idea because it would permit tools
+like sentry-cli to work with temporarily restricted tokens which reduces the chance of token leakage.
+The complexity of Biscuit however might be so prohibitive that it's not an appealing choice.
 
 # Unresolved questions
 
