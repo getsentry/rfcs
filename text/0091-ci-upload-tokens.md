@@ -34,6 +34,11 @@ still too high for many customers to make the necessary investment into getting 
 uploaded.  From a documentation writing and onboarding experience, it's also not clear with
 the current system how the experience can be improved.
 
+Additionally both Hybrid Cloud and Single Tenant would greatly benefit from automatically
+routing to the right URLs.  Today the documentation is very quiet about how to get this
+system to work on a single tenant installation and customers are often required to work
+with CS to get source maps working.
+
 # Technical Implementation
 
 The motivation is to add a new kind of token to Sentry which are fundamentally per-organization
