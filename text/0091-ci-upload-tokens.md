@@ -16,7 +16,7 @@ Today there are two ways to get access tokens for use with sentry-cli:
 1. per user access tokens
 2. internal organization integrations
 
-Either one are not great.  The per user token is easy to get access to (which is why
+Both are not great.  The per user token is easy to get access to (which is why
 they are preferred in the docs still) but they run into the risk that a user departs
 an organization and an integration stops working.  The organization integration flow
 is complex and requires elevated privileges.  Either of those options have the additional
@@ -83,7 +83,7 @@ _facts_.  The following facts exist:
   contained.  Note that the slug is used rather than an org ID as the clients typically
   need these slugs to create API requests.
 * `projects`: a token can be valid for more than one project.  For operations such as
-  source map uploads it's benefitial to issue tokens bound to a single project in which
+  source map uploads it's beneficial to issue tokens bound to a single project in which
   case the upload experience does not require providing the project slugs.
 
 ### Biscuit Token Encoding
@@ -155,7 +155,7 @@ An example of this with a JWT token:
 ## Token Issuance
 
 The purpose of this change is to allow any organization member to issue tokens with little
-overhead. As users can already issue tokens which shocking levels of access to any of the
+overhead. As users can already issue tokens with shocking levels of access to any of the
 orgs they are a member of there is a lot of room for improvement.
 
 The proposed initial step is to only permit token issuance to support uploads and to permit
@@ -238,7 +238,7 @@ globally unique IDs.  However this today does not work for a handful of reasons:
 
 1. Overwrites: DSNs are public and so someone who wants to disrupt a customer would be able to
    disrupt their processing by uploading invalid source maps or other broken files to a customer.
-2. DNSs do not have enough routing information: while a DSN encodes some information, it's only
+2. DSNs do not have enough routing information: while a DSN encodes some information, it's only
    possible to go from a DSN to the ingestion system but not the API layer.  A system could be
    added to relay to resolve the slugs and API URLs underpinning a DSN, but would reveal
    previously private information (the slugs) and requires a pre-flight to relay before making
