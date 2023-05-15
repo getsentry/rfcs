@@ -139,7 +139,7 @@ are:
 
 An example of this with a JWT token:
 
-```
+```python
 >>> import jwt
 >>> tok = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzZW50cnkuaW8iLCJpYXQiOjE2ODQxNTQ2MjYsInNlbnRyeV9zaXRlIjoiaHR0cHM6Ly9teW9yZy5zZW50cnkuaW8vIiwic2VudHJ5X29yZyI6Im15b3JnIiwic2VudHJ5X3Byb2plY3RzIjpbIm15cHJvamVjdCJdfQ.ROnK3f72jGbH2CLkmswMIxXP1qZHDish9lN6kfCR0DU"
 >>> jwt.decode(tok, options={"verify_signature": False})
