@@ -5,7 +5,9 @@
 
 # Summary
 
-We want to detect certain categories of issues only available through the Session Replay product. The first of these issues is the "Slow Click" detection issue.
+We want to detect certain categories of issues only available through the Session Replay product. These issues can only be detected on the SDK. The Replay back-end will never have enough data to find these issues. For that reason this is primarily an SDK driven workload with the Replay back-end acting as a middleman between the SDK and the Issues platform.
+
+Should the Replay SDK use the Replay back-end to generate new issues or should the SDK generate those issues through a generic, non-replay-specific interface?
 
 # Motivation
 
