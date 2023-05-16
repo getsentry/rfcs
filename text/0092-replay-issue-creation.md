@@ -17,7 +17,7 @@ We want to detect certain categories of issues only available through the Sessio
 
 ### Option 1: SDK
 
-We create a set of detectors on the SDK. When a detector is activated we submit a new issue event. The issue creation process would be generic and would not involve any Replay-specific services to process.
+When the SDK encounters a "replay issue" it will make an HTTP request to a generic interface which will handle the issue creation process.
 
 **Pros:**
 
@@ -26,16 +26,13 @@ We create a set of detectors on the SDK. When a detector is activated we submit 
 **Cons:**
 
 1. Uses quota.
-2. There's overhead associated with submitting a new issue through an HTTP request.
-3. Unable to use dynamic thresholds.
+2. Unclear if we're able to use dynamic thresholds.
    - E.g. "Experienced 10 occurences in the past hour".
-4. The replay containing the slow click could be sampled.
+3. The replay containing the issue could be sampled.
 
 ### Option 2: Ingest
 
-We create a set of detectors on the backend. When a detector is activated we publish to the issue creation topic.
-
-The SDK will update the recording breadcrumbs to include a "Slow Click" breadcrumb event type. The ingest server will use that event type to make an issue creation decision.
+The SDK publishes a "replay issue" to the Replay back-end. The back-end will decide to process the issue or not.
 
 **Pros:**
 
