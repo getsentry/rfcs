@@ -35,6 +35,8 @@ We create a set of detectors on the SDK. When a detector is activated we submit 
 
 We create a set of detectors on the backend. When a detector is activated we publish to the issue creation topic.
 
+The SDK will update the recording breadcrumbs to include a "Slow Click" breadcrumb event type. The ingest server will use that event type to make an issue creation decision.
+
 **Pros:**
 
 1. Does not use quota.
@@ -47,6 +49,7 @@ We create a set of detectors on the backend. When a detector is activated we pub
 **Cons:**
 
 1. Poor rollout could impact service availability during testing period.
+2. Requires coordination between the SDK and Ingest to create new issue types.
 
 # Unresolved questions
 
