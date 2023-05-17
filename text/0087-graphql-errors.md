@@ -28,7 +28,7 @@ The `Request` and `Response` bodies could contain PII.
 
 Request body example (query language only):
 
-```
+```graphql
 query { 
   viewer { 
     login
@@ -50,7 +50,7 @@ Response body example:
 
 A Request example with an error (query language only):
 
-```
+```graphql
 query { 
   viewer { 
     # note the removed `n` at the end
@@ -89,7 +89,7 @@ Response body example:
 
 Using the `locations` and the request body (query language only), we can highlight the error in the request body.
 
-```
+```graphql
 query { 
   viewer { 
     # note the removed `n` at the end
