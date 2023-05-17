@@ -15,7 +15,7 @@ We want to detect certain categories of ssues that can greatly benefit from vide
 
 # Options Considered
 
-### Option 1: SDK
+### Option 1: SDK Generates Issues Through a Generic Interface
 
 When the SDK encounters a "replay issue" it will make an HTTP request to a generic interface which will handle the issue creation process.
 
@@ -32,7 +32,7 @@ When the SDK encounters a "replay issue" it will make an HTTP request to a gener
    - E.g. "Experienced 10 occurences in the past hour".
 3. The replay containing the issue could not be sampled.
 
-### Option 2: Ingest
+### Option 2: SDK Generates Issues Through a Session-Replay Specific Interface
 
 The SDK publishes a "replay issue" to the Replay back-end. The back-end will decide to process the issue or not.
 
