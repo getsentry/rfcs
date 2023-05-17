@@ -198,7 +198,7 @@ Size limits would still be a problem.
 
 Add a new envelope item for GraphQL.
 
-```json
+```
 {"event_id":"9ec79c33ec9942ab8353589fcb2e04dc"\n
 {"type":"graphql","length":41,"content_type":"application/json"}\n
 {"request":"foo","response":"bar"}
@@ -210,7 +210,7 @@ This would not be back compatible and must be added to all SDKs.
 
 Add Request and Response bodies as attachments.
 
-```json
+```
 {"event_id":"9ec79c33ec9942ab8353589fcb2e04dc"\n
 {"type":"attachment","length":10,"content_type":"application/json","filename":"request.txt"}\n
 foo
