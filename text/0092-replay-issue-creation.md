@@ -21,7 +21,9 @@ When the SDK encounters a "replay issue" it will make an HTTP request to a gener
 
 **Pros:**
 
-1. Can be tested in isolation without impacting existing production services.
+1. We can be tested in isolation without impacting existing production services.
+2. We can expose these new features in a more product agnostic way.
+   - This would allow us to reach much larger customer segments when compared to Replay customers.
 
 **Cons:**
 
