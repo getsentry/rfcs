@@ -8,6 +8,8 @@
 
 Add `Request` and `Response` body to events.
 
+This feature is opt-in by default due to PII concerns.
+
 # Motivation
 
 The [Request](https://develop.sentry.dev/sdk/event-payloads/types/#request) interface contains information on a HTTP request related to the event.
@@ -160,7 +162,7 @@ By doing this, we can keep the `Request` interface as it is, we can copy the `da
 
 * `data`: Can be given as string or structural data of any format..
 
-The `Response` interface keeps arbitrary fields, it's back compatible with the current implementation.
+The `Response` interface keeps arbitrary fields, it is backwards compatible with the current implementation.
 
 ## Must have
 
@@ -255,6 +257,6 @@ Attachments have to be special cased in Sentry, seems hacky, we do that with scr
 # Unresolved questions
 
 - Do we need to send the GraphQL scheme to Sentry in order to do data scrubbing properly?
-- Should this feature be opt-in due to the size of the data and PII risk?
 - Should we send the Request and Response as different envelope items? (avoid the size limit)
 - Should PII be scrubbed in the SDK instead?
+  - The least SDKs have to do is to confirm with the [Scrubbing Sensitive Data](https://github.com/getsentry/rfcs/blob/main/text/0038-scrubbing-sensitive-data.md) RFC.
