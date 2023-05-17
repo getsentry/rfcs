@@ -11,7 +11,7 @@ We want to detect certain categories of issues only available through the Sessio
 
 1. Inform the long-term strategy for detecting and ingesting Session Replay generated issues.
 2. Provide actionable feedback to developers that could not otherwise be captured in a performance span or error event.
-3. Increase product awareness in free-tier customers and encourage adoption.
+3. Increase product awareness in platform customers and encourage adoption.
 
 # Options Considered
 
