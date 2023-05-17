@@ -12,7 +12,7 @@ Add `Request` and `Response` body to events.
 
 The [Request](https://develop.sentry.dev/sdk/event-payloads/types/#request) interface contains information on a HTTP request related to the event.
 
-The [Request] contains the `data` field which is the request body. Can be given as string or structural data of any format.
+The `Request` contains the `data` field which is the request body. Can be given as string or structural data of any format.
 
 The [Response](https://develop.sentry.dev/sdk/event-payloads/types/#responsecontext) interface contains information on a HTTP response related to the event.
 
@@ -22,7 +22,7 @@ However, the `Response` interface does not contain the `data` field which is the
 
 This is necessary to implement the [GraphQL Client Errors](https://www.notion.so/sentry/GraphQL-proposal-d6e5846f30434770903cf3af20bc2568) with syntax highlight.
 
-The Request and Response body could contain PII.
+The `Request` and `Response` bodies could contain PII.
 
 Request body example:
 
@@ -46,7 +46,7 @@ Response body example:
 }
 ```
 
-Now a Request example with an error:
+A Request example with an error:
 
 ```
 query { 
@@ -131,11 +131,13 @@ By doing this, we can keep the `Request` interface as it is, we can copy the `da
 
 * `data`: Can be given as string or structural data of any format..
 
+The `Response` interface keeps arbitrary fields, it's back compatible with the current implementation.
+
 ## Must have
 
 The fields `Request#data` and `Response#data` could contain PII and they should run data scrubbing agressively.
 
-[Session Replay](https://docs.sentry.io/platforms/javascript/guides/remix/session-replay/configuration/) already sends the request and response body, so we can use the same data scrubbing rules.
+[Session Replay](https://docs.sentry.io/platforms/javascript/guides/remix/session-replay/configuration/) already sends the request and response bodies, so we can use the same data scrubbing rules.
 
 Since GraphQL is a well defined spec, we can also scrub the GraphQL fields.
 
@@ -163,7 +165,7 @@ Response example:
 
 # Drawbacks
 
-[Envelopes](https://develop.sentry.dev/sdk/envelopes) contain [size limits](https://develop.sentry.dev/sdk/envelopes/#size-limits). The `data` field could be large and it could be a problem.
+[Envelopes](https://develop.sentry.dev/sdk/envelopes) (Events) contain way lower [size limits](https://develop.sentry.dev/sdk/envelopes/#size-limits). The `data` fields could be large and it could be a problem.
 
 SDKs should discard large and binary bodies by default, using the [maxRequestBodySize](https://docs.sentry.io/platforms/android/configuration/options/#max-request-body-size) and `maxResponseBodySize` (it'll be added) options.
 
@@ -175,7 +177,7 @@ The difference is that for GraphQL errors, this should be enabled by default.
 
 ### Option 2
 
-Add a new interface `graphql` interface to [Contexts](https://develop.sentry.dev/sdk/event-payloads/types/).
+Add a new `graphql` interface to [Contexts](https://develop.sentry.dev/sdk/event-payloads/types/).
 
 ```json
 {
@@ -206,7 +208,7 @@ This would not be back compatible and must be added to all SDKs.
 
 ### Option 4
 
-Add Request and Response bodies as attachments
+Add Request and Response bodies as attachments.
 
 ```json
 {"event_id":"9ec79c33ec9942ab8353589fcb2e04dc"\n
