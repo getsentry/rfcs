@@ -28,7 +28,7 @@ When the SDK encounters a "replay issue" it will make an HTTP request to a gener
 1. Uses quota.
 2. Unclear if we're able to use dynamic thresholds.
    - E.g. "Experienced 10 occurences in the past hour".
-3. The replay containing the issue could be sampled.
+3. The replay containing the issue could not be sampled.
 
 ### Option 2: Ingest
 
