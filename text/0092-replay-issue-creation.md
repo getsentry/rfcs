@@ -5,7 +5,7 @@
 
 # Summary
 
-We want to detect certain categories of issues only available through the Session Replay product. These issues can only be detected on the SDK. The Replay back-end will never have enough data to find these issues. For that reason this is primarily an SDK driven workload. The question is: what role should the Replay back-end have in Replay issue creation? Should the Replay SDK use the Replay back-end to generate new issues or should the SDK generate those issues through a generic, non-replay-specific interface?
+We want to detect certain categories of issues only available through the Session Replay product. These issues can only be detected on the SDK. The Replay back-end will never have enough data to find these issues. For that reason this is primarily an SDK driven workload. The question is: what role should the Replay back-end have in Replay issue creation? Should the Replay SDK use the Replay back-end to generate new issues or should the SDK generate those issues through a generic, non-replay-specific interface? Each option would have significantly different product implications that will be discussed below.
 
 # Motivation
 
