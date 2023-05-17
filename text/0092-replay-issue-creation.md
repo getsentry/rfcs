@@ -5,7 +5,7 @@
 
 # Summary
 
-We want to detect certain categories of issues only available through the Session Replay product. These issues can only be detected on the SDK. The Replay back-end will never have enough data to find these issues. For that reason this is primarily an SDK driven workload. The question is: what role should the Replay back-end have in Replay issue creation? Should the Replay SDK use the Replay back-end to generate new issues or should the SDK generate those issues through a generic, non-replay-specific interface? Each option would have significantly different product implications that will be discussed below.
+We want to detect certain categories of ssues that can greatly benefit from videos and context in the Session Replay product. These issues can only be detected on the SDK. The Replay back-end will never have enough data to find these issues. For that reason this is primarily an SDK driven workload. The question is: what role should the Replay back-end have in Replay issue creation? Should the Replay SDK use the Replay back-end to generate new issues or should the SDK generate those issues through a generic, non-replay-specific interface? Each option would have significantly different product implications that will be discussed below.
 
 # Motivation
 
@@ -25,7 +25,7 @@ When the SDK encounters a "replay issue" it will make an HTTP request to a gener
 
 **Cons:**
 
-1. Uses quota.
+1. Uses errors quota.
 2. Unclear if we're able to use dynamic thresholds.
    - E.g. "Experienced 10 occurences in the past hour".
 3. The replay containing the issue could not be sampled.
@@ -36,7 +36,7 @@ The SDK publishes a "replay issue" to the Replay back-end. The back-end will dec
 
 **Pros:**
 
-1. Does not use quota.
+1. Does not use errors quota.
 2. Overhead is low.
    - Publishing to a Kafka consumer can happen asynchronously.
 3. We can use dynamic thresholds.
