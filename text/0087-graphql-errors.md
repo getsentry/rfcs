@@ -42,7 +42,7 @@ Response body example:
 {
   "data": {
     "viewer": {
-      "login": "marandaneto"
+      "login": "foo"
     }
   }
 }
@@ -122,7 +122,7 @@ The Request body can also contain `variables`.
 {
   "query": "{\n  viewer {\n    login\n  }\n}",
   "variables": {
-    "login": "marandaneto"
+    "login": "foo"
   }
 }
 ```
@@ -154,7 +154,7 @@ By doing this, we can keep the `Request` interface as it is, we can copy the `da
       "type": "response",
       "status_code": 500,
       "body_size": 1000,
-      "data": "...",
+      "data": "foo",
     }
   }
 }
@@ -178,7 +178,7 @@ Request example:
 {
   "query": "{\n  viewer {\n    login\n  }\n}",
   "variables": {
-    "login": "marandaneto"
+    "login": "foo"
   }
 }
 ```
