@@ -24,7 +24,7 @@ This is necessary to implement the [GraphQL Client Errors](https://www.notion.so
 
 The `Request` and `Response` bodies could contain PII.
 
-Request body example:
+Request body example (query language only):
 
 ```
 query { 
@@ -46,7 +46,7 @@ Response body example:
 }
 ```
 
-A Request example with an error:
+A Request example with an error (query language only):
 
 ```
 query { 
@@ -85,13 +85,42 @@ Response body example:
 }
 ```
 
-Using the `locations` and the request body, we can highlight the error in the request body.
+Using the `locations` and the request body (query language only), we can highlight the error in the request body.
 
 ```
 query { 
   viewer { 
     # note the removed `n` at the end
     -> logi
+  }
+}
+```
+
+Request body example, full body (not only the query language):
+
+```json
+{
+  "query": "{\n  viewer {\n    login\n  }\n}",
+  "variables": {}
+}
+```
+
+Request body example, full body (not only the query language):
+
+```json
+{
+  "query": "{\n  viewer {\n    login\n  }\n}",
+  "variables": {}
+}
+```
+
+The Request body can also contain `variables`.
+
+```json
+{
+  "query": "{\n  viewer {\n    login\n  }\n}",
+  "variables": {
+    "login": "marandaneto"
   }
 }
 ```
@@ -143,10 +172,11 @@ Since GraphQL is a well defined spec, we can also scrub the GraphQL fields.
 
 Request example:
 
-```
-query { 
-  viewer { 
-    login
+```json
+{
+  "query": "{\n  viewer {\n    login\n  }\n}",
+  "variables": {
+    "login": "marandaneto"
   }
 }
 ```
@@ -162,6 +192,8 @@ Response example:
   }
 }
 ```
+
+In this case, we only need to use the Request `variables` and its keys to scrub the Response `data`.
 
 # Drawbacks
 
