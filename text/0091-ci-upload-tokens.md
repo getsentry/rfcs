@@ -49,21 +49,19 @@ data.  For the purpose of this document they are called **structural tokens**.
 
 ## Token Format
 
-The proposed token format is undecided so far.  The goals of the token align generally with
-both [Macaroons](http://macaroons.io/) and [Biscuit](https://www.biscuitsec.org).  Unfortunately
-the former standard has never seen much attention, and the latter is pretty new and not
-particularly proven.  Either system however permits adding additional restrictions to the
-token which make them a perfect choice for the use in our pipeline.  Biscuits however seem
-quite promising.  The idea of biscuits is that the token itself holds _facts_ which and
-can be further constraints via _checks_ and they are checked against a datalog inspired
-_policies_.
+The proposed token format is to leverage JWT as serialization format.  The goals of the
+token align generally with both [Macaroons](http://macaroons.io/) and
+[Biscuit](https://www.biscuitsec.org) but unfortunately the former standard has never seen
+much attention, and the latter is pretty new, not particularly proven and very complex.
+Either system however permits adding additional restrictions to the token which make them
+a very interesting choice for the use in our pipeline.
 
-One of the benefits of having the tokens carry this data is that the token alone has enough
+One of the benefits of having the tokens carry additional data is that the token alone has enough
 information available to route to a Sentry installation.  This means that `sentry-cli` or
 any other tool _just_ needs the token to even determine the host that the token should be
 sent against.  This benefit also applies to JWT or PASETO tokens which can be considered
-for this as well.  The RFC here thus proposes two potential options: A **Biscuit** token
-format and a **JWT** token format.
+for this as well.  The RFC here thus proposes to encode this data into a regular **JWT**
+token.
 
 A serialized token is added a custom prefix `sntrys_` (sentry structure) to make
 it possible to detect it by security scrapers.  Anyone handling such a token is
@@ -73,34 +71,17 @@ interested in extracting data from the token.
 
 ## Token Facts
 
-We want to encode certain information into the tokens.  In Biscuit terms these are called
-_facts_.  The following facts exist:
+We want to encode certain information into the tokens.  The following attributes are defined:
 
-* `site`: references the target API URL that should be used.  A token will always have a
+* `sentry_site`: references the target API URL that should be used.  A token will always have a
   site in it and clients are not supposed to provide a fallback.  For instance this
   would be `https://myorg.sentry.io/`.
-* `org`: a token is uniquely bound to an org, so the slug of that org is also always
+* `sentry_org`: a token is uniquely bound to an org, so the slug of that org is also always
   contained.  Note that the slug is used rather than an org ID as the clients typically
   need these slugs to create API requests.
-* `projects`: a token can be valid for more than one project.  For operations such as
+* `sentry_projects`: a token can be valid for more than one project.  For operations such as
   source map uploads it's beneficial to issue tokens bound to a single project in which
   case the upload experience does not require providing the project slugs.
-
-### Biscuit Token Encoding
-
-For biscuit tokens the following format could be used:
-
-```javascript
-site("https://myorg.sentry.io");
-org("myorg");
-project("myproject");
-scope("project:releases");
-scope("org:read");
-```
-
-Signed and encoded a biscuit token looks like `sntrys_{encoded_biscuit}`.
-
-### JWT Token Encoding
 
 For JWT the facts could be encoded as custom claims:
 
@@ -114,7 +95,7 @@ For JWT the facts could be encoded as custom claims:
 }
 ```
 
-Encoded the token would either be `sntrys_{encoded_jwt}`.
+Encoded the token then is be `sntrys_{encoded_jwt}`.
 
 ## Transmitting Tokens
 
@@ -125,11 +106,12 @@ unaware of the structure behind structural tokens nothing changes.
 ## Parsing Tokens
 
 Clients are strongly encouraged to parse out the containing structure of the token and
-to use this information to route requests.  The most important keys in the structure
-are:
+to use this information to route requests.  For the keys the following rules apply:
 
-* `site`: references the target API URL that should be used.  A token will always have a
-  site in it and clients are not supposed to provide a fallback.
+* `sentry_site`: references the target API URL that should be used.  A token
+  will always have a site in it and clients are not supposed to provide an
+  automatic fallback.  If a site is not provided, one from the client config
+  should be picked up (typically `sentry.io`).
 * `org`: a token is uniquely bound to an org, so the slug of that org is also always
   contained.  Note that the slug is used rather than an org ID as the clients typically
   need these slugs to create API requests.
@@ -257,17 +239,9 @@ has most support.  This proposal really only uses JWT for serialization of meta 
 actual validation of the JWT tokens only ever happens on the server side in which case the system
 can fully fall back to validating them based on what's stored in the database.
 
-## Why Biscuit?
+## Why Not Biscuit?
 
 It's unclear if Biscuit is a great solution.  There is a lot of complexity in it and tooling support
 is not great.  However Biscuit is a potentially quite exiting idea because it would permit tools
 like sentry-cli to work with temporarily restricted tokens which reduces the chance of token leakage.
 The complexity of Biscuit however might be so prohibitive that it's not an appealing choice.
-
-# Unresolved questions
-
-- Is Biscuit a reasonable standard?  Do we want to give it a try?
-  - Supporting Biscuit makes revocations more complex as tokens are somewhat malleable.
-  - A benefit of Biscuits would be that they can be trivially temporarily restricted upon
-    use which limits the dangers of some forms of token loss (eg: leak out in logs).
-
