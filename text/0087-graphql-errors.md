@@ -159,7 +159,7 @@ The `Response` interface keeps arbitrary fields, it is backwards compatible with
 
 ## Must have
 
-The fields `Request#data` and `Response#data` could contain PII and they should run data scrubbing agressively.
+The fields `Request#data` and `Response#data` could contain PII and they should run data scrubbing aggressively.
 
 [Session Replay](https://docs.sentry.io/platforms/javascript/guides/remix/session-replay/configuration/) already sends the request and response bodies, so we can use the same data scrubbing rules.
 
