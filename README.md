@@ -45,4 +45,5 @@ This repository contains RFCs and DACIs. Lost?
 - [0081-sourcemap-debugid](text/0081-sourcemap-debugid.md): Reliable JavaScript/SourceMap processing via `DebugId`
 - [0084-move-docs-to-sentry-repository](text/0084-move-docs-to-sentry-repository.md): Move onboarding docs from sentry-docs over to sentry repository
 - [0086-sentry-bundler-plugins-api](text/0086-sentry-bundler-plugins-api.md): Sentry Bundler Plugins API
+- [0088-fix-memory-limitiations-in-session-replays-access-pattern](text/0088-fix-memory-limitiations-in-session-replays-access-pattern.md): Fix Memory Limitiations in Session Replay's Access Pattern
 - [0092-replay-issue-creation](text/0092-replay-issue-creation.md): Replay Issue Creation
