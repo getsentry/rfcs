@@ -107,15 +107,6 @@ Request body example, full body (not only the query language):
 }
 ```
 
-Request body example, full body (not only the query language):
-
-```json
-{
-  "query": "{\n  viewer {\n    login\n  }\n}",
-  "variables": {}
-}
-```
-
 The Request body can also contain `variables`.
 
 ```json
@@ -154,7 +145,9 @@ By doing this, we can keep the `Request` interface as it is, we can copy the `da
       "type": "response",
       "status_code": 500,
       "body_size": 1000,
-      "data": "foo",
+      "data": {
+        "foo": "bar"
+      }
     }
   }
 }
