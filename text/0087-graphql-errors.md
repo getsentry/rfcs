@@ -6,7 +6,7 @@
 
 # Summary
 
-Add `Request` and `Response` dies to GraphQL errors.
+Add `Request` and `Response` bodies to GraphQL errors.
 
 This feature is opt-in by default due to PII concerns.
 
