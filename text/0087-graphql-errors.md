@@ -6,7 +6,7 @@
 
 # Summary
 
-Add `Request` and `Response` body to events.
+Add `Request` and `Response` dies to GraphQL errors.
 
 This feature is opt-in by default due to PII concerns.
 
@@ -118,7 +118,7 @@ The Request body can also contain `variables`.
 }
 ```
 
-Because of that, the `Request` and `Response` body should be sent to Sentry.
+Because of that, the `Request` and `Response` bodies should be sent to Sentry.
 
 # Supporting Data
 
@@ -164,6 +164,8 @@ The fields `Request#data` and `Response#data` could contain PII and they should 
 [Session Replay](https://docs.sentry.io/platforms/javascript/guides/remix/session-replay/configuration/) already sends the request and response bodies, so we can use the same data scrubbing rules.
 
 Since GraphQL is a well defined spec, we can also scrub the GraphQL fields.
+
+Data scrubbing is going to be done on Relay to avoid the data scrubbing rules duplication on every SDK, it's also easier to roll out bug fixes on Relay.
 
 Request example:
 
