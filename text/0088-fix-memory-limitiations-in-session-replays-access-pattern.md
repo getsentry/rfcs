@@ -413,33 +413,38 @@ We can leverage the SDK to buffer replay metadata. Buffered metadata is continuo
 
 # Selected Outcome
 
-The Snuba service will accept the `SETTINGS` query clause and the Replays query will be updated to limit the total number of unique values aggregated.  The following settings will applied to each query:
+The Snuba service will accept the `SETTINGS` query clause and the Replays query will be updated to limit the total number of unique values aggregated. The following settings will applied to each query:
 
 1. Set max_rows_to_group_by to 1,000,000.
 2. Set group_by_overflow_mode to any.
 
-1 million was chosen as the maximum size of a representative sample of the dataset.  `SAMPLE` is not considered because we need replays to be whole.  Missing segments (that were removed by sampling) can have deep implications to the product.
+1 million was chosen as the maximum size of a representative sample of the dataset. `SAMPLE` was not considered because it required migrating to a new table.
 
-Should the above solution not solve the problem Proposal 11 "Manually Manage An Aggregated Materialized View" will be used as a fallback.
-
-**Summary**
-
-We will rely on Kafka's ordering guarantees and RabbitMQ's delayed message processing semantics to create a static record of all of the aggregation states.
-
-**Key Qualifications for Acceptance**
-
-1. Backwards compatible with the possibility of a back-filling data migration.
-2. Risk of data-loss is minimized by keeping an uncompressed record of the data in the database.
-   - Row compression can be attempted as many times as necessary.
-3. All filters and sorts can be applied to non-aggregated columns.
-   - I.e. filtering in the `WHERE` clause and ordering against column literals in the `ORDER BY` clause.
-4. Duplicates can be tolerated and pruned asynchronously.
-   - Using `GROUP BY` and the `any` function you can select a scalar value from the first value you encounter.
-   - This does not use extra memory so long as we don't filter in the HAVING clause or sort by an aggregated value. Both of these conditions are unnecessary.
-5. No new services or ops resources are required.
-   - We can re-use our already provisioned RabbitMQ resources.
+By limiting the number of aggregated keys we can insure memory usage and query performance always stays within safe operating space.
 
 # Rejected Proposals
+
+**Proposal 10**
+
+Runner up.
+
+Specifically, the option mentioned in the questions section. Using RabbitMQ to publish a message to Kafka after a one-hour delay. We incur some amount of operational overhead from introducing this process but it is ultimately durable and capable of handling our work requirements. We would have chosen this outcome had there not been a better near-term solution. Reintroducing this proposal as product and scale requirements change is a possibility.
+
+Pros:
+
+- Its backwards compatible.
+- A back-filling data migration is possible.
+- Risk of data-loss is minimized by storing "uncompressed" records in the database.
+  - Here "uncompressed" means not aggregated.
+- Tolerant of duplicates meaning multiple aggregations of the same replay would not interfere with our access pattern.
+  - Duplicates could be pruned asynchronously freeing up redundant space.
+- No new services need to be provisioned. We can re-use our existing infrastructure.
+  - We can re-use our already provisioned RabbitMQ resources.
+
+Cons:
+
+- Required a lot of effort from the back-end and front-end team.
+- Required product changes to accomodate "live" and "VOD" views.
 
 **Proposals 1 and 2**
 
