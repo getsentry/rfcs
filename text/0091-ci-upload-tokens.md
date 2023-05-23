@@ -79,9 +79,13 @@ We want to encode certain information into the tokens.  The following attributes
 * `sentry_org`: a token is uniquely bound to an org, so the slug of that org is also always
   contained.  Note that the slug is used rather than an org ID as the clients typically
   need these slugs to create API requests.
-* `sentry_projects`: a token can be valid for more than one project.  For operations such as
-  source map uploads it's beneficial to issue tokens bound to a single project in which
-  case the upload experience does not require providing the project slugs.
+
+Potential fields:
+
+* `sentry_projects`: normally a token is valid for the entire org, but it could potentially
+  be restricted.  For operations such as source map uploads it might be interesting to issue
+  tokens bound to a single project in which case the upload experience does not require
+  providing the project slugs.  However we currently do not want to start with this.
 
 For JWT the facts could be encoded as custom claims:
 
@@ -90,8 +94,7 @@ For JWT the facts could be encoded as custom claims:
     "iss": "sentry.io",
     "iat": 1684154626,
     "sentry_site": "https://myorg.sentry.io/",
-    "sentry_org": "myorg",
-    "sentry_projects": ["myproject"]
+    "sentry_org": "myorg"
 }
 ```
 
@@ -115,9 +118,6 @@ to use this information to route requests.  For the keys the following rules app
 * `org`: a token is uniquely bound to an org, so the slug of that org is also always
   contained.  Note that the slug is used rather than an org ID as the clients typically
   need these slugs to create API requests.
-* `projects`: a token can be valid for more than one project.  For operations such as
-  source map uploads it's benefitial to issue tokens bound to a single project in which
-  case the upload experience does not require providing the project slugs.
 
 An example of this with a JWT token:
 
@@ -130,7 +130,7 @@ An example of this with a JWT token:
   'iat': 1684154626,
   'sentry_site': 'https://myorg.sentry.io/',
   'sentry_org': 'myorg',
-  'sentry_projects': ['myproject']
+  'sentry_projects': ['myproject']  # not used currently
 }
 ```
 
@@ -160,6 +160,7 @@ module.exports = {
   devtool: "source-map",
   plugins: [
     new SentryWebpackPlugin({
+      url: "https://sentry.io/",  // defaults to sentry.io
       org: "demo-org",
       project: "demo-project",
       include: "./dist",
@@ -182,22 +183,21 @@ module.exports = {
   plugins: [
     new SentryWebpackPlugin({
       authToken: "AUTO GENERATED TOKEN HERE",
+      project: "demo-project",
       include: "./dist",
     }),
   ],
 };
 ```
 
-There are however some cases where manual configuration would still be necessary:
+Some manual configuration remains as we still want ask users to provide the slug
+of the project explicitly to allow cross-org token issuance by default.
 
-* **Multi project tokens:** if a token contains more than one project, it's unclear if
-  tools can handle this transparently.  In that case sentry-cli in particular is encouraged
-  to fail with an error and ask the user to explicitly configure the slug of the project
-  to use.
-* **Legacy tools:** for tools not using sentry-cli but using the API directly, there might
-  be a transitionary phase until the tool supports structural tokens.  In that case the
-  documentation would need to point out the correct way to configure this.  The same applies
-  to old installations of sentry-cli.
+Additionally **legacy tools** will require more configuration.  For tools not
+using sentry-cli but using the API directly, there might be a transitionary
+phase until the tool supports structural tokens.  In that case the documentation
+would need to point out the correct way to configure this.  The same applies to
+old installations of sentry-cli.
 
 # Order of Execution
 
@@ -211,6 +211,30 @@ There are however some cases where manual configuration would still be necessary
 # Discussion
 
 Addressing some questions that came up:
+
+## Project Bound Tokens
+
+It would be possible to restrict tokens to a single project (or some projects).  At a later
+point this might still be interesting when the tokens become more potent.  For now these
+tokens can only be used to upload files which means that the damage that one org member
+can do against projects they are not a member of are limited.  As such we are willing to
+accept the risk of issuing tokens across the entire org.
+
+This also means that tools will still require the project slug to be provided for operations
+that are project bound.  Today most of these operations are project bound, but we might want
+to investigate ways to bring most of these operations to the org level so that over time this
+information can be removed.
+
+For instance for debug files there is no good reason why these files are not uploaded to
+org level to begin with.  For source maps the situation is a bit more complex due to the
+optional nature of debug IDs.  However in an increasing number of cases uploads should
+again be possible to the org level.
+
+The benefit of a cross-org token is that this token can then later be used against other
+projects in the same pipeline without having to re-issue the token.  For instance a CI job
+that first only uploads the frontend source maps might later want to do release creation
+for the backend as well.  Having an overly restricted token would make this a more painful
+change.
 
 ## Why not DSNs?
 
