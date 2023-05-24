@@ -12,8 +12,6 @@ Recording data is sent in segments. Currently each segment is written to its own
 1. Minimize costs.
 2. Improve throughput.
 
-An ancillary goal is to provide the front-end with more precise slices of data. For example, if the client needs all of the network requests for a given replay it can fetch those offsets without fetching the remaining recording data.
-
 # Background
 
 This document exists to inform all relevant stakeholders of our proposal and seek feedback prior to implementation.
