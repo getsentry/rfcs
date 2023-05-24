@@ -39,12 +39,15 @@ This table will need to support, at a minimum, one write per segment. Currently,
 Second, the Session Replay recording consumer will not _commit_ blob data to GCS for each segment. Instead it will buffer many segments and flush them all together as a single blob to GCS. In this step it will also make a bulk insertion into the database.
 
 ```mermaid
-    A[Message Received] --> B[Message Processing];
-    B --> C[Message Buffer];
-    C --> D{Has the insert trigger been reached?};
+flowchart
+    A[Wait For New Message] --> B[Process];
+    B --> C[Push to Buffer];
+    C --> D{Buffer Full?};
     D -- No --> A;
     D -- Yes --> E[Write Single File to GCS];
     E --> F[Bulk Insert Byte Ranges];
+    F --> G[Clear Buffer];
+    G --> A;
 ```
 
 Third, when a client requests recording data we will look it up in the "recording_byte_range" table. From it's response, we will issue as many fetch requests as there are rows in the response. These requests may target a single file or many files. The files will be fetched with a special header that instructs the service provider to only respond with a subset of the bytes. Specifically, the bytes that related to our replay.
