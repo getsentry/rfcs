@@ -32,7 +32,7 @@ First, a new table called "recording_byte_range" with the following structure is
 | --------- | ---------- | -------- | ----- | ----- |
 | A         | 0          | file.txt | 0     | 6241  |
 | B         | 0          | file.txt | 6242  | 8213  |
-| A         | 1          | file.txt | 8213  | 12457 |
+| A         | 1          | file.txt | 8214  | 12457 |
 
 This table will need to support, at a minimum, one write per segment. Currently, we recieve ~350 segments per second at peak load.
 
