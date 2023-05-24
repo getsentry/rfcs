@@ -24,7 +24,7 @@ Google Cloud Storage lists the costs for writing and storing data as two separat
 
 In practical terms, this means 75% of our spend is allocated to writing new files.
 
-# Options Considered
+# Proposal
 
 First, a new table called "recording_byte_range" with the following structure is created:
 
@@ -60,7 +60,7 @@ The response bytes will be decompressed, merged into a single payload, and retur
   - This will reset the retention period.
   - This is an expensive operation and depending on the size of the project being deleted a very time consuming operation.
 
-# Unresolved questions
+# Unresolved Questions
 
 1. Can we keep the data in GCS but make it inaccessible?
 
@@ -79,3 +79,11 @@ The response bytes will be decompressed, merged into a single payload, and retur
    - AlloyDB seems popular among the SnS team and could be a good choice.
      - It can likely interface with the Django ORM. But its not clear to me at the time of writing.
    - Whatever database we use must support deletes.
+
+# Extensions
+
+By extending the schema of the "recording_byte_range" table to include a "type" column we can further reduce the number of bytes returned to the client. The client has different requirements for different sets of data. The player may only need the next `n` seconds worth of data, the console and network tabs may paginate their events, and the timeline will always fetch a simplified view of the entire recording.
+
+With the byte range pattern in place these behaviors are possible and can be exposed to the client. The ultimate outcome of this change is faster loading times and the elimination of browser freezes and crashes from large replays.
+
+This will increase the number of rows written to our database table. We would write four rows whereas with the original proposal we were only writing one. Therefore we should select our database carefully to ensure it can handle this level of write intensity.
