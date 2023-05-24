@@ -44,15 +44,15 @@ In the [develop docs](https://develop.sentry.dev/) a specification of this RFC w
 When the SDK starts up it reads an environment variable `SENTRY_TRACING_USE_ENVIRONMENT` (defaults to `True`).
 If `SENTRY_TRACING_USE_ENVIRONMENT` is set to `true` (or `true|True|TRUE|yes|Yes|YES|y|1|on`) then the SDK reads the following environment variables:
 
-- `SENTRY_TRACING_BAGGAGE` (similar to `baggage` HTTP header)
-- `SENTRY_TRACING_SENTRY_TRACE` (similar to `sentry-trace` HTTP header)
+- `SENTRY_BAGGAGE` (similar to `baggage` HTTP header)
+- `SENTRY_TRACE` (similar to `sentry-trace` HTTP header)
 
 The environment variables contain the same strings that the respecitve HTTP headers would contain.
 The SDK parses the string values from the environment variables and stores. SDKs can decide where the what to store this tracing information.
 
-To successfully attach a transaction to an existing trace at least `SENTRY_TRACING_SENTRY_TRACE` must have data.
+To successfully attach a transaction to an existing trace at least `SENTRY_TRACE` must have data.
 
-For dynamic sampling not to break, `SENTRY_TRACING_BAGGAGE` needs to include all information of the dynamic sampling context. The tracing information parsed from this must not be changed.
+For dynamic sampling not to break, `SENTRY_BAGGAGE` needs to include all information of the dynamic sampling context. The tracing information parsed from this must not be changed.
 
 When `SENTRY_TRACING_USE_ENVIRONMENT` is set to `true` during startup also a so called "Root Transaction" should be created automatically. It should include all the trace information from the parsed tracing information and should be finished just before the process ends.
 
@@ -60,7 +60,7 @@ TODO: Maybe we should create a new `transaction_info.source` for this kind of ro
 
 ### Creating tracing information on process start up
 
-If `SENTRY_TRACING_USE_ENVIRONMENT` is set to `true` and no information can be found in `SENTRY_TRACING_BAGGAGE` or `SENTRY_TRACING_SENTRY_TRACE` then the current process is the head of trace and a dynamic sampling context should be created.
+If `SENTRY_TRACING_USE_ENVIRONMENT` is set to `true` and no information can be found in `SENTRY_BAGGAGE` or `SENTRY_TRACE` then the current process is the head of trace and a dynamic sampling context should be created.
 
 See [Unified Propagation Mechanism](https://develop.sentry.dev/sdk/performance/dynamic-sampling-context/#unified-propagation-mechanism) for details.
 
@@ -68,7 +68,7 @@ See [Dynamic Sampling Context Payloads](https://develop.sentry.dev/sdk/performan
 
 ### Propagating/sending tracing information via environment variables:
 
-The integrations that patch functions that are used for spawning new processes (`StdlibIntegration` in Python) should be changed so they use the parsed tracing information (if any) and serialize it to the environment variables (`SENTRY_TRACING_BAGGAGE`, `SENTRY_TRACING_SENTRY_TRACE`) for the newly spawned process. The variable `SENTRY_TRACING_USE_ENVIRONMENT` should also be set to `true` so the receiving process is picking up the information.
+The integrations that patch functions that are used for spawning new processes (`StdlibIntegration` in Python) should be changed so they use the parsed tracing information (if any) and serialize it to the environment variables (`SENTRY_BAGGAGE`, `SENTRY_TRACE`) for the newly spawned process. The variable `SENTRY_TRACING_USE_ENVIRONMENT` should also be set to `true` so the receiving process is picking up the information.
 
 ## Option B) Passing tracing information via files
 
