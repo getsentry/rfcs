@@ -47,3 +47,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0086-sentry-bundler-plugins-api](text/0086-sentry-bundler-plugins-api.md): Sentry Bundler Plugins API
 - [0088-fix-memory-limitiations-in-session-replays-access-pattern](text/0088-fix-memory-limitiations-in-session-replays-access-pattern.md): Fix Memory Limitiations in Session Replay's Access Pattern
 - [0092-replay-issue-creation](text/0092-replay-issue-creation.md): Replay Issue Creation
+- [0095-escalatingforecastsmergedissues](text/0095-escalatingforecastsmergedissues.md): escalating-forecasts-merged-issues
