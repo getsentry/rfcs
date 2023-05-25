@@ -59,19 +59,18 @@ The response bytes will be decompressed, merged into a single payload, and retur
 
 # Drawbacks
 
-- Deleting recording data from a GDPR request, project deletion, or a user delete request will require downloading the file, overwriting the bytes within the deleted range with null bytes (`\x00`) before re-uploading the file.
-  - This will reset the retention period.
-  - This is an expensive operation and depending on the size of the project being deleted a very time consuming operation.
+1. Deleting data becomes tricky. See "Unresolved Questions".
 
 # Unresolved Questions
 
-1. Can we keep the data in GCS but make it inaccessible?
+1. Can we keep deleted data in GCS but make it inaccessible?
 
-   - User and project deletes could leave their data orphaned in GCS.
+   - User and project deletes:
      - We would remove all capability to access it making it functionally deleted.
-   - GDPR deletes will likely require overwriting the range but if they're limited in scope that should be acceptable.
-     - Single replays, small projects, or if the mechanism is infrequently used should make this a valid deletion mechanism.
-     - The data could be encrypted, with its key stored on the metadata row, making it unreadable upon delete.
+   - GDPR deletes:
+     - Would this require downloading the file, over-writing the subsequence of bytes, and re-uploading a new file?
+       - Single replays, small projects, or if the mechanism is infrequently used could make this a valid deletion mechanism.
+       - The data could be encrypted, with some encryption key stored on the metadata row, making the byte sequence unreadable upon row delete.
 
 2. What datastore should we use to store the byte range information?
 
