@@ -5,12 +5,13 @@
 
 # Summary
 
-Recording data is sent in segments. Currently each segment is written to its own file. Writing files is the most expensive component of our GCS usage. It is also the most expensive component, in terms of time, in our processing pipeline. By merging many segment files together into a single file we can minimize our costs and maximize our Kafka consumer's throughput.
+Recording data is sent in segments. Each segment is written to its own file. Writing files is the most expensive component of our Google Cloud Storage usage. It is also the most expensive component, in terms of time, in our processing pipeline. By merging many segment files together into a single file we can minimize our costs and maximize our processing pipeline's throughput.
 
 # Motivation
 
 1. Minimize costs.
 2. Improve throughput.
+3. Enable new features in a cost-effective manner.
 
 # Background
 
@@ -26,15 +27,19 @@ In practical terms, this means 75% of our spend is allocated to writing new file
 
 First, a new table called "recording_byte_range" with the following structure is created:
 
-| replay_id | segment_id | filename | start | stop  |
+| replay_id | segment_id | path     | start | stop  |
 | --------- | ---------- | -------- | ----- | ----- |
 | A         | 0          | file.bin | 0     | 6241  |
 | B         | 0          | file.bin | 6242  | 8213  |
 | A         | 1          | file.bin | 8214  | 12457 |
 
-This table will need to support, at a minimum, one write per segment. Currently, we recieve ~350 segments per second at peak load.
+Replay and segment ID should be self-explanatory. Path is the location of the blob in our bucket. Start and stop are integers which represent the index positions in an inclusive range. This range is a contiguous sequence of related bytes. In other words, the segment's compressed data is contained within the range.
 
-Second, the Session Replay recording consumer will not _commit_ blob data to GCS for each segment. Instead it will buffer many segments and flush them all together as a single blob to GCS. In this step it will also make a bulk insertion into the database.
+Notice each row in the example above points to the same file but with different start and stop locations. This is implies that multiple segments and replays can be present in the same file. A single file can be shared by hundreds of different segments.
+
+This table will need to support, at a minimum, one write per segment.
+
+Second, the Session Replay recording consumer will not commit blob data to Google Cloud Storage for each segment. Instead it will buffer many segments and flush them together as a single blob to GCS. Next it will make a bulk insertion into the database for tracking.
 
 ```mermaid
 flowchart
@@ -54,19 +59,18 @@ The response bytes will be decompressed, merged into a single payload, and retur
 
 # Drawbacks
 
-- Deleting recording data from a GDPR request, project deletion, or a user delete request will require downloading the file, overwriting the bytes within the deleted range with null bytes (`\x00`) before re-uploading the file.
-  - This will reset the retention period.
-  - This is an expensive operation and depending on the size of the project being deleted a very time consuming operation.
+1. Deleting data becomes tricky. See "Unresolved Questions".
 
 # Unresolved Questions
 
-1. Can we keep the data in GCS but make it inaccessible?
+1. Can we keep deleted data in GCS but make it inaccessible?
 
-   - User and project deletes could leave their data orphaned in GCS.
+   - User and project deletes:
      - We would remove all capability to access it making it functionally deleted.
-   - GDPR deletes will likely require overwriting the range but if they're limited in scope that should be acceptable.
-     - Single replays, small projects, or if the mechanism is infrequently used should make this a valid deletion mechanism.
-     - The data could be encrypted, with its key stored on the metadata row, making it unreadable upon delete.
+   - GDPR deletes:
+     - Would this require downloading the file, over-writing the subsequence of bytes, and re-uploading a new file?
+       - Single replays, small projects, or if the mechanism is infrequently used could make this a valid deletion mechanism.
+       - The data could be encrypted, with some encryption key stored on the metadata row, making the byte sequence unreadable upon row delete.
 
 2. What datastore should we use to store the byte range information?
 
