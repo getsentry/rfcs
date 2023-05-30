@@ -70,7 +70,6 @@ When the SDK encounters a "slow click" it will append the slow click to the reco
 
 - Requires the Session Replay SDK.
   - Significantly smaller pool of customers who will see "slow click" issues.
-  - No/Limited opportunity to upsell the Session Replay product.
 - Requies code changes by the Session Replay back-end team.
   - Requires addition of event sampling, issue platform integration, and merging of the replay-event and recording-event payloads.
   - Merging the replay-event and recording-event payloads together is not a trivial change and requires careful deployment.
