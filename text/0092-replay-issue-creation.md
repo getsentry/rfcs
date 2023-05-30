@@ -19,7 +19,7 @@ These issues can only be detected on the SDK. The Replay back-end will never hav
 
 ### Option 1: SDK Creates Issues Through the Error Interface
 
-When the SDK encounters a "slow click" it will use `sentry.captureException(slowClick)` to create an error issue on the Issues platform.
+When the SDK encounters a "slow click" it will use `sentry.captureEvent(slowClick)`.
 
 **Pros:**
 
