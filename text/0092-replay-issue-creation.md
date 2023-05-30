@@ -35,6 +35,7 @@ When the SDK encounters a "slow click" it will use `sentry.captureEvent(slowClic
   - Or can you?
   - What if we sample within the error processing pipeline on the back-end?
   - If error processing is functionally immutable (i.e. there is no organizational will-power to allow product teams to sample within the error pipeline) then we will not be able to sample on the back-end.
+- Consumes from user error quota: If too noisy, might give the impression we're 'wasting' their error quota
 
 ### Option 2: SDK Creates Issues Through an Issues HTTP Endpoint
 
