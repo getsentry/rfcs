@@ -32,13 +32,8 @@ When the SDK encounters a "slow click" it will use `sentry.captureException(slow
 
 - Requires SDK changes.
 - Can not change issue sampling parameters without an SDK update.
-  - Or can you? It depends on how protected this endpoint is. If the teams responsible for maintaining it are not interested in the replay team adding `if is_slow_click(event): then do special sampling stuff`.
-
-**Questions:**
-
-- Can we sample these issue events on the back-end?
-  - Yes its certainly possible.
-  - However, it depends on how protected this endpoint is. If the teams responsible for maintaining it are not interested in the replay team adding `if is_slow_click(event): then do special sampling stuff` then we will not be able to meet this criteria.
+  - Or can you?
+  - What if we sample within the error processing pipeline on the back-end?
   - If error processing is functionally immutable (i.e. there is no organizational will-power to allow product teams to sample within the error pipeline) then we will not be able to sample on the back-end.
 
 ### Option 2: SDK Creates Issues Through an Issues HTTP Endpoint
@@ -50,18 +45,16 @@ When the SDK encounters a "slow click" it will use `http.post("/issues", data=sl
 - Significantly larger customer reach (i.e. all javascript SDK customers).
 - Opportunity to upsell customers on Session Replay from a "slow click" event.
 - No code changes required on the Session Replay back end.
+- We can sample slow click issues on the backend.
+  - This would require buy-in and coordination from the Issues team.
+  - There is nothing preventing us from looking at an HTTP request and making a go/no-go decision.
 
 **Cons:**
 
 - Requires SDK changes.
 - Requies code changes by the Issues team to create a generic interface for creating issues.
-
-**Questions:**
-
-- Can we sample these issue events on the back-end?
-  - Yes its certainly possible.
-  - However, it depends on how protected this endpoint is. If the teams responsible for maintaining it are not interested in the replay team adding `if is_slow_click(event): then do special sampling stuff` then we will not be able to meet this criteria.
-  - If the issue interface is functionally immutable (i.e. there is no organizational will-power to allow product teams to sample within this interface) then we will not be able to sample on the back-end.
+  - This would likely disrupt our June 18 deadline.
+  - Unless the Issues team has excess capacity and a willingness to work on it immediately.
 
 ### Option 3: Replay SDK Pushes Issues to Session Replay Backend Which Raises an Issue
 
@@ -69,14 +62,15 @@ When the SDK encounters a "slow click" it will append the slow click to the reco
 
 **Pros:**
 
-- We can sample slow click events without worrying about input from other teams.
+- We can sample slow click events on the back-end without worrying about input from other teams.
 - No code changes required by the Issues team.
 - No SDK changes required as the SDK is already sending slow-click events.
 
 **Cons:**
 
-- Significantly smaller pool of customers who will see "slow click" issues.
-- No opportunity to upsell the Session Replay product.
+- Requires the Session Replay SDK.
+  - Significantly smaller pool of customers who will see "slow click" issues.
+  - No/Limited opportunity to upsell the Session Replay product.
 - Requies code changes by the Session Replay back-end team.
   - Requires addition of event sampling, issue platform integration, and merging of the replay-event and recording-event payloads.
   - Merging the replay-event and recording-event payloads together is not a trivial change and requires careful deployment.
