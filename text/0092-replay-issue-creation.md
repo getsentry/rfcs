@@ -65,6 +65,7 @@ When the SDK encounters a "slow click" it will append the slow click to the reco
 
 - We can sample slow click events on the back-end without worrying about input from other teams.
 - No code changes required by the Issues team.
+- May be able to incentivize folks to install Replay in order to see dead click issues
 
 **Cons:**
 
