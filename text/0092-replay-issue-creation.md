@@ -78,4 +78,4 @@ When the SDK encounters a "slow click" it will append the slow click to the reco
 
 # Decisions
 
-No decision has been made.
+We have decided to go with option **3** and couple these new issues to the Session Replay product and use the Session Replay back-end to create issues. We'll very likely need to continue iterating on the detection and be able to iterate on the server gives us a lot more flexibility. The reach will be smaller in terms of total user adoption (require Replay) but the we believe finding the right value to noise ratio is challenging. Having a Replay becomes very important for users to understand what happened and assess impact. 
