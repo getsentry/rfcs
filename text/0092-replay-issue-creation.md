@@ -17,43 +17,67 @@ These issues can only be detected on the SDK. The Replay back-end will never hav
 
 # Options Considered
 
-### Option 1: SDK Generates Issues Through a Generic Interface
+### Option 1: SDK Creates Issues With "captureException" Method
 
-When the SDK encounters a "replay issue" it will make an HTTP request to a generic interface which will handle the issue creation process.
-
-**Pros:**
-
-1. We can be tested in isolation without impacting existing production services.
-2. We can expose these new features in a more product agnostic way.
-   - This would allow us to reach much larger customer segments when compared to Replay customers.
-
-**Cons:**
-
-1. Uses errors quota.
-2. Unclear if we're able to use dynamic thresholds.
-   - E.g. "Experienced 10 occurences in the past hour".
-3. The replay containing the issue could not be sampled.
-
-### Option 2: SDK Generates Issues Through a Session-Replay Specific Interface
-
-The SDK publishes a "replay issue" to the Replay back-end. The back-end will decide to process the issue or not.
+When the SDK encounters a "slow click" it will use `sentry.captureEvent(slowClick)`.
 
 **Pros:**
 
-1. Does not use errors quota.
-2. Overhead is low.
-   - Publishing to a Kafka consumer can happen asynchronously.
-3. We can use dynamic thresholds.
-   - E.g. "Experienced 10 occurences in the past hour".
-4. Replay is guaranteed to be sampled.
+- Significantly larger customer reach (i.e. all javascript SDK customers).
+- Opportunity to upsell customers on Session Replay from a "slow click" event.
+- No code changes required on the Session Replay back end.
+- No code changes required by the Issues team.
 
 **Cons:**
 
-1. Poor rollout could impact service availability during testing period.
-2. Requires coordination between the SDK and Ingest to create new issue types.
+- Requires SDK changes.
+- Can not change issue sampling parameters without an SDK update.
+  - Or can you?
+  - What if we sample within the error processing pipeline on the back-end?
+  - If error processing is functionally immutable (i.e. there is no organizational will-power to allow product teams to sample within the error pipeline) then we will not be able to sample on the back-end.
+- Consumes from user error quota: If too noisy, might give the impression we're 'wasting' their error quota
+- Questionable value of having a dead click without a replay associated.
+
+### Option 2: SDK Creates Issues Through an Issues HTTP Endpoint
+
+When the SDK encounters a "slow click" it will use `http.post("/issues", data=slowClick)` to create an error issue on the Issues platform.
+
+**Pros:**
+
+- Significantly larger customer reach (i.e. all javascript SDK customers).
+- Opportunity to upsell customers on Session Replay from a "slow click" event.
+- No code changes required on the Session Replay back end.
+- We can sample slow click issues on the backend.
+  - This would require buy-in and coordination from the Issues team.
+  - There is nothing preventing us from looking at an HTTP request and making a go/no-go decision.
+
+**Cons:**
+
+- Requires SDK changes.
+- Requies code changes by the Issues team to create a generic interface for creating issues.
+  - This would likely disrupt our June 18 deadline.
+  - Unless the Issues team has excess capacity and a willingness to work on it immediately.
+
+### Option 3: Replay SDK Pushes Issues to Session Replay Backend Which Raises an Issue
+
+When the SDK encounters a "slow click" it will append the slow click to the recording events payload. The back-end will search for these events and then publish them to the Issues platform's kafka consumer.
+
+**Pros:**
+
+- We can sample slow click events on the back-end without worrying about input from other teams.
+- No code changes required by the Issues team.
+- May be able to incentivize folks to install Replay in order to see dead click issues
+
+**Cons:**
+
+- Requires the Session Replay SDK.
+  - Significantly smaller pool of customers who will see "slow click" issues.
+- Requires code changes by the Session Replay back-end team.
+  - Requires addition of event sampling, issue platform integration, and merging of the replay-event and recording-event payloads.
+  - Merging the replay-event and recording-event payloads together is not a trivial change and requires careful deployment.
 
 # Unresolved questions
 
 # Decisions
 
-We have decided to couple these new issues to the Session Replay product and use the Session Replay back-end to process issue events. Generic issue interfaces are not well supported at the time of writing. Using the Session Replay back-end we can accomplish our product goals. Should an HTTP interface for creating issue events be created this RFC can be re-addressed.
+We have decided to go with option **3** and couple these new issues to the Session Replay product and use the Session Replay back-end to create issues. We'll very likely need to continue iterating on the detection and be able to iterate on the server gives us a lot more flexibility. The reach will be smaller in terms of total user adoption (require Replay) but the we believe finding the right value to noise ratio is challenging. Having a Replay becomes very important for users to understand what happened and assess impact.
