@@ -36,6 +36,7 @@ When the SDK encounters a "slow click" it will use `sentry.captureEvent(slowClic
   - What if we sample within the error processing pipeline on the back-end?
   - If error processing is functionally immutable (i.e. there is no organizational will-power to allow product teams to sample within the error pipeline) then we will not be able to sample on the back-end.
 - Consumes from user error quota: If too noisy, might give the impression we're 'wasting' their error quota
+- Questionable value of having a dead click without a replay associated.
 
 ### Option 2: SDK Creates Issues Through an Issues HTTP Endpoint
 
@@ -79,4 +80,4 @@ When the SDK encounters a "slow click" it will append the slow click to the reco
 
 # Decisions
 
-We have decided to go with option **3** and couple these new issues to the Session Replay product and use the Session Replay back-end to create issues. We'll very likely need to continue iterating on the detection and be able to iterate on the server gives us a lot more flexibility. The reach will be smaller in terms of total user adoption (require Replay) but the we believe finding the right value to noise ratio is challenging. Having a Replay becomes very important for users to understand what happened and assess impact. 
+We have decided to go with option **3** and couple these new issues to the Session Replay product and use the Session Replay back-end to create issues. We'll very likely need to continue iterating on the detection and be able to iterate on the server gives us a lot more flexibility. The reach will be smaller in terms of total user adoption (require Replay) but the we believe finding the right value to noise ratio is challenging. Having a Replay becomes very important for users to understand what happened and assess impact.
