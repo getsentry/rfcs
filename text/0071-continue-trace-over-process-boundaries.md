@@ -48,7 +48,7 @@ If `SENTRY_TRACING_USE_ENVIRONMENT` is set to `false` (or rather `false|False|FA
 - `SENTRY_TRACING_SENTRY_TRACE` (similar to `sentry-trace` HTTP header)
 
 The environment variables contain the same strings that the respecitve HTTP headers would contain.
-The SDK parses the string values from the environment variables and stores the information on the scope.
+The SDK parses the string values from the environment variables and stores the information in the propagation context on the scope.
 
 To successfully attach a transaction to an existing trace at least `SENTRY_TRACING_SENTRY_TRACE` must have data.
 
