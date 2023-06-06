@@ -41,8 +41,10 @@ In the [develop docs](https://develop.sentry.dev/) a specification of this RFC w
 
 ### Retrieving tracing information via environment variables:
 
-When the SDK starts up it reads an environment variable `SENTRY_TRACING_USE_ENVIRONMENT`. (defaults to `True`).
-If `SENTRY_TRACING_USE_ENVIRONMENT` is set to `false` (or rather `false|False|FALSE|n|no|No|NO|off|Off|OFF|0`) then the SDK should not read tracing information from the environment. Otherwise (if `SENTRY_TRACING_USE_ENVIRONMENT` is NOT set or set to an arbitrary value not in the list of falsy values) the SDK reads tracing information from the environment. So the default behaviour is trying to read tracing information from the environment. The following environment variables is read:
+When the SDK starts up it reads an environment variable `SENTRY_TRACING_USE_ENVIRONMENT`.
+If `SENTRY_TRACING_USE_ENVIRONMENT` is set to `false` (or rather `false|False|FALSE|n|no|No|NO|off|Off|OFF|0`) then the SDK should not read tracing information from the environment. Otherwise (if `SENTRY_TRACING_USE_ENVIRONMENT` is NOT set or set to an arbitrary value not in the list of falsy values) the SDK reads tracing information from the environment. So the default behaviour is trying to read tracing information from the environment.
+
+The following environment variables is read:
 
 - `SENTRY_TRACING_BAGGAGE` (similar to `baggage` HTTP header)
 - `SENTRY_TRACING_SENTRY_TRACE` (similar to `sentry-trace` HTTP header)
