@@ -76,16 +76,6 @@ ReplayEventJSON\nCompressedReplayRecording
 
 That the downstream consumer can easily parse by splitting on newline.
 
-### SDK Changes
-
-Emit a new item type "replay_recording_event" with the format
-
-```
-ReplayEventJSON\nCompressedReplayRecording
-```
-
-replacing the previous transport calls.
-
 ### Replay Recording Consumer Changes
 
 1. Create a new ReplayRecording consumer that can run along-side the existing consumer, as there will be a change-over period
@@ -99,4 +89,6 @@ This is a decent chunk of engineering work.
 # Unresolved questions
 
 - Is there a better format for the combined envelope item type? If we split on \n, this means the replay_event should never have a newline in it. I believe this is acceptable, but is there a better format for sending a combined JSON / binary piece of data?
+    - We will be using msgpack to serialize the replay_event and recording bytes into a structured payload.
 - If rate limits are applied before processing, it seems like we'll need to add a new rate limit for this combined item. This should be okay, anything else to think about here?
+    - We will be adding the new rate limit for the combined item.
