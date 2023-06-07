@@ -20,6 +20,7 @@ This repository contains RFCs and DACIs. Lost?
 - [0022-response-context](text/0022-response-context.md): Response context
 - [0033-view-hierarchy](text/0033-view-hierarchy.md): View Hierarchy
 - [0027-manual-disabling-of-flaky-tests](text/0027-manual-disabling-of-flaky-tests.md): Processes for manually disabling flaky tests in `sentry` and `getsentry`
+- [00034-sdk-lifecycle](text/0034-sdk-lifecycle-hooks.md): SDK Lifecycle hooks
 - [0036-auto-instrumentation-ui-thread](text/0036-auto-instrumentation-ui-thread.md): auto-instrumentation UI thread
 - [0037-anr-rates](text/0037-anr-rates.md): Calculating accurate ANR rates
 - [0038-scrubbing-sensitive-data](text/0038-scrubbing-sensitive-data.md): Scrubbing sensitive data - how to improve
@@ -30,11 +31,22 @@ This repository contains RFCs and DACIs. Lost?
 - [0046-ttfd-automatic-transaction-span](text/0046-ttfd-automatic-transaction-span.md): Provide a new `time-to-full-display` span to the automatic UI transactions
 - [0047-introduce-profile-context](text/0047-introduce-profile-context.md): Add Profile Context
 - [0048-move-replayid-out-of-tags](text/0048-move-replayid-out-of-tags.md): Plan to replace freight with GoCD
+- [0060-linking-backend-errors-with-replays](text/0060-linking-backend-errors-with-replays.md): Linking Backend Errors With Replays
 - [0062-controlling-pii-and-credentials-in-sd-ks](text/0062-controlling-pii-and-credentials-in-sd-ks.md): Controlling PII and Credentials in SDKs
 - [0063-sdk-crash-monitoring](text/0063-sdk-crash-monitoring.md): SDK Crash Monitoring
 - [0070-document-sensitive-data-collected](text/0070-document-sensitive-data-collected.md): Document sensitive data collected
 - [0071-continue-trace-over-process-boundaries](text/0071-continue-trace-over-process-boundaries.md): Continue trace over process boundaries
 - [0072-kafka-schema-registry](text/0072-kafka-schema-registry.md): Kafka Schema Registry
+- [0073-usage-of-transaction-types](text/0073-usage-of-transaction-types.md): Usage of transaction types
+- [0074-source-context-via-links](text/0074-source-context-via-links.md): Source context via links
 - [0078-escalating-issues](text/0078-escalating-issues.md): Escalating Issues
+- [0079-exception-groups](text/0079-exception-groups.md): Exception Groups
 - [0080-issue-states](text/0080-issue-states.md): Issue States
+- [0081-sourcemap-debugid](text/0081-sourcemap-debugid.md): Reliable JavaScript/SourceMap processing via `DebugId`
 - [0082-combined-replay-envelope-item](text/0082-combined-replay-envelope-item.md): Combined Replay Envelope Item
+- [0084-move-docs-to-sentry-repository](text/0084-move-docs-to-sentry-repository.md): Move onboarding docs from sentry-docs over to sentry repository
+- [0086-sentry-bundler-plugins-api](text/0086-sentry-bundler-plugins-api.md): Sentry Bundler Plugins API
+- [0087-graphql-errors](text/0087-graphql-errors.md): Request and Response bodies for GraphQL errors
+- [0088-fix-memory-limitiations-in-session-replays-access-pattern](text/0088-fix-memory-limitiations-in-session-replays-access-pattern.md): Fix Memory Limitiations in Session Replay's Access Pattern
+- [0092-replay-issue-creation](text/0092-replay-issue-creation.md): Replay Issue Creation
+- [0095-escalatingforecastsmergedissues](text/0095-escalatingforecastsmergedissues.md): escalating-forecasts-merged-issues
