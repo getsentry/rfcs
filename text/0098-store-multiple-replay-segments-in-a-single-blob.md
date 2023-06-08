@@ -15,29 +15,43 @@ Recording data is sent in segments. Each segment is written to its own file. Wri
 
 # Background
 
-This document exists to inform all relevant stakeholders of our proposal and seek feedback prior to implementation.
+This document was originally written to respond to a percieved problem in the Session Replays recording consumer. However, upon exploring these ideas more it was determined that this could be more generally applied to the organization as a whole. For that reason I've made many of the names generic but have also retained many references to Session Replay.
 
 # Supporting Data
 
-Google Cloud Storage lists the costs for writing and storing data as two separate categories. Writing a file costs $0.005 per 1000 files. Storing that file costs $0.02 per gigabyte. For the average file this works out to: $0.000000012 for storage and $0.00000005 for the write.
+Google Cloud Storage lists the costs for writing and storing data as two separate categories. Writing a file costs $0.005 per 1000 files. Storing that file costs $0.02 per gigabyte. For the average Session Replay file (with a retention period of 90 days) this works out to: $0.000000012 for storage and $0.00000005 for the write.
 
 In practical terms, this means 75% of our spend is allocated to writing new files.
 
 # Proposal
 
-First, a new table called "recording_byte_range" with the following structure is created:
+First, a new table called "file_part_byte_range" with the following structure is created:
 
-| replay_id | segment_id | path     | start | stop  |
-| --------- | ---------- | -------- | ----- | ----- |
-| A         | 0          | file.bin | 0     | 6241  |
-| B         | 0          | file.bin | 6242  | 8213  |
-| A         | 1          | file.bin | 8214  | 12457 |
+| id  | key | path     | start | stop  | dek      | kek_id |
+| --- | --- | -------- | ----- | ----- | -------- | ------ |
+| 1   | A:0 | file.bin | 0     | 6241  | Aq3[...] | 1      |
+| 2   | B:0 | file.bin | 6242  | 8213  | ppT[...] | 1      |
+| 3   | A:1 | file.bin | 8214  | 12457 | 99M[...] | 1      |
 
-Replay and segment ID should be self-explanatory. Path is the location of the blob in our bucket. Start and stop are integers which represent the index positions in an inclusive range. This range is a contiguous sequence of related bytes. In other words, the segment's compressed data is contained within the range.
+- The key field is client generated identifier.
+  - It is not unique.
+  - The value of the key field should be easily computable by your service.
+  - In the case of Session Replay the key could be a concatenation of `replay_id` and `segment_id`.
+    - Illustrated above as `replay_id:segment_id`.
+    - Alternatively, a true composite key could be stored on a secondary table which contains a reference to the `id` of the `file_part_byte_range` row.
+- Path is the location of the blob in our bucket.
+- Start and stop are integers which represent the index positions in an inclusive range.
+  - This range is a contiguous sequence of related bytes.
+  - In other words, the entirety of the file part's encrypted data is contained within the range.
+- The "dek" column is the **D**ata **E**ncryption **K**ey.
+  - The DEK is the key that was used to encrypt the byte range.
+  - The key itself is encrypted by the KEK.
+    - **K**ey **E**ncryption **K**ey.
+  - Encryption is explored in more detail in the following sections.
+- The "kek_id" column contains the ID of the KEK used to encrypt the DEK.
+  - This KEK can be fetched from a remote **K**ey **M**anagement **S**ervice or a local database table.
 
-Notice each row in the example above points to the same file but with different start and stop locations. This is implies that multiple segments and replays can be present in the same file. A single file can be shared by hundreds of different segments.
-
-This table will need to support, at a minimum, one write per segment.
+Notice each row in the example above points to the same file but with different start and stop locations. This implies that multiple, independent parts can be present in the same file. A single file can be shared by hundreds of different parts.
 
 Second, the Session Replay recording consumer will not commit blob data to Google Cloud Storage for each segment. Instead it will buffer many segments and flush them together as a single blob to GCS. Next it will make a bulk insertion into the database for tracking.
 
@@ -53,36 +67,48 @@ flowchart
     G --> A;
 ```
 
-Third, when a client requests recording data we will look it up in the "recording_byte_range" table. From it's response, we will issue as many fetch requests as there are rows in the response. These requests may target a single file or many files. The files will be fetched with a special header that instructs the service provider to only respond with a subset of the bytes. Specifically, the bytes that related to our replay.
+## Writing
 
-The response bytes will be decompressed, merged into a single payload, and returned to the user as they are now.
+Writing a file part is a four step process.
+
+First, the bytes must be encrypted with a randomly generated DEK. Second, the DEK is encrypted with a KEK. Third, the file is uploaded to the cloud storage provider. Fourth, a metadata row is written to the "file_part_byte_range" containing a key, the containing blob's filepath, start and stop offsets, and the encrypted DEK.
+
+**A Note on Aggregating File Parts**
+
+It is up to the implementer to determine how many parts exist in a file. An implementer may choose to store one part per file or may store an unbounded number of parts per file.
+
+However, if you are using this system, it is recommended that more than one part be stored per file. Otherwise it is more economical to upload the file using simpler, more-direct methods.
+
+## Reading
+
+To read a file part the metadata row in the "file_part_byte_range" table is fetched. Using the filepath, starting byte, and ending byte we fetch the encrypted bytes from remote storage. Now that we have our encrypted bytes we can use the DEK we fetched from the "file_part_byte_range" table to decrypt the blob and return it to the user.
+
+## Deleting
+
+To delete a file part the metadata row in the "file_part_byte_range" table is deleted. With the removal of the DEK, the file part is no longer readable and is considered deleted.
+
+Project deletes, user deletes, GDPR deletes, and user-access TTLs are managed by deleting the metadata row in the "file_part_byte_range" table.
+
+File parts can be grouped into like-retention-periods and deleted manually or automatically after expiry. However, in the case of replays, storage costs are minor. We will retain our encrypted segment data for the maximum retention period of 90 days.
+
+## Key Rotation
+
+If a KEK is compromised and needs to be rotated we will need to follow a four step process. First, we query for every row in the "file_part_byte_range" table whose DEK was encrypted with the old KEK. Second, we will decrypt every DEK with the old KEK. Third, we will encrypt the DEK with a new KEK. Fourth, the old KEK is dropped.
+
+DEKs are more complicated to rotate as it requires modifying the blob. However, because DEKs are unique to a byte range within a single file we have a limited surface area for a compromised key to be exploited. To rotate a DEK first download the blob, second decrypt the byte range with the compromised DEK, third generate a new DEK, fourth encrypt the payload with the new DEK, fifth encrypt the new DEK with any KEK, and sixth upload and re-write the metadata rows with the new offsets.
 
 # Drawbacks
 
-1. Deleting data becomes tricky. See "Unresolved Questions".
-
 # Unresolved Questions
 
-1. Can we keep deleted data in GCS but make it inaccessible?
-
-   - User and project deletes:
-     - We would remove all capability to access it making it functionally deleted.
-   - GDPR deletes:
-     - Would this require downloading the file, over-writing the subsequence of bytes, and re-uploading a new file?
-       - Single replays, small projects, or if the mechanism is infrequently used could make this a valid deletion mechanism.
-       - The data could be encrypted, with some encryption key stored on the metadata row, making the byte sequence unreadable upon row delete.
-
-2. What datastore should we use to store the byte range information?
-
-   - Cassandra, Postgres, AlloyDB?
-   - Postgres likely won't be able to keep up long-term.
-     - Especially if we write multiple byte ranges per segment.
-   - Cassandra could be a good choice but its not clear what operational burden this imposes on SnS and Ops.
-   - AlloyDB seems popular among the SnS team and could be a good choice.
-     - It can likely interface with the Django ORM. But its not clear to me at the time of writing.
-   - Whatever database we use must support deletes.
-
-3. How fast can we encrypt and decrypt each segment?
+1. How can we efficiently fetch a KEK?
+   - As currently specified we would need to reach out to a remote service.
+   - Can we cache the key in Redis or more permanently in a datastore like Postgres?
+     - This expands the area of attack for a potential intruder.
+   - Does KEK lookup efficiency matter on an endpoint where we're downloading KBs of blob data?
+     - Maybe?
+   - Does KEK lookup efficiency matter for ingest when it can be cached for the duration of the consumer's life?
+     - No.
 
 # Extensions
 
@@ -133,6 +159,8 @@ with open(filename, "r") as f:
 ```
 
 ## Consumer Buffering Mechanics
+
+The following section is highly specific to the Session Replay product.
 
 We will continue our approach of using _at-least once processing_. Each message we receive is guaranteed to be processed to completion regardless of error or interrupt. Duplicate messages are possible under this scheme and must be accounted for in the planning of each component.
 
@@ -198,11 +226,3 @@ With a buffered approach most of the consumer's effects are accomplished in two 
 4. Click tracking.
    - Duplicate click events will be inserted for a replay, segment pair.
    - This is an acceptable outcome and will not impact search behavior.
-
-## Security
-
-How do we prevent users from seeing segments that do not belong to them? The short-answer is test coverage. Recording another segment's byte range would be the same as generating the incorrect filename under the current system. These outcomes are prevented with robust test coverage.
-
-In the case of bad byte range math, we do have some implicit protection. Each segment is compressed independently. Fetching a malformed byte range would yield unreadable data. A bad byte range either truncates the compression headers or includes unintelligible bytes at the beginning or end of the sequence. If we manage to decompress a subset of a valid byte range the decompressed output would be malformed JSON and would not be returnable to the user.
-
-Additionally, each segment could be encrypted with an encryption-key that is stored on the row. Requesting an invalid byte range would yield malformed data which could not be decrypted with the encryption-key stored on the row.
