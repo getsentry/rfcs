@@ -10,7 +10,7 @@ Recording data is sent in segments. Each segment is written to its own file. Wri
 # Motivation
 
 1. Minimize costs.
-2. Improve throughput.
+2. Increase write throughput.
 3. Enable new features in a cost-effective manner.
 
 # Background
@@ -22,6 +22,26 @@ This document was originally written to respond to a percieved problem in the Se
 Google Cloud Storage lists the costs for writing and storing data as two separate categories. Writing a file costs $0.005 per 1000 files. Storing that file costs $0.02 per gigabyte. For the average Session Replay file (with a retention period of 90 days) this works out to: $0.000000012 for storage and $0.00000005 for the write.
 
 In practical terms, this means 75% of our spend is allocated to writing new files.
+
+# High Level Overview
+
+1. We will store multiple "parts" per file.
+   - A "part" is a distinct blob of binary data.
+   - It exists as a subset of bytes within a larger set of bytes (referred to as a "file").
+   - A "part" could refer to a replay segment or to a sourcemap or anything that requires storage in a blob storage service.
+2. Each "part" within a file will be encrypted.
+   - Encryption provides instantaneous deletes (by deleting the row containing the encryption key) and removes the need to remove the byte sub-sequences from a blob.
+   - We will use envelope encryption to protect the contents of every file.
+     - https://cloud.google.com/kms/docs/envelope-encryption
+   - Related, contiguous byte ranges will be encrypted independently of the rest of the file.
+   - We will use KMS to manage our key-encryption-keys.
+   - Data-encryption-keys will be generated locally and will be unique.
+3. Parts will be tracked in a metadata table on an AlloyDB instance(s).
+   - A full table schema is provided in the **Proposal** section.
+   - AlloyDB was chosen because its a managed database with strong point-query performace.
+   - The metadata table will contain the key used to decrypt the byte range.
+4. On read, parts will be fetched without fetching the full file.
+   - More details are provided in the **Technical Details** section.
 
 # Proposal
 
