@@ -99,16 +99,20 @@ DEKs are more complicated to rotate as it requires modifying the blob. However, 
 
 # Drawbacks
 
-# Unresolved Questions
+# Questions
 
-1. How can we efficiently fetch a KEK?
-   - As currently specified we would need to reach out to a remote service.
-   - Can we cache the key in Redis or more permanently in a datastore like Postgres?
-     - This expands the area of attack for a potential intruder.
-   - Does KEK lookup efficiency matter on an endpoint where we're downloading KBs of blob data?
-     - Maybe?
-   - Does KEK lookup efficiency matter for ingest when it can be cached for the duration of the consumer's life?
-     - No.
+1. If KEKs are managed in a remote service how do we manage outages?
+   - We manage it in the same way we manage an outage of any other remote service.
+     - We will need to backlog or otherwise 400/404.
+   - KEKs have the benefit of _probably_ not blocking ingest as the key will be cached for long stretches of time (24 hours) and can be used for longer periods of time if a new key can not be fetched.
+2. How will read efficiency be impacted if we rely on a remote service to decrypt blob data?
+   - It will have some cost but hopefully that cost is minimized by the constraints of your system.
+   - For example, Session Replay fetches multiple segment blobs in a single request. At most we will need to fetch two keys (and in the majority of cases a single key) to decrypt the segments.
+   - This key fetching latency is immaterial to the total latency of the request.
+3. How will key rotation work in a production system?
+   - Hopefully it will be a rare event.
+   - KEK rotation will require re-encrypting every DEK encrypted with the KEK (typically everything in a ~24-hour period).
+   - DEK rotation will require re-encrypting a sequence of bytes in a blob.
 
 # Extensions
 
