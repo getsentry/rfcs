@@ -65,22 +65,29 @@ graph
 ### Relay Changes:
 
 1. Create a new ItemType `CombinedReplayRecordingEvent`
-2. in `processor.rs` https://github.com/getsentry/relay/blob/606166fca57a84ca1b9240253013871d13827de3/relay-server/src/actors/processor.rs#L1134, replace the `process_replays` function that will combine the envelope items if its the old format using `take_item_by` and `add_item` Envelope functions, or leave them if its the new format. This function would then process the two items and set the item payload.
-3. We can begin rejecting replay segments over 10 megabytes, which will allow us to not need chunking in our recording consumer.
+2. in `processor.rs` https://github.com/getsentry/relay/blob/606166fca57a84ca1b9240253013871d13827de3/relay-server/src/actors/processor.rs#L1134, Add a new function that combines the proccess ReplayEvent and ReplayRecording ItemTypes into one item.
 
-- The combined Payload will have the format of
+The Replays Recording Consumer expects MessagePack bytes in the payload field. In our processor, we combine the ReplayEvent and ReplayRecording into a single messagepack payload, and change the content type to ContentType::MessagePack.
 
-```
-ReplayEventJSON\nCompressedReplayRecording
-```
+The messagepack payload will be a key value object like:
 
-That the downstream consumer can easily parse by splitting on newline.
+{
+  replay_event: {...}
+  replay_recording: _binary_data_ or uncompressed data
+  replay_recording_headers {}
+  version: 1
+}
+
+In our recordings consumer, we'll parse the message pack which will then give us a dict with these values.
+
+We can also take this opportunity to put the parsed recording headers in the item in relay. This will remove another complication downstream in the consumer.
+
+We will emit these combined messages onto the existing replay recorings kafka topic, with a new field `version` added which the consumer will use to know that the ReplayEvent exists on the message as well.
+
 
 ### Replay Recording Consumer Changes
 
-1. Create a new ReplayRecording consumer that can run along-side the existing consumer, as there will be a change-over period
-2. This consumer will do all the same things as the previous recordings consumer with the addition of:
-   - emitting a JSON event to the snuba-replay-events kafka topic
+1. Look at the version of the payload to determine if its the new event, and if so, handle additional work for the ReplayEvent, and load the SDK contextual data into the ReplayRecording for events emitted from it.
 
 # Drawbacks
 
@@ -88,7 +95,6 @@ This is a decent chunk of engineering work.
 
 # Unresolved questions
 
-- Is there a better format for the combined envelope item type? If we split on \n, this means the replay_event should never have a newline in it. I believe this is acceptable, but is there a better format for sending a combined JSON / binary piece of data?
-    - We will be using msgpack to serialize the replay_event and recording bytes into a structured payload.
 - If rate limits are applied before processing, it seems like we'll need to add a new rate limit for this combined item. This should be okay, anything else to think about here?
     - We will be adding the new rate limit for the combined item.
+- Does it ever make sense to do the combining on the frontend? For now we will not do so. 
