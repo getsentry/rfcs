@@ -27,11 +27,11 @@ In practical terms, this means 75% of our spend is allocated to writing new file
 
 First, a new table called "file_part_byte_range" with the following structure is created:
 
-| id  | key | path     | start | stop  | dek      | kek_id |
-| --- | --- | -------- | ----- | ----- | -------- | ------ |
-| 1   | A:0 | file.bin | 0     | 6241  | Aq3[...] | 1      |
-| 2   | B:0 | file.bin | 6242  | 8213  | ppT[...] | 1      |
-| 3   | A:1 | file.bin | 8214  | 12457 | 99M[...] | 1      |
+| id  | key | path     | start | stop  | dek      | kek_id | created_at          |
+| --- | --- | -------- | ----- | ----- | -------- | ------ | ------------------- |
+| 1   | A:0 | file.bin | 0     | 6241  | Aq3[...] | 1      | 2023-01-01T01:01:01 |
+| 2   | B:0 | file.bin | 6242  | 8213  | ppT[...] | 1      | 2023-01-01T01:01:01 |
+| 3   | A:1 | file.bin | 8214  | 12457 | 99M[...] | 1      | 2023-01-01T01:01:01 |
 
 - The key field is client generated identifier.
   - It is not unique.
@@ -116,7 +116,7 @@ DEKs are more complicated to rotate as it requires modifying the blob. However, 
 
 # Extensions
 
-By extending the schema of the "recording_byte_range" table to include a "type" column we can further reduce the number of bytes returned to the client. The client has different requirements for different sets of data. The player may only need the next `n` seconds worth of data, the console and network tabs may paginate their events, and the timeline will always fetch a simplified view of the entire recording.
+By extending the schema of the "file_part_byte_range" table to include a "type" column we can further reduce the number of bytes returned to the client. The client has different requirements for different sets of data. The player may only need the next `n` seconds worth of data, the console and network tabs may paginate their events, and the timeline will always fetch a simplified view of the entire recording.
 
 With the byte range pattern in place these behaviors are possible and can be exposed to the client. The ultimate outcome of this change is faster loading times and the elimination of browser freezes and crashes from large replays.
 
@@ -220,7 +220,7 @@ With a buffered approach most of the consumer's effects are accomplished in two 
 1. Google Cloud Storage.
    - Unique filename generation per buffer would mean that a segment could be present in multiple files.
    - This has COGS implications but does not impact our application.
-2. "recording_byte_range" table.
+2. "file_part_byte_range" table.
    - Duplicate replay, segment ID pairs will be recorded in the table.
    - A reader must either select distinct or group by the replay_id, segment_id pair.
    - Neither row has precendence over the other but the filename value must come from the same row as the start and stop byte range values.
