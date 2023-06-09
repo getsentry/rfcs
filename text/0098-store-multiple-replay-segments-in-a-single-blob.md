@@ -113,11 +113,40 @@ File parts can be grouped into like-retention-periods and deleted manually or au
 
 ## Key Rotation
 
-If a KEK is compromised and needs to be rotated we will need to follow a four step process. First, we query for every row in the "file_part_byte_range" table whose DEK was encrypted with the old KEK. Second, we will decrypt every DEK with the old KEK. Third, we will encrypt the DEK with a new KEK. Fourth, the old KEK is dropped.
+If a KEK is compromised and needs to be rotated we will need to follow a five step process:
 
-DEKs are more complicated to rotate as it requires modifying the blob. However, because DEKs are unique to a byte range within a single file we have a limited surface area for a compromised key to be exploited. To rotate a DEK first download the blob, second decrypt the byte range with the compromised DEK, third generate a new DEK, fourth encrypt the payload with the new DEK, fifth encrypt the new DEK with any KEK, and sixth upload and re-write the metadata rows with the new offsets.
+1. We query for every row in the "file_part_byte_range" table whose DEK was encrypted with the old KEK.
+2. We decrypt every DEK with the compromised KEK.
+3. We encrypt every DEK with a new KEK.
+4. We update every row in the "file_part_byte_range" table with a compromised DEK with the new DEK.
+5. The compromised KEK is dropped.
+
+DEKs are more complicated to rotate as it requires modifying the blob. However, because DEKs are unique to a byte range within a single file we have a limited surface area for a compromised key to be exploited. To rotate a DEK we follow a six step process:
+
+1. We download the file blob of the compromised DEK (there will only be one).
+2. We decrypt the subset of bytes related to the compromised DEK.
+3. We generate a new DEK.
+4. We encrypt the decrypted bytes with the new DEK.
+5. We encrypt the new DEK with any KEK.
+6. We stitch the blob back together and upload to cloud storage.
+7. We re-write the metadata rows.
+   - New offsets are written because encryption is not guaranteed to produce the same length of bytes.
+   - The compromised DEK is overwritten during this step.
+
+**A Word on the Necessity of Key Rotation**
+
+What's the likelihood of a DEK or KEK leaking? Probably small but larger than you think.
+
+What happens if an exception is raised while trying to read a file? The sentry_sdk will sweep in the `locals()` from the application state. This will include KEKs, DEKs, filenames, and byte-ranges. Everything an attacker needs to read private data. This data will be presented in a human-readable format on the Sentry.io web app. This private data may even find its way into our logs (in whole or in part) providing another vector of attack.
+
+Now, the value of the data is very small. Its not "worth" stealing. After all, we're not encrypting this data now. We're only adopting encryption to "delete" files in clever way.
+
+However, the security and privacy of these keys is critical for us to maintain our "deletion" guarantees to customers and to regulators. Currently, when we say a file is deleted it is in fact deleted. Going forward it will still exist but will be impossible to read. That un-readability promise _has to be maintained_. Compromised keys must be rotated and strong patterns for doing so must be maintained.
 
 # Drawbacks
+
+- Data is only deleted after the retention period.
+  - This means customer data must be protected between the deletion date and retention expiry.
 
 # Questions
 
