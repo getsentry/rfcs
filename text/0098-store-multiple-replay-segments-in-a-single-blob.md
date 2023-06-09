@@ -221,7 +221,7 @@ We will continue our approach of using _at-least once processing_. Each message 
 
 The buffer is kept as an in-memory list inside the consumer process. For each message we receive we append the message to the buffer. Afterwards, we check if the buffer is full. If it is we flush. Else we wait for another message.
 
-This is a somewhat simplified view of whats happening. In reality we will have time based flushing and a timeout mechanism for message listening. This ensures the buffer does not stay partially full indefinitely.
+This is a somewhat simplified view of whats happening. In reality we will use deadline flushing in addition to a count or resource-usage based flushing. This ensures the buffer does not stay partially full indefinitely.
 
 **Buffer Flush**
 
@@ -250,12 +250,13 @@ With a buffered approach most of the consumer's effects are accomplished in two 
 1. Click Tracking.
    - Click events are published to the replay-event Kafka consumer.
    - This publishing step is asynchronous and relies on threading to free up the main process thread.
-   - This operation is measured in microseconds and is not anticipated to significantly impact total throughput.
+   - Because we can tolerate duplicates, we can publish click-events when we see the message or when we commit a batch.
+   - Neither choice is anticipated to significantly impact message processing.
 2. Outcome Tracking.
    - Outcome events are published to the outcomes Kafka consumer.
    - This publishing step is asynchronous and relies on threading to free up the main process thread.
    - This operation only occurs for segment-0 events.
-   - This operation is measured in microseconds and is not anticipated to significantly impact total throughput.
+   - I am unsure if this step can tolerate duplicates. It likely does but if it does not we could have to commit during the flushing step.
 3. Project lookup.
    - Projects are retrieved by a cache lookup or querying PostgreSQL if it could not be found.
    - This operation typically takes >1ms to complete.
