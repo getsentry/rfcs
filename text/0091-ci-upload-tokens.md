@@ -149,9 +149,17 @@ all users in the org to issue such tokens.  The tokens can be shown in the org's
 
 Such simple token issuance can then also take place in wizards and documentation pages.
 
+The generated token itself is only visible after creation. Users cannot see the token again later.
+
 ## Token Revocation
 
-Tokens cannot be deleted, but only revoked (=soft deleted). Only managers & owners may revoke tokens.
+Tokens cannot be deleted, but only revoked (=soft deleted). Only managers & owners may revoke tokens. 
+Users may be able to delete tokens they created regardless of their role. 
+
+## Editing Tokens
+
+Only the `name` of the token may be updated after it was created. Any user may update any tokens name. 
+You cannot update the scope(s) of a token after it was issued.
 
 # How To Teach
 
