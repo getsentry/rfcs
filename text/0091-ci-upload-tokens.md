@@ -45,7 +45,7 @@ The motivation is to add a new kind of token to Sentry which are fundamentally p
 tokens, but with the ability to carry meta information that tools like sentry-cli can use to
 improve the user experience.  These org level tokens can be created by anyone in the org, they
 can be given additional restrictions, and they can carry meta information such as routing
-data.  For the purpose of this document they are called **structural tokens**.
+data. For the purpose of this document they are called **structural tokens**. 
 
 ## Token Format
 
@@ -73,32 +73,36 @@ interested in extracting data from the token.
 
 We want to encode certain information into the tokens.  The following attributes are defined:
 
-* `sentry_site`: references the target API URL that should be used.  A token will always have a
-  site in it and clients are not supposed to provide a fallback.  For instance this
-  would be `https://myorg.sentry.io/`.
+* `iss`: The value `sentry.io` indicates that this is a Sentry Org Auth Token.
+* `nonce`: A randomly generated UUID to ensure the token content cannot be guessed.
+* `sentry_url`: references the root domain to be used. A token will always have a
+  url in it and clients are not supposed to provide a fallback. This value can be found in `settings.SENTRY_OPTIONS["system.url-prefix"]`. Some APIs are only available on this URL, not on the region URL (see below). e.x. `https://sentry.io/`. 
+* `sentry_region_url`: The domain that the organization's API endpoints are available on. This value can be found in `organization.links.regionUrl`. e.x.  `http://us.sentry.io`. 
 * `sentry_org`: a token is uniquely bound to an org, so the slug of that org is also always
-  contained.  Note that the slug is used rather than an org ID as the clients typically
+  contained. Note that the slug is used rather than an org ID as the clients typically
   need these slugs to create API requests.
 
-Potential fields:
-
-* `sentry_projects`: normally a token is valid for the entire org, but it could potentially
-  be restricted.  For operations such as source map uploads it might be interesting to issue
-  tokens bound to a single project in which case the upload experience does not require
-  providing the project slugs.  However we currently do not want to start with this.
-
-For JWT the facts could be encoded as custom claims:
+These facts are encoded in the JWT as custom claims:
 
 ```json
 {
     "iss": "sentry.io",
     "iat": 1684154626,
-    "sentry_site": "https://myorg.sentry.io/",
+    "nonce": "abcd-efgh-ijkl-mnop",
+    "sentry_region_url": "https://eu.sentry.io/",
+    "sentry_url": "https://sentry.io/",
     "sentry_org": "myorg"
 }
 ```
 
 Encoded the token then is be `sntrys_{encoded_jwt}`.
+
+## Token Storage
+
+Tokens are stored in the databased in hashed form, not in plain text. 
+In addition, we store the last 4 characters of the token in plain text in order to help with identification of tokens.
+We also allow to define a `name` for a token for easier identification,
+however this may often be auto-generated when e.g. creating a token from the docs or other places.
 
 ## Transmitting Tokens
 
@@ -111,10 +115,9 @@ unaware of the structure behind structural tokens nothing changes.
 Clients are strongly encouraged to parse out the containing structure of the token and
 to use this information to route requests.  For the keys the following rules apply:
 
-* `sentry_site`: references the target API URL that should be used.  A token
+* `sentry_url` & `sentry_region_url`: references the target API URL that should be used.  A token
   will always have a site in it and clients are not supposed to provide an
-  automatic fallback.  If a site is not provided, one from the client config
-  should be picked up (typically `sentry.io`).
+  automatic fallback.
 * `org`: a token is uniquely bound to an org, so the slug of that org is also always
   contained.  Note that the slug is used rather than an org ID as the clients typically
   need these slugs to create API requests.
@@ -128,9 +131,9 @@ An example of this with a JWT token:
 {
   'iss': 'sentry.io',
   'iat': 1684154626,
-  'sentry_site': 'https://myorg.sentry.io/',
-  'sentry_org': 'myorg',
-  'sentry_projects': ['myproject']  # not used currently
+  'sentry_url': 'https://sentry.io/',
+  'sentry_region_url': 'https://eu.sentry.io/',
+  'sentry_org': 'myorg'
 }
 ```
 
@@ -145,6 +148,10 @@ all users in the org to issue such tokens.  The tokens can be shown in the org's
 "Developer Settings" page under a new tab called "Tokens".
 
 Such simple token issuance can then also take place in wizards and documentation pages.
+
+## Token Revocation
+
+Tokens cannot be deleted, but only revoked (=soft deleted). Only managers & owners may revoke tokens.
 
 # How To Teach
 
@@ -205,8 +212,8 @@ old installations of sentry-cli.
    immediate necessity for a tool to add support for structural tokens.
 2. Add a user interface to issue these new tokens on an org level.
 3. Add a user interface to issue these new tokens right from the documentation.
-4. Add support for structural tokens to sentry-cli to allow `org` and `project` to be made optional.
-5. Change documentation to no longer show `org` and `project` for tool config.
+4. Add support for structural tokens to sentry-cli to allow `org` to be made optional.
+5. Change documentation to no longer show `org` & `url` for tool config.
 
 # Discussion
 
@@ -269,3 +276,7 @@ It's unclear if Biscuit is a great solution.  There is a lot of complexity in it
 is not great.  However Biscuit is a potentially quite exiting idea because it would permit tools
 like sentry-cli to work with temporarily restricted tokens which reduces the chance of token leakage.
 The complexity of Biscuit however might be so prohibitive that it's not an appealing choice.
+
+## Why not include the Project?
+
+We decided to only encode the org-reference into the token, not the project. This allows CI to extend usage to new/other projects without having to issue a new token. In the future, we may allow to also bind tokens to project(s). But for now, all tokens are org-wide.
