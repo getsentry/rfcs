@@ -5,31 +5,294 @@
 
 # Summary
 
-One paragraph explanation of the feature or document purpose.
+This RFC proposes a new RFC to revamp the performance API in the SDKs. The new API aims to accomplish the following.
 
-# Motivation
-
-Why are we doing this? What use cases does it support? What is the expected outcome?
+- Align both the internal schemas and top level public API with OpenTelemetry and their SDKs.
+- De-emphasize the concept of transactions from users using a Sentry performance monitoring SDK.
+- Optimize for making sure performance data is always sent to Sentry.
+- Open the SDK up for future work where we support batch span ingestion instead of relying on a transaction solely.
 
 # Background
 
-The reason this decision or document is required. This section might not always exist.
+Right now every SDK has both the concept of transactions and spans - and to a user they both exist as vehicles of performance data. In addition, the transaction exists as the carrier of distributed tracing information ([dynamic sampling context](https://develop.sentry.dev/sdk/performance/dynamic-sampling-context/) and [sentry-trace info](https://develop.sentry.dev/sdk/performance/#header-sentry-trace)), although this is going to change with the advent of tracing without performance support in the SDKs.
 
-# Supporting Data
+Below is JavaScript example of how to think about performance instrumentation in the JavaScript SDKs (browser/node)
 
-[Metrics to help support your decision (if applicable).]
+```jsx
+// op is defined by https://develop.sentry.dev/sdk/performance/span-operations/
+// name has no specs but is expected to be low cardinality
+const transaction = Sentry.startTransaction({
+  op: "http.server",
+  name: "GET /",
+});
 
-# Options Considered
+// Need to set transaction on span so that integrations
+// can attach spans (I/O operations or framework-specific spans)
+// to the correct parent.
+Sentry.getCurrentHub().getScope().setSpan(transaction);
 
-If an RFC does not know yet what the options are, it can propose multiple options. The
-preferred model is to propose one option and to provide alternatives.
+// spans have a description, while transactions have names
+// op is an optional attribute, but a lot of the product relies on it
+// existing.
+// description technically should be low cardinality, but we have
+// no explicit documentation to say that it should (since spans
+// were not indexed at all for a while).
+const span = transaction.startChild({ description: "Long Task" });
+expensiveAction();
+span.finish();
 
-# Drawbacks
+anotherAction();
 
-Why should we not do this? What are the drawbacks of this RFC or a particular option if
-multiple options are presented.
+const secondSpan = transaction.startChild({ description: "Another Task" });
 
-# Unresolved questions
+// transaction + all child spans sent to Sentry only when `finish()` is called.
+transaction.finish();
+Sentry.getCurrentHub().getScope().setSpan(undefined);
 
-- What parts of the design do you expect to resolve through this RFC?
-- What issues are out of scope for this RFC but are known?
+// second span info is not sent to Sentry because transaction is already finished.
+secondSpan.finish();
+```
+
+In our integrations that add automatic instrumentation, things look something like so:
+
+```jsx
+const parentSpan = Sentry.getCurrentHub().getSpan();
+
+// parentSpan can be undefined if no span is on the scope, this leads to
+// child span just being lost
+const span = parentSpan?.startChild({ description: "something" });
+
+Sentry.getCurrentHub().getScope().setSpan(span);
+
+work();
+
+span.finish();
+
+// span is finished, so parent is put back onto scope
+Sentry.getCurrentHub().getScope().setSpan(parentSpan);
+```
+
+Most users do the above also when nested within their application, as often you assume that a transaction is defined that you can attach (very common in a web server context).
+
+To add instrumentation to their applications, users have to know concepts about hubs/scopes/transactions/spans and understand all the different nuances and use cases. This can be difficult, and presents a big barrier to entry for new users.
+
+Also, since transactions/spans are different classes (span is a parent class of transaction), users have to understand the impacts that the same method will have on both the transaction/span. For example, currently calling `setTag` on a transaction will add a tag to the transaction event (which is searchable in Sentry), while `setTag` on a span just adds it to the span, and the field is not searchable. `setData` on a span adds it to `span.data`, while `setData` on a transaction is undefined behaviour (some SDKs throw away the data, others add it to `event.extras`).
+
+Summarizing, here are the core Issues in SDK Performance API:
+
+1. Users have to understand the difference between spans/transactions and their schema differences.
+2. Users have to set/get transactions/spans from a scope (meaning they also have to understand what a scope/hub means).
+3. Nesting transactions within each other is undefined behaviour - no obvious way to make a transaction a child of another.
+4. If a transaction finishes before it’s child span finishes, that child span gets orphaned and the data is never sent to Sentry. This is most apparent if you have transactions that automatically finish (like on browser/mobile).
+5. Transactions have a max child span count of 1000 which means that eventually data is lost if you keep adding child spans to a transaction.
+
+# Improvements
+
+## Span Schema
+
+The current transaction schema inherits from the error event schema, with a few fields that are specific to transactions.
+
+```rs
+// https://github.com/getsentry/relay/blob/2ad761f64db3df9b4d42f2c0896e1f6d99c16f49/relay-general/src/protocol/event.rs
+pub struct Event {
+    /// Transaction name of the event.
+    /// In the SDK this is set and referenced as the `name` field.
+    pub transaction: Annotated<String>,
+
+    /// Timestamp when the event was created.
+    pub timestamp: Annotated<Timestamp>,
+
+    /// Timestamp when the event has started (relevant for event type = "transaction")
+    pub start_timestamp: Annotated<Timestamp>,
+
+    /// Custom tags for this event.
+    pub tags: Annotated<Tags>,
+
+    /// Spans for tracing.
+    pub spans: Annotated<Array<Span>>,
+}
+```
+
+The transaction also has a trace context, which contains additional fields about the transaction.
+
+```rs
+// https://github.com/getsentry/relay/blob/2ad761f64db3df9b4d42f2c0896e1f6d99c16f49/relay-general/src/protocol/contexts/trace.rs
+pub struct TraceContext {
+    /// The trace ID.
+    #[metastructure(required = "true")]
+    pub trace_id: Annotated<TraceId>,
+
+    /// The ID of the span.
+    #[metastructure(required = "true")]
+    pub span_id: Annotated<SpanId>,
+
+    /// The ID of the span enclosing this span.
+    pub parent_span_id: Annotated<SpanId>,
+
+    /// Span type (see `OperationType` docs).
+    pub op: Annotated<OperationType>,
+
+    /// Whether the trace failed or succeeded. Currently only used to indicate status of individual
+    /// transactions.
+    pub status: Annotated<SpanStatus>,
+}
+```
+
+The current span schema is as follows:
+
+```rs
+// https://github.com/getsentry/relay/blob/2ad761f64db3df9b4d42f2c0896e1f6d99c16f49/relay-general/src/protocol/span.rs
+pub struct Span {
+    /// Timestamp when the span was ended.
+    #[metastructure(required = "true")]
+    pub timestamp: Annotated<Timestamp>,
+
+    /// Timestamp when the span started.
+    #[metastructure(required = "true")]
+    pub start_timestamp: Annotated<Timestamp>,
+
+    /// Human readable description of a span (e.g. method URL).
+    pub description: Annotated<String>,
+
+    /// Span type (see `OperationType` docs).
+    pub op: Annotated<OperationType>,
+
+    /// The Span id.
+    #[metastructure(required = "true")]
+    pub span_id: Annotated<SpanId>,
+
+    /// The ID of the span enclosing this span.
+    pub parent_span_id: Annotated<SpanId>,
+
+    /// The ID of the trace the span belongs to.
+    #[metastructure(required = "true")]
+    pub trace_id: Annotated<TraceId>,
+
+    /// The status of a span
+    pub status: Annotated<SpanStatus>,
+
+    /// Arbitrary tags on a span, like on the top-level event.
+    pub tags: Annotated<Object<JsonLenientString>>,
+
+    /// The origin of the span indicates what created the span (see [OriginType] docs).
+    pub origin: Annotated<OriginType>,
+
+    /// Arbitrary additional data on a span, like `extra` on the top-level event.
+    pub data: Annotated<Object<Value>>,
+}
+```
+
+As you can see, the fields on the transaction/span differ in a few ways. This means that spans and transactions are not interchangeable, and users have to know the difference between the two. In addition, the wire format that is sent to Sentry is different for spans and transactions, which means that the SDKs have to do some work to convert between the two.
+
+### New Span Schema
+
+To simplify how performance data is consumed and understood, we are proposing a new span schema. The new span schema aims to be a superset of the [OpenTelemetry span schema](https://github.com/open-telemetry/opentelemetry-proto/blob/4967b51b5cb29f725978362b9d413bae1dbb641c/opentelemetry/proto/trace/v1/trace.proto) and have a minimal top level API surface. This also means that spans can be easily converted to OpenTelemetry spans and vice versa.
+
+The new span schema is as follows:
+
+```rs
+pub struct Span {
+    /// Indicates to Sentry the version of the span schema. This will be set to 2 for
+    /// this version of the schema proposed by this RFC.
+    pub version: Annotated<u8>,
+
+    /// A unique identifier for a trace. A 16 byte array.
+    /// Identical to the trace_id in the OpenTelemetry schema.
+    #[metastructure(required = "true")]
+    pub trace_id: Annotated<TraceId>,
+
+    /// A unique identifier for a span within a trace, a 8 byte array.
+    /// Identical to the span_id in the OpenTelemetry schema.
+    #[metastructure(required = "true")]
+    pub span_id: Annotated<SpanId>,
+
+    /// A unique identifier for the parent of this span within a trace, a 8 byte array.
+    /// If this is a root span this is empty.
+    /// Identical to the parent_span_id in the OpenTelemetry schema.
+    pub parent_span_id: Annotated<SpanId>,
+
+    /// Span type (see `OperationType` docs).
+    /// No equivalent in the OpenTelemetry schema
+    /// but identical to the op field in the Sentry span/transaction schema.
+    pub op: Annotated<OperationType>,
+
+    /// The name of the span. Should be low cardinality.
+    /// Maps to name in the OpenTelemetry schema.
+    #[metastructure(required = "true")]
+    pub name: Annotated<String>,
+
+    /// A set of attributes on the span. This maps to `span.data` in the current schema for spans.
+    /// There is no existing mapping for this in the current transaction schema.
+    ///
+    /// The keys of attributes are well known values, and defined by a combination of OpenTelemtry's and Sentry's
+    /// semantic conventions.
+    pub attributes: Annotated<Object<Value>>,
+
+    /// Timestamp when the span was ended.
+    /// Maps to end_time_unix_nano in the OpenTelemetry schema.
+    #[metastructure(required = "true")]
+    pub end_timestamp: Annotated<Timestamp>,
+
+    /// Timestamp when the span started.
+    /// Maps to start_time_unix_nano in the OpenTelemetry schema.
+    #[metastructure(required = "true")]
+    pub start_timestamp: Annotated<Timestamp>,
+
+    /// An optional final status for this span. Can have three possible values: 'ok', 'error', 'unset'.
+    /// Maps to status in the OpenTelemetry schema.
+    /// 'unset' is set by default.
+    pub status: Annotated<String>,
+}
+```
+
+TODO: Walk through new mapping process.
+
+## New SDK API
+
+The new SDK API should be as minimal as possible. The goal is to make it easy for users to instrument their code without having to know the difference between a span and a transaction. The new API should also be as similar to the OpenTelemetry SDK API as possible. Since we do not yet support single span ingestion, under the hood the new API should create spans/transactions as needed, but this should not be exposed to users unless they want to see it.
+
+Here are the requirements:
+
+1. Newly created spans must have the correct trace and parent/child relationship
+2. Users shouldn’t be burdened with knowing if something is a span/transaction
+3. Spans only need a name to identify themselves, everything else is optional.
+4. The new top level APIs should be as similar to the OpenTelemetry SDK public API as possible.
+
+There are two top level methods we'll be introducing to achieve this: `Sentry.startActiveSpan` and `Sentry.startSpan`. `Sentry.startActiveSpan` will take a callback and start/stop a span automatically. In addition, it'll also set the span as the active span in the current scope. Under the hood, the SDK will create a transaction or span based on if there is already an existing span on the scope. `Sentry.startSpan` will create a span, but not set it as the active span in the current scope.
+
+```js
+// span that is created is provided to callback in case additional
+// attributes have to be added.
+// ideally callback can be async/sync
+Sentry.startActiveSpan({}, (_span) => expensiveCalc());
+
+// If the SDK needs async/sync typed different we can expose this
+// declare function Sentry.startActiveSpanAsync(spanCtx, asyncCallback);
+```
+
+```jsx
+// does not get put on scope
+const span = Sentry.startSpan({ name: "expensiveCalc" });
+
+expensiveCalc();
+
+span.finish();
+```
+
+The span instances returned from the `Sentry.startSpan` or exposed in the `Sentry.startActiveSpan` callback should match the schema outlined above.
+
+The only methods that all SDKs are required to implement are `Sentry.startActiveSpan` and `Sentry.startSpan`. For languages that need it, they add an additional method for async callbacks: `Sentry.startActiveSpanAsync`. Other languages can also attach a suffix to the methods to indicate that the spans are being started from different sources, but these are language/framework/sdk dependent.
+
+For example with go:
+
+```go
+sentry.StartSpanFromContext(ctx, spanCtx)
+```
+
+Or when continuing from headers in javascript:
+
+```js
+Sentry.startSpanFromHeaders(spanCtx, headers);
+```
+
+TODO: Discuss drawbacks of this approach.
