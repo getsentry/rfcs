@@ -1,6 +1,6 @@
 * Start Date: 2023-05-17
 * RFC Type: feature
-* RFC PR: [#93](https://github.com/getsentry/rfcs/pull/93)
+* RFC PR: [#93](https://github.com/getsentry/rfcs/pull/93) and [#103](https://github.com/getsentry/rfcs/pull/103)
 * RFC Status: approved
 * RFC Driver: [Manoel Aranda Neto](https://github.com/marandaneto)
 
