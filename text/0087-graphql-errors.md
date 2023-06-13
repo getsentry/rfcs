@@ -1,6 +1,6 @@
 * Start Date: 2023-05-17
 * RFC Type: feature
-* RFC PR: [#93](https://github.com/getsentry/rfcs/pull/93)
+* RFC PR: [#93](https://github.com/getsentry/rfcs/pull/93) and [#103](https://github.com/getsentry/rfcs/pull/103)
 * RFC Status: approved
 * RFC Driver: [Manoel Aranda Neto](https://github.com/marandaneto)
 
@@ -134,9 +134,34 @@ Related issues and discussions:
 
 # Proposal (Option 1)
 
-The proposal is adding a `data` field in the [Response](https://develop.sentry.dev/sdk/event-payloads/types/#responsecontext) interface.
+The proposal is adding a `data` field in the [Response](https://develop.sentry.dev/sdk/event-payloads/types/#responsecontext) interface and adding an `api_target` field in the [Request](https://develop.sentry.dev/sdk/event-payloads/types/#request) interface.
 
-By doing this, we can keep the `Request` interface as it is, we can copy the `data` scrubbing rules from the `Request` interface.
+By doing this, we can copy the `data` scrubbing rules from the `Request` interface.
+
+When the `api_target` is `graphql`, [Relay](https://github.com/getsentry/relay) will run data scrubbing in the `Response#data` field based on the `Request#data[variables]` field if the `query` is parameterized, otherwise `Relay` will run data scrubbing in the `Response#data[data]` field directly since the most important is `Response#data[errors]` anyways.
+
+Request example:
+
+```json
+{
+  "request": {
+    "method": "POST",
+    "url": "http://absolute.uri/graphql",
+    "data": {
+      "foo": "bar"
+    },
+    "cookies": "PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1;",
+    "headers": {
+      "content-type": "text/html"
+    },
+    "api_target": "graphql"
+  }
+}
+```
+
+* `api_target`: Can be given as string. Values can be `graphql`, `rest`, etc.
+
+Response example:
 
 ```json
 {
@@ -153,7 +178,7 @@ By doing this, we can keep the `Request` interface as it is, we can copy the `da
 }
 ```
 
-* `data`: Can be given as string or structural data of any format..
+* `data`: Can be given as string or structural data of any format.
 
 The `Response` interface keeps arbitrary fields, it is backwards compatible with the current implementation.
 
