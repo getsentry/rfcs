@@ -99,7 +99,7 @@ Encoded the token then is be `sntrys_{encoded_jwt}`.
 
 ## Token Storage
 
-Tokens are stored in the databased in hashed form, not in plain text. 
+Tokens are stored in the database in hashed form, not in plain text. 
 In addition, we store the last 4 characters of the token in plain text in order to help with identification of tokens.
 We also allow to define a `name` for a token for easier identification,
 however this may often be auto-generated when e.g. creating a token from the docs or other places.
