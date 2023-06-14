@@ -5,7 +5,7 @@
 
 # Summary
 
-This RFC proposes a new RFC to revamp the performance API in the SDKs. The new API aims to accomplish the following.
+This RFC proposes to revamp the performance API in the SDKs. The new API aims to accomplish the following:
 
 - Align both the internal schemas and top level public API with OpenTelemetry and their SDKs.
 - De-emphasize the concept of transactions from users using a Sentry performance monitoring SDK.
