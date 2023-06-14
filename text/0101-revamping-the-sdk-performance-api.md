@@ -12,6 +12,18 @@ This RFC proposes a new RFC to revamp the performance API in the SDKs. The new A
 - Optimize for making sure performance data is always sent to Sentry.
 - Open the SDK up for future work where we support batch span ingestion instead of relying on a transaction solely.
 
+# Planned Work
+
+The RFC proposal comes in two steps.
+
+1. Introduce three new top level methods, `Sentry.startActiveSpan` and `Sentry.startSpan` and their language specific variants as well as `Sentry.setMeasurement`.
+
+This allows us to de-emphasize the concept of transactions from users, and instead have them think about spans. This also removes the overhead of thinking about hubs/scopes and instead introduces a new concept of an active span. Under the hood, `Sentry.startActiveSpan` and `Sentry.startSpan` should create transactions/spans as appropriate. `Sentry.setMeasurement` is used to abstract away `transaction.setMeasurement` and similar.
+
+2. Introduce a new span schema that is aligned with OpenTelemetry.
+
+We change the data model that is referenced and used internally inside the SDK to better reflect OpenTelemetry. This involves adding shims for backwards compatibility, and removing redundant fields. This must be done in a backwards compatible way.
+
 # Background
 
 Right now every SDK has both the concept of transactions and spans - and to a user they both exist as vehicles of performance data. In addition, the transaction exists as the carrier of distributed tracing information ([dynamic sampling context](https://develop.sentry.dev/sdk/performance/dynamic-sampling-context/) and [sentry-trace info](https://develop.sentry.dev/sdk/performance/#header-sentry-trace)), although this is going to change with the advent of tracing without performance support in the SDKs.
@@ -92,6 +104,8 @@ Summarizing, here are the core Issues in SDK Performance API:
 
 To remove the overhead of understanding transactions/spans and their differences, we propose to simplify the span schema to have a minimal set of required fields.
 
+### Existing Span Schema
+
 The current transaction schema inherits from the error event schema, with a few fields that are specific to transactions.
 
 ```rs
@@ -113,6 +127,9 @@ pub struct Event {
 
     /// Spans for tracing.
     pub spans: Annotated<Array<Span>>,
+
+    /// Measurements which holds observed values such as web vitals.
+    pub measurements: Annotated<Measurements>,
 }
 ```
 
@@ -231,6 +248,9 @@ pub struct Span {
     /// semantic conventions.
     pub attributes: Annotated<Object<Value>>,
 
+    /// Measurements which holds observed values such as web vitals.
+    pub measurements: Annotated<Measurements>,
+
     /// Timestamp when the span was ended.
     /// Maps to end_time_unix_nano in the OpenTelemetry schema.
     #[metastructure(required = "true")]
@@ -269,6 +289,8 @@ Here are the requirements:
 
 There are two top level methods we'll be introducing to achieve this: `Sentry.startActiveSpan` and `Sentry.startSpan`. `Sentry.startActiveSpan` will take a callback and start/stop a span automatically. In addition, it'll also set the span as the active span in the current scope. Under the hood, the SDK will create a transaction or span based on if there is already an existing span on the scope. `Sentry.startSpan` will create a span, but not set it as the active span in the current scope.
 
+There are two things to take away from the implementation of these two new APIs. First we should only be referencing spans and returning span references. This is to make it easier to switch between spans and transactions in the future. Second, we should be denotating the difference between an active span and a span. This is to indicate to users that there is a behaviour difference between the two.
+
 ```js
 // span that is created is provided to callback in case additional
 // attributes have to be added.
@@ -303,5 +325,3 @@ Or when continuing from headers in javascript:
 ```js
 Sentry.startSpanFromHeaders(spanCtx, headers);
 ```
-
-TODO: Discuss drawbacks of this approach.
