@@ -256,6 +256,10 @@ Having both the `name` and `op` fields is redundant, but we choose to keep both 
 
 The most notable change here is to formally introduce the `attributes` field, and remove the `span.data` field. This is a breaking change, but worth it in the long-term. If we start accepting `attributes` on transactions as well, we more closely align with the OpenTelemetry schema, and can use the same conventions for both spans and transactions.
 
+### Shimming the old schema
+
+TODO
+
 ## Next Steps
 
 Since we only have `beforeSend` hooks for a transaction, we should look toward building similar hooks for span start and finish as well. This can be done after the span schema has been changed in the SDKs.
