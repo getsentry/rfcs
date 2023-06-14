@@ -113,22 +113,25 @@ There are two top level methods we'll be introducing to achieve this: `Sentry.st
 
 ```ts
 namespace Sentry {
-  declare function startActiveSpan(
+  declare function startActiveSpan<T>(
     spanContext: SpanContext,
-    callback: (span: Span) => void
-  ): void;
+    callback: (span: Span) => T
+  ): T;
 }
 
 // span that is created is provided to callback in case additional
 // attributes have to be added.
 // ideally callback can be async/sync
-Sentry.startActiveSpan({}, (_span) => expensiveCalc());
+const returnVal = Sentry.startActiveSpan(
+  { name: "expensiveCalc" },
+  (span: Span) => expensiveCalc()
+);
 
 // If the SDK needs async/sync typed different we can expose this
-// declare function startActiveSpanAsync(
+// declare function startActiveSpanAsync<T>(
 //   spanContext: SpanContext,
-//   callback: (span: Span) => Promise<void>,
-// ): void;
+//   callback: (span: Span) => Promise<T>,
+// ): Promise<T>;
 ```
 
 In the ideal case, `startActiveSpan` should generally follow this code path.
