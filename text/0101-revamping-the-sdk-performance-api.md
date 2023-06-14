@@ -18,11 +18,11 @@ The RFC proposal comes in two steps.
 
 1. Introduce three new top level methods, `Sentry.startActiveSpan` and `Sentry.startSpan` and their language specific variants as well as `Sentry.setMeasurement`.
 
-This allows us to de-emphasize the concept of transactions from users, and instead have them think about spans. This also removes the overhead of thinking about hubs/scopes and instead introduces a new concept of an active span. Under the hood, `Sentry.startActiveSpan` and `Sentry.startSpan` should create transactions/spans as appropriate. `Sentry.setMeasurement` is used to abstract away `transaction.setMeasurement` and similar.
+This allows us to de-emphasize the concept of hubs, scopes and transactions from users, and instead have them think about just spans. Under the hood, `Sentry.startActiveSpan` and `Sentry.startSpan` should create transactions/spans as appropriate. `Sentry.setMeasurement` is used to abstract away `transaction.setMeasurement` and similar.
 
-2. Introduce a new span schema that is aligned with OpenTelemetry.
+1. Introduce a new span schema that is aligned with OpenTelemetry.
 
-We change the data model that is referenced and used internally inside the SDK to better reflect OpenTelemetry. This involves adding shims for backwards compatibility, and removing redundant fields. This must be done in a backwards compatible way.
+We change the data model that is referenced and used internally inside the SDK to better reflect OpenTelemetry. This involves adding shims for backwards compatibility and removing redundant fields.
 
 # Background
 
@@ -109,21 +109,45 @@ The new SDK API has the following requirements:
 3. Spans only need a name to identify themselves, everything else is optional.
 4. The new top level APIs should be as similar to the OpenTelemetry SDK public API as possible.
 
-There are two top level methods we'll be introducing to achieve this: `Sentry.startActiveSpan` and `Sentry.startSpan`. `Sentry.startActiveSpan` will take a callback and start/stop a span automatically. In addition, it'll also set the span as the active span in the current scope. Under the hood, the SDK will create a transaction or span based on if there is already an existing span on the scope. `Sentry.startSpan` will create a span, but not set it as the active span in the current scope.
+There are two top level methods we'll be introducing to achieve this: `Sentry.startActiveSpan` and `Sentry.startSpan`. `Sentry.startActiveSpan` will take a callback and start/stop a span automatically. In addition, it'll also set the span on the current scope. Under the hood, the SDK will create a transaction or span based on if there is already an existing span on the scope.
 
-There are two things to take away from the implementation of these two new APIs. First we should only be referencing spans and returning span references. This is to make it easier to switch between spans and transactions in the future. Second, we should be denotating the difference between an active span and a span. This is to indicate to users that there is a behaviour difference between the two.
+```ts
+namespace Sentry {
+  declare function startActiveSpan(
+    spanContext: SpanContext,
+    callback: (span: Span) => void
+  ): void;
+}
 
-```js
 // span that is created is provided to callback in case additional
 // attributes have to be added.
 // ideally callback can be async/sync
 Sentry.startActiveSpan({}, (_span) => expensiveCalc());
 
 // If the SDK needs async/sync typed different we can expose this
-// declare function Sentry.startActiveSpanAsync(spanCtx, asyncCallback);
+// declare function startActiveSpanAsync(
+//   spanContext: SpanContext,
+//   callback: (span: Span) => Promise<void>,
+// ): void;
 ```
 
-```jsx
+In the ideal case, `startActiveSpan` should generally follow this code path.
+
+1. Get the active span from the current scope
+2. If the active span is defined, create a child span of that active span based on the provided `spanContext`, otherwise create a transaction based on the provided `spanContext`.
+3. Run the provided callback
+4. Finish the child span/transaction created in step 2
+5. Remove the child span/transaction from the current scope and if it exists, set the previous active span as the active span in the current scope.
+
+If the provided callback throws an exception, the span/transaction created in step 2 should be marked as errored. This error should not be swallowed by `startActiveSpan`.
+
+`Sentry.startSpan` will create a span, but not set it as the active span in the current scope. 90% of our documentation and code examples will be referencing `Sentry.startActiveSpan` - `Sentry.startSpan` is just there for edge case users of the API.
+
+```ts
+namespace Sentry {
+  declare function startSpan(spanContext: SpanContext): Span;
+}
+
 // does not get put on scope
 const span = Sentry.startSpan({ name: "expensiveCalc" });
 
@@ -131,8 +155,6 @@ expensiveCalc();
 
 span.finish();
 ```
-
-The span instances returned from the `Sentry.startSpan` or exposed in the `Sentry.startActiveSpan` callback should match the schema outlined above.
 
 The only methods that all SDKs are required to implement are `Sentry.startActiveSpan` and `Sentry.startSpan`. For languages that need it, they add an additional method for async callbacks: `Sentry.startActiveSpanAsync`. Other languages can also attach a suffix to the methods to indicate that the spans are being started from different sources, but these are language/framework/sdk dependent.
 
@@ -149,6 +171,12 @@ Sentry.startSpanFromHeaders(spanCtx, headers);
 ```
 
 Since we want to discourage accessing the transaction object directly, the `Sentry.setMeasurement` top level method will also be introduced. This will set a custom performance metric if a transaction exists.
+
+```ts
+namespace Sentry {
+  declare function setMeasurement(key: string, value: number): void;
+}
+```
 
 ## Span Schema
 
