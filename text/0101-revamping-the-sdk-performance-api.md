@@ -100,6 +100,56 @@ Summarizing, here are the core Issues in SDK Performance API:
 
 # Improvements
 
+## New SDK API
+
+The new SDK API has the following requirements:
+
+1. Newly created spans must have the correct trace and parent/child relationship
+2. Users shouldn’t be burdened with knowing if something is a span/transaction
+3. Spans only need a name to identify themselves, everything else is optional.
+4. The new top level APIs should be as similar to the OpenTelemetry SDK public API as possible.
+
+There are two top level methods we'll be introducing to achieve this: `Sentry.startActiveSpan` and `Sentry.startSpan`. `Sentry.startActiveSpan` will take a callback and start/stop a span automatically. In addition, it'll also set the span as the active span in the current scope. Under the hood, the SDK will create a transaction or span based on if there is already an existing span on the scope. `Sentry.startSpan` will create a span, but not set it as the active span in the current scope.
+
+There are two things to take away from the implementation of these two new APIs. First we should only be referencing spans and returning span references. This is to make it easier to switch between spans and transactions in the future. Second, we should be denotating the difference between an active span and a span. This is to indicate to users that there is a behaviour difference between the two.
+
+```js
+// span that is created is provided to callback in case additional
+// attributes have to be added.
+// ideally callback can be async/sync
+Sentry.startActiveSpan({}, (_span) => expensiveCalc());
+
+// If the SDK needs async/sync typed different we can expose this
+// declare function Sentry.startActiveSpanAsync(spanCtx, asyncCallback);
+```
+
+```jsx
+// does not get put on scope
+const span = Sentry.startSpan({ name: "expensiveCalc" });
+
+expensiveCalc();
+
+span.finish();
+```
+
+The span instances returned from the `Sentry.startSpan` or exposed in the `Sentry.startActiveSpan` callback should match the schema outlined above.
+
+The only methods that all SDKs are required to implement are `Sentry.startActiveSpan` and `Sentry.startSpan`. For languages that need it, they add an additional method for async callbacks: `Sentry.startActiveSpanAsync`. Other languages can also attach a suffix to the methods to indicate that the spans are being started from different sources, but these are language/framework/sdk dependent.
+
+For example with go:
+
+```go
+sentry.StartSpanFromContext(ctx, spanCtx)
+```
+
+Or when continuing from headers in javascript:
+
+```js
+Sentry.startSpanFromHeaders(spanCtx, headers);
+```
+
+Since we want to discourage accessing the transaction object directly, the `Sentry.setMeasurement` top level method will also be introduced. This will set a custom performance metric if a transaction exists.
+
 ## Span Schema
 
 To remove the overhead of understanding transactions/spans and their differences, we propose to simplify the span schema to have a minimal set of required fields.
@@ -276,52 +326,6 @@ Having both the `name` and `op` fields is redundant, but we choose to keep both 
 
 The most notable change here is to formally introduce the `attributes` field, and remove the `span.data` field. This is a breaking change, but worth it in the long-term. If we start accepting `attributes` on transactions as well, we more closely align with the OpenTelemetry schema, and can use the same conventions for both spans and transactions.
 
-## New SDK API
+## Next Steps
 
-The new SDK API should be as minimal as possible. The goal is to make it easy for users to instrument their code without having to know the difference between a span and a transaction. The new API should also be as similar to the OpenTelemetry SDK API as possible. Since we do not yet support single span ingestion, under the hood the new API should create spans/transactions as needed, but this should not be exposed to users unless they need to for their use case.
-
-Here are the requirements:
-
-1. Newly created spans must have the correct trace and parent/child relationship
-2. Users shouldn’t be burdened with knowing if something is a span/transaction
-3. Spans only need a name to identify themselves, everything else is optional.
-4. The new top level APIs should be as similar to the OpenTelemetry SDK public API as possible.
-
-There are two top level methods we'll be introducing to achieve this: `Sentry.startActiveSpan` and `Sentry.startSpan`. `Sentry.startActiveSpan` will take a callback and start/stop a span automatically. In addition, it'll also set the span as the active span in the current scope. Under the hood, the SDK will create a transaction or span based on if there is already an existing span on the scope. `Sentry.startSpan` will create a span, but not set it as the active span in the current scope.
-
-There are two things to take away from the implementation of these two new APIs. First we should only be referencing spans and returning span references. This is to make it easier to switch between spans and transactions in the future. Second, we should be denotating the difference between an active span and a span. This is to indicate to users that there is a behaviour difference between the two.
-
-```js
-// span that is created is provided to callback in case additional
-// attributes have to be added.
-// ideally callback can be async/sync
-Sentry.startActiveSpan({}, (_span) => expensiveCalc());
-
-// If the SDK needs async/sync typed different we can expose this
-// declare function Sentry.startActiveSpanAsync(spanCtx, asyncCallback);
-```
-
-```jsx
-// does not get put on scope
-const span = Sentry.startSpan({ name: "expensiveCalc" });
-
-expensiveCalc();
-
-span.finish();
-```
-
-The span instances returned from the `Sentry.startSpan` or exposed in the `Sentry.startActiveSpan` callback should match the schema outlined above.
-
-The only methods that all SDKs are required to implement are `Sentry.startActiveSpan` and `Sentry.startSpan`. For languages that need it, they add an additional method for async callbacks: `Sentry.startActiveSpanAsync`. Other languages can also attach a suffix to the methods to indicate that the spans are being started from different sources, but these are language/framework/sdk dependent.
-
-For example with go:
-
-```go
-sentry.StartSpanFromContext(ctx, spanCtx)
-```
-
-Or when continuing from headers in javascript:
-
-```js
-Sentry.startSpanFromHeaders(spanCtx, headers);
-```
+Since we only have `beforeSend` hooks for a transaction, we should look toward building similar hooks for span start and finish as well. This can be done after the span schema has been changed in the SDKs.
