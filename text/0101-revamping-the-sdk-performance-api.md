@@ -90,19 +90,22 @@ Summarizing, here are the core Issues in SDK Performance API:
 
 ## Span Schema
 
+To remove the overhead of understanding transactions/spans and their differences, we propose to simplify the span schema to have a minimal set of required fields.
+
 The current transaction schema inherits from the error event schema, with a few fields that are specific to transactions.
 
 ```rs
-// https://github.com/getsentry/relay/blob/2ad761f64db3df9b4d42f2c0896e1f6d99c16f49/relay-general/src/protocol/event.rs
+// Based on https://github.com/getsentry/relay/blob/2ad761f64db3df9b4d42f2c0896e1f6d99c16f49/relay-general/src/protocol/event.rs
 pub struct Event {
     /// Transaction name of the event.
-    /// In the SDK this is set and referenced as the `name` field.
+    /// This field is called `name` by most SDKs and is accessed by `transaction.setName()` and `transaction.getName()`
     pub transaction: Annotated<String>,
 
-    /// Timestamp when the event was created.
+    /// Timestamp when the event was created. Some SDKs alias this to `end_timestamp` but convert
+    /// it to `timestamp` when serializing to send to Sentry.
     pub timestamp: Annotated<Timestamp>,
 
-    /// Timestamp when the event has started (relevant for event type = "transaction")
+    /// Timestamp when the event has started.
     pub start_timestamp: Annotated<Timestamp>,
 
     /// Custom tags for this event.
@@ -174,26 +177,26 @@ pub struct Span {
     /// Arbitrary tags on a span, like on the top-level event.
     pub tags: Annotated<Object<JsonLenientString>>,
 
-    /// The origin of the span indicates what created the span (see [OriginType] docs).
-    pub origin: Annotated<OriginType>,
-
     /// Arbitrary additional data on a span, like `extra` on the top-level event.
     pub data: Annotated<Object<Value>>,
 }
 ```
 
-As you can see, the fields on the transaction/span differ in a few ways. This means that spans and transactions are not interchangeable, and users have to know the difference between the two. In addition, the wire format that is sent to Sentry is different for spans and transactions, which means that the SDKs have to do some work to convert between the two.
+As you can see, the fields on the transaction/span differ in a few ways, the most noteable of which is that transactions have `name` while spans have `description`. This means that spans and transactions are not interchangeable, and users have to know the difference between the two.
+
+In addition, user's have the burden to understand the differences between `name`/`description`/`operation`. `operation` in particular can be confusing, as it overlaps with transaction `name` and span `description`. In addition, `operation` is not a required field, which means that it is not clear what the default value should be.
+
+Transactions also have no mechanism for arbitrary additional data like spans do with `data`. Users can choose to add arbitrary data to transactions by adding it to the `contexts` field (as transactions extend the event schema), but this is not obvious and not exposed in every SDK. Since contexts are already well defined in their own way, there is no way of using [Sentry's semantic conventions for span data](https://develop.sentry.dev/sdk/performance/span-data-conventions/) for transactions.
 
 ### New Span Schema
 
-To simplify how performance data is consumed and understood, we are proposing a new span schema. The new span schema aims to be a superset of the [OpenTelemetry span schema](https://github.com/open-telemetry/opentelemetry-proto/blob/4967b51b5cb29f725978362b9d413bae1dbb641c/opentelemetry/proto/trace/v1/trace.proto) and have a minimal top level API surface. This also means that spans can be easily converted to OpenTelemetry spans and vice versa.
+To simplify how performance data is consumed and understood, we are proposing a new span schema that the SDKs send to Sentry. The new span schema aims to be a superset of the [OpenTelemetry span schema](https://github.com/open-telemetry/opentelemetry-proto/blob/4967b51b5cb29f725978362b9d413bae1dbb641c/opentelemetry/proto/trace/v1/trace.proto) and have a minimal top level API surface. This also means that spans can be easily converted to OpenTelemetry spans and vice versa.
 
 The new span schema is as follows:
 
 ```rs
 pub struct Span {
-    /// Indicates to Sentry the version of the span schema. This will be set to 2 for
-    /// this version of the schema proposed by this RFC.
+    /// Indicates to Sentry the version of the span schema.
     pub version: Annotated<u8>,
 
     /// A unique identifier for a trace. A 16 byte array.
@@ -245,11 +248,17 @@ pub struct Span {
 }
 ```
 
-TODO: Walk through new mapping process.
+For the purposes of this RFC, the version on the span schema will be set to 2. This will indicate to all consumers that the new span schema is being used.
+
+Just like both the old Sentry schema and the OpenTelemetry schema, we keep the same fields for `span_id`, `trace_id`, `parent_span_id`, `start_timestamp`, and `end_timestamp`. We also choose to rename `description` to `name` to match the OpenTelemetry schema.
+
+Having both the `name` and `op` fields is redundant, but we choose to keep both for backwards compatibility. There are many features in the product that are powered by having a meaningful operation, more details about this can be found in the documentation around [Span operations](https://develop.sentry.dev/sdk/performance/span-operations/). In the future, we can choose to deprecate `op` and remove it from the schema.
+
+The most notable change here is to formally introduce the `attributes` field, and remove the `span.data` field. This is a breaking change, but worth it in the long-term. If we start accepting `attributes` on transactions as well, we more closely align with the OpenTelemetry schema, and can use the same conventions for both spans and transactions.
 
 ## New SDK API
 
-The new SDK API should be as minimal as possible. The goal is to make it easy for users to instrument their code without having to know the difference between a span and a transaction. The new API should also be as similar to the OpenTelemetry SDK API as possible. Since we do not yet support single span ingestion, under the hood the new API should create spans/transactions as needed, but this should not be exposed to users unless they want to see it.
+The new SDK API should be as minimal as possible. The goal is to make it easy for users to instrument their code without having to know the difference between a span and a transaction. The new API should also be as similar to the OpenTelemetry SDK API as possible. Since we do not yet support single span ingestion, under the hood the new API should create spans/transactions as needed, but this should not be exposed to users unless they need to for their use case.
 
 Here are the requirements:
 
