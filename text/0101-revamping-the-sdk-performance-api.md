@@ -186,96 +186,42 @@ To remove the overhead of understanding transactions/spans and their differences
 
 The current transaction schema inherits from the error event schema, with a few fields that are specific to transactions.
 
-```rs
-// Based on https://github.com/getsentry/relay/blob/2ad761f64db3df9b4d42f2c0896e1f6d99c16f49/relay-general/src/protocol/event.rs
-pub struct Event {
-    /// Transaction name of the event.
-    /// This field is called `name` by most SDKs and is accessed by `transaction.setName()` and `transaction.getName()`
-    pub transaction: Annotated<String>,
+A full version of this protocol can be seen in [Relay](https://github.com/getsentry/relay/blob/2ad761f64db3df9b4d42f2c0896e1f6d99c16f49/relay-general/src/protocol/event.rs), but here are some of the fields that are important:
 
-    /// Timestamp when the event was created. Some SDKs alias this to `end_timestamp` but convert
-    /// it to `timestamp` when serializing to send to Sentry.
-    pub timestamp: Annotated<Timestamp>,
-
-    /// Timestamp when the event has started.
-    pub start_timestamp: Annotated<Timestamp>,
-
-    /// Custom tags for this event.
-    pub tags: Annotated<Tags>,
-
-    /// Spans for tracing.
-    pub spans: Annotated<Array<Span>>,
-
-    /// Measurements which holds observed values such as web vitals.
-    pub measurements: Annotated<Measurements>,
-}
-```
+| Transaction Field | Description                                                                                                                                                | Type            |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| `name`            | Name of the transaction. In ingest and storage this field is called `transaction`                                                                          | String          |
+| `end_timestamp`   | Timestamp when transaction was finished. Some SDKs alias this to `end_timestamp` but convert it to `timestamp` when serializing to send to Sentry.         | String \| Float |
+| `start_timestamp` | Timestamp when transaction was created.                                                                                                                    | String \| Float |
+| `tags`            | Custom tags for this event. Identical in behaviour to tags on error events.                                                                                | Object          |
+| `spans`           | A list of child spans to this transaction.                                                                                                                 | Span[]          |
+| `measurements`    | Measurements which holds observed values such as web vitals.                                                                                               | Object          |
+| `contexts`        | Contexts which holds additional information about the transaction. In particular, `contexts.trace` has additional information about the transaction "span" | Object          |
 
 The transaction also has a trace context, which contains additional fields about the transaction.
 
-```rs
-// https://github.com/getsentry/relay/blob/2ad761f64db3df9b4d42f2c0896e1f6d99c16f49/relay-general/src/protocol/contexts/trace.rs
-pub struct TraceContext {
-    /// The trace ID.
-    #[metastructure(required = "true")]
-    pub trace_id: Annotated<TraceId>,
-
-    /// The ID of the span.
-    #[metastructure(required = "true")]
-    pub span_id: Annotated<SpanId>,
-
-    /// The ID of the span enclosing this span.
-    pub parent_span_id: Annotated<SpanId>,
-
-    /// Span type (see `OperationType` docs).
-    pub op: Annotated<OperationType>,
-
-    /// Whether the trace failed or succeeded. Currently only used to indicate status of individual
-    /// transactions.
-    pub status: Annotated<SpanStatus>,
-}
-```
+| Transaction Field | Description                                                                                                                   | Type   |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
+| `trace_id`        | Trace ID of the transaction. Format is identical between Sentry and OpenTelemetry                                             | String |
+| `span_id`         | Span ID of the transaction. Format is identical between Sentry and OpenTelemetry                                              | String |
+| `parent_span_id`  | Parent span ID of the transaction. Format is identical between Sentry and OpenTelemetry                                       | String |
+| `op`              | Operation type of the transaction. [Standardized by Sentry spec](https://develop.sentry.dev/sdk/performance/span-operations/) | String |
+| `status`          | Status of the transaction. Sentry maps status to HTTP status codes, while OpenTelemetry has a fixed set of status'            | String |
 
 The current span schema is as follows:
 
-```rs
-// https://github.com/getsentry/relay/blob/2ad761f64db3df9b4d42f2c0896e1f6d99c16f49/relay-general/src/protocol/span.rs
-pub struct Span {
-    /// Timestamp when the span was ended.
-    #[metastructure(required = "true")]
-    pub timestamp: Annotated<Timestamp>,
-
-    /// Timestamp when the span started.
-    #[metastructure(required = "true")]
-    pub start_timestamp: Annotated<Timestamp>,
-
-    /// Human readable description of a span (e.g. method URL).
-    pub description: Annotated<String>,
-
-    /// Span type (see `OperationType` docs).
-    pub op: Annotated<OperationType>,
-
-    /// The Span id.
-    #[metastructure(required = "true")]
-    pub span_id: Annotated<SpanId>,
-
-    /// The ID of the span enclosing this span.
-    pub parent_span_id: Annotated<SpanId>,
-
-    /// The ID of the trace the span belongs to.
-    #[metastructure(required = "true")]
-    pub trace_id: Annotated<TraceId>,
-
-    /// The status of a span
-    pub status: Annotated<SpanStatus>,
-
-    /// Arbitrary tags on a span, like on the top-level event.
-    pub tags: Annotated<Object<JsonLenientString>>,
-
-    /// Arbitrary additional data on a span, like `extra` on the top-level event.
-    pub data: Annotated<Object<Value>>,
-}
-```
+| Span Field        | Description                                                                                                                                                                                           | Type            |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| `description`     | Description of the span. Same purpose as transaction `name`                                                                                                                                           |
+| `trace_id`        | Trace ID of the span. Format is identical between Sentry and OpenTelemetry                                                                                                                            | String          |
+| `span_id`         | Span ID of the span. Format is identical between Sentry and OpenTelemetry                                                                                                                             | String          |
+| `parent_span_id`  | Parent span ID of the span. Format is identical between Sentry and OpenTelemetry                                                                                                                      | String          |
+| `end_timestamp`   | Timestamp when span was finished. Some SDKs alias this to `end_timestamp` but convert it to `timestamp` when serializing to send to Sentry.                                                           | String \| Float |
+| `start_timestamp` | Timestamp when span was created.                                                                                                                                                                      | String \| Float |
+| `op`              | Operation type of the span. [Standardized by Sentry spec](https://develop.sentry.dev/sdk/performance/span-operations/)                                                                                | String          |
+| `status`          | Status of the span. Sentry maps status to HTTP status codes, while OpenTelemetry has a fixed set of status'                                                                                           | String          |
+| `tags`            | Custom tags for this span.                                                                                                                                                                            | Object          |
+| `data`            | Arbitrary additional data on a span, like `extra` on the top-level event. We maintain [conventions for span data keys and values](https://develop.sentry.dev/sdk/performance/span-data-conventions/). | Object          |
 
 As you can see, the fields on the transaction/span differ in a few ways, the most noteable of which is that transactions have `name` while spans have `description`. This means that spans and transactions are not interchangeable, and users have to know the difference between the two.
 
@@ -289,62 +235,18 @@ To simplify how performance data is consumed and understood, we are proposing a 
 
 The new span schema is as follows:
 
-```rs
-pub struct Span {
-    /// Indicates to Sentry the version of the span schema.
-    pub version: Annotated<u8>,
-
-    /// A unique identifier for a trace. A 16 byte array.
-    /// Identical to the trace_id in the OpenTelemetry schema.
-    #[metastructure(required = "true")]
-    pub trace_id: Annotated<TraceId>,
-
-    /// A unique identifier for a span within a trace, a 8 byte array.
-    /// Identical to the span_id in the OpenTelemetry schema.
-    #[metastructure(required = "true")]
-    pub span_id: Annotated<SpanId>,
-
-    /// A unique identifier for the parent of this span within a trace, a 8 byte array.
-    /// If this is a root span this is empty.
-    /// Identical to the parent_span_id in the OpenTelemetry schema.
-    pub parent_span_id: Annotated<SpanId>,
-
-    /// Span type (see `OperationType` docs).
-    /// No equivalent in the OpenTelemetry schema
-    /// but identical to the op field in the Sentry span/transaction schema.
-    pub op: Annotated<OperationType>,
-
-    /// The name of the span. Should be low cardinality.
-    /// Maps to name in the OpenTelemetry schema.
-    #[metastructure(required = "true")]
-    pub name: Annotated<String>,
-
-    /// A set of attributes on the span. This maps to `span.data` in the current schema for spans.
-    /// There is no existing mapping for this in the current transaction schema.
-    ///
-    /// The keys of attributes are well known values, and defined by a combination of OpenTelemtry's and Sentry's
-    /// semantic conventions.
-    pub attributes: Annotated<Object<Value>>,
-
-    /// Measurements which holds observed values such as web vitals.
-    pub measurements: Annotated<Measurements>,
-
-    /// Timestamp when the span was ended.
-    /// Maps to end_time_unix_nano in the OpenTelemetry schema.
-    #[metastructure(required = "true")]
-    pub end_timestamp: Annotated<Timestamp>,
-
-    /// Timestamp when the span started.
-    /// Maps to start_time_unix_nano in the OpenTelemetry schema.
-    #[metastructure(required = "true")]
-    pub start_timestamp: Annotated<Timestamp>,
-
-    /// An optional final status for this span. Can have three possible values: 'ok', 'error', 'unset'.
-    /// Maps to status in the OpenTelemetry schema.
-    /// 'unset' is set by default.
-    pub status: Annotated<String>,
-}
-```
+| Span Field        | Description                                                  | Type            | Notes                                                                                                                                                                                                                                                              |
+| ----------------- | ------------------------------------------------------------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `name`            | The name of the span                                         | String          | Should be low cardinality. Replacing span `description`                                                                                                                                                                                                            |
+| `trace_id`        | Trace ID of the span                                         | String          | Format is identical between Sentry and OpenTelemetry                                                                                                                                                                                                               |
+| `span_id`         | Span ID of the span                                          | String          | Format is identical between Sentry and OpenTelemetry                                                                                                                                                                                                               |
+| `parent_span_id`  | Parent span ID of the span                                   | String          | Format is identical between Sentry and OpenTelemetry. If empty this is a root span (transaction).                                                                                                                                                                  |
+| `end_timestamp`   | Timestamp when span was finished                             | String \| Float |                                                                                                                                                                                                                                                                    |
+| `start_timestamp` | Timestamp when span was finished                             | String \| Float |                                                                                                                                                                                                                                                                    |
+| `op`              | Operation type of the span                                   | String          | Use is discouraged but kept for backwards compatibility for product features                                                                                                                                                                                       |
+| `status`          | Status of the span                                           | String          | An optional final status for this span. Can have three possible values: 'ok', 'error', 'unset'. Same as OpenTelemetry's Span Status                                                                                                                                |
+| `attributes`      | A set of attributes on the span.                             | Object          | This maps to `span.data` in the current schema for spans. There is no existing mapping for this in the current transaction schema. The keys of attributes are well known values, and defined by a combination of OpenTelemtry's and Sentry's semantic conventions. |
+| `measurements`    | Measurements which holds observed values such as web vitals. | Object          |                                                                                                                                                                                                                                                                    |
 
 For the purposes of this RFC, the version on the span schema will be set to 2. This will indicate to all consumers that the new span schema is being used.
 
