@@ -145,6 +145,8 @@ In the ideal case, `startActiveSpan` should generally follow this code path.
 
 If the provided callback throws an exception, the span/transaction created in step 2 should be marked as errored. This error should not be swallowed by `startActiveSpan`.
 
+`startActiveSpan` only provides the correct parent-child relationship if your platform has proper support for forking scopes. For platforms have a single hub/scope (like the mobile SDKs), this method will not lead to the correct parent-child relationship. The SDK will have to provide a different method for these platforms. One option is for `startActiveSpan` to always attach the span it creates to the root span (the transaction), which means users don't get exact parent-child relationships, but they do get relative relationships between spans using relative durations.
+
 `Sentry.startSpan` will create a span, but not set it as the active span in the current scope.
 
 ```ts
@@ -168,11 +170,7 @@ For example with go:
 sentry.StartSpanFromContext(ctx, spanCtx)
 ```
 
-Or when continuing from headers in javascript:
-
-```js
-Sentry.startSpanFromHeaders(spanCtx, headers);
-```
+Other SDKs can also add a `startSpanFromContext` method where they can make context a variable databag that accepts headers, environment variables, etc. This is useful for easy trace propagation.
 
 Since we want to discourage accessing the transaction object directly, the `Sentry.setMeasurement` top level method will also be introduced. This will set a custom performance metric if a transaction exists. If a transaction doesn't exist, this method will do nothing. In the future, this method will attach the measurement to the span on the scope, but for now it'll only attach it to the transaction.
 
