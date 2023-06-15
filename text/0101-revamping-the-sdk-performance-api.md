@@ -2,6 +2,7 @@
 - RFC Type: decision
 - RFC PR: https://github.com/getsentry/rfcs/pull/101
 - RFC Status: draft
+- RFC Driver: [Abhijeet Prasad](https://github.com/abhiprasad)
 
 # Summary
 
@@ -144,7 +145,7 @@ In the ideal case, `startActiveSpan` should generally follow this code path.
 
 If the provided callback throws an exception, the span/transaction created in step 2 should be marked as errored. This error should not be swallowed by `startActiveSpan`.
 
-`Sentry.startSpan` will create a span, but not set it as the active span in the current scope. 90% of our documentation and code examples will be referencing `Sentry.startActiveSpan` - `Sentry.startSpan` is just there for edge case users of the API.
+`Sentry.startSpan` will create a span, but not set it as the active span in the current scope.
 
 ```ts
 namespace Sentry {
@@ -173,7 +174,7 @@ Or when continuing from headers in javascript:
 Sentry.startSpanFromHeaders(spanCtx, headers);
 ```
 
-Since we want to discourage accessing the transaction object directly, the `Sentry.setMeasurement` top level method will also be introduced. This will set a custom performance metric if a transaction exists.
+Since we want to discourage accessing the transaction object directly, the `Sentry.setMeasurement` top level method will also be introduced. This will set a custom performance metric if a transaction exists. If a transaction doesn't exist, this method will do nothing. In the future, this method will attach the measurement to the span on the scope, but for now it'll only attach it to the transaction.
 
 ```ts
 namespace Sentry {
@@ -261,7 +262,13 @@ The most notable change here is to formally introduce the `attributes` field, an
 
 ### Shimming the old schema
 
-TODO
+To ensure that we have backwards compatibility, we will shim the old schema to the new schema. This has to be done for both transactions and spans.
+
+For transactions, we need to start adding the `attributes` field to the trace context, the same way we do for spans. This will allow us to use the same conventions for both transactions and spans. For spans, we can keep and deprecate the `span.data` field, and forward it to `span.attributes` internally. For example, `span.setData()` would just call `span.setAttribute()` internally.
+
+Since status is changing to be an enum of 3 values from something that previously mapped to http status code, we need to migrate away from it in two steps. First, we'll be marking http status of spans in `span.attributes`, using our [span data semantic conventions](https://develop.sentry.dev/sdk/performance/span-data-conventions). For example, `http.request.status_code` can record the request status code. Next, we'll introduce a mapping where 2xx status codes map to `ok`, 4xx and 5xx status codes map to `error`, and all other status codes map to `unset`.
+
+Similar to `span.data`, we can keep and deprecate the `span.description` field and forward it to `span.name` internally. For example, `span.setDescription()` would just call `span.setName()` internally.
 
 ## Next Steps
 
