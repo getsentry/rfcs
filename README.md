@@ -53,3 +53,4 @@ This repository contains RFCs and DACIs. Lost?
  access tokens specifically for this environment
 - [0092-replay-issue-creation](text/0092-replay-issue-creation.md): Replay Issue Creation
 - [0095-escalating-forecasts-merged-issues](text/0095-escalating-forecasts-merged-issues.md): Issue States and Escalating Forecasts for Merged issues
+- [0104-string-parameterization-output-spec](text/0104-string-parameterization-output-spec.md): String Parameterization Output Spec
