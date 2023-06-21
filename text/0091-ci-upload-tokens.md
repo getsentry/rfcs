@@ -49,19 +49,21 @@ data. For the purpose of this document they are called **structural tokens**.
 
 ## Token Format
 
-The proposed token format is to leverage JWT as serialization format.  The goals of the
-token align generally with both [Macaroons](http://macaroons.io/) and
-[Biscuit](https://www.biscuitsec.org) but unfortunately the former standard has never seen
-much attention, and the latter is pretty new, not particularly proven and very complex.
-Either system however permits adding additional restrictions to the token which make them
-a very interesting choice for the use in our pipeline.
+We use a custom token format based on base64 encoding.
 
-One of the benefits of having the tokens carry additional data is that the token alone has enough
-information available to route to a Sentry installation.  This means that `sentry-cli` or
-any other tool _just_ needs the token to even determine the host that the token should be
-sent against.  This benefit also applies to JWT or PASETO tokens which can be considered
-for this as well.  The RFC here thus proposes to encode this data into a regular **JWT**
-token.
+```
+PREFIX_FACTS_SECRET
+```
+
+Concretely, a token would look like this:
+
+```
+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
+```
+
+* `PREFIX`: `sntrys_` - this is static and helps to identify this is a Sentry token.
+* `FACTS`: A padding-less base64 encoded JSON string of the facts.
+* `SECRET`: A random secret. We may use `base64_encode_str(uuid4().hex)`, but this is an implementation detail.
 
 A serialized token is added a custom prefix `sntrys_` (sentry structure) to make
 it possible to detect it by security scrapers.  Anyone handling such a token is
@@ -73,12 +75,11 @@ interested in extracting data from the token.
 
 We want to encode certain information into the tokens.  The following attributes are defined:
 
-* `iss`: The value `sentry.io` indicates that this is a Sentry Org Auth Token.
-* `nonce`: A randomly generated UUID to ensure the token content cannot be guessed.
-* `sentry_url`: references the root domain to be used. A token will always have a
+* `iat`: Timestamp when the token was issued.
+* `url`: references the root domain to be used. A token will always have a
   url in it and clients are not supposed to provide a fallback. This value can be found in `settings.SENTRY_OPTIONS["system.url-prefix"]`. Some APIs are only available on this URL, not on the region URL (see below). e.x. `https://sentry.io/`. 
-* `sentry_region_url`: The domain that the organization's API endpoints are available on. This value can be found in `organization.links.regionUrl`. e.x.  `http://us.sentry.io`. 
-* `sentry_org`: a token is uniquely bound to an org, so the slug of that org is also always
+* `region_url`: The domain that the organization's API endpoints are available on. This value can be found in `organization.links.regionUrl`. e.x.  `http://us.sentry.io`. 
+* `org`: a token is uniquely bound to an org, so the slug of that org is also always
   contained. Note that the slug is used rather than an org ID as the clients typically
   need these slugs to create API requests.
 
@@ -86,16 +87,14 @@ These facts are encoded in the JWT as custom claims:
 
 ```json
 {
-    "iss": "sentry.io",
     "iat": 1684154626,
-    "nonce": "abcd-efgh-ijkl-mnop",
-    "sentry_region_url": "https://eu.sentry.io/",
-    "sentry_url": "https://sentry.io/",
-    "sentry_org": "myorg"
+    "region_url": "https://eu.sentry.io/",
+    "url": "https://sentry.io/",
+    "org": "myorg"
 }
 ```
 
-Encoded the token then is be `sntrys_{encoded_jwt}`.
+Encoded the token then is be `sntrys_{encoded_facts}_secret`.
 
 ## Token Storage
 
@@ -115,26 +114,26 @@ unaware of the structure behind structural tokens nothing changes.
 Clients are strongly encouraged to parse out the containing structure of the token and
 to use this information to route requests.  For the keys the following rules apply:
 
-* `sentry_url` & `sentry_region_url`: references the target API URL that should be used.  A token
+* `url` & `region_url`: references the target API URL that should be used.  A token
   will always have a site in it and clients are not supposed to provide an
   automatic fallback.
 * `org`: a token is uniquely bound to an org, so the slug of that org is also always
   contained.  Note that the slug is used rather than an org ID as the clients typically
   need these slugs to create API requests.
 
-An example of this with a JWT token:
+An example of parsing the token content with python:
 
-```python
->>> import jwt
->>> tok = "sntrys_eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzZW50cnkuaW8iLCJpYXQiOjE2ODQxNTQ2MjYsInNlbnRyeV9zaXRlIjoiaHR0cHM6Ly9teW9yZy5zZW50cnkuaW8vIiwic2VudHJ5X29yZyI6Im15b3JnIiwic2VudHJ5X3Byb2plY3RzIjpbIm15cHJvamVjdCJdfQ.ROnK3f72jGbH2CLkmswMIxXP1qZHDish9lN6kfCR0DU"
->>> jwt.decode(tok[7:], options={"verify_signature": False})
-{
-  'iss': 'sentry.io',
-  'iat': 1684154626,
-  'sentry_url': 'https://sentry.io/',
-  'sentry_region_url': 'https://eu.sentry.io/',
-  'sentry_org': 'myorg'
-}
+```py
+def parse_token(token: str):
+    if not token.startswith("sntrys_") or token.count('_') != 2:
+        return None
+
+    # Note: We add == to the end of the string, because we remove the base64 padding when generating the token
+    # But python expects the correct amount of padding to be present, erroring out otherwise
+    # However, any _excess_ padding is ignored, so we just add the max. amount of padding and it works
+    payload_hashed = token[7:token.rindex('_')] + '=='
+    payload_str = b64decode((payload_hashed).encode('ascii')).decode("ascii")
+    return json.loads(payload_str)
 ```
 
 ## Token Issuance
@@ -270,6 +269,12 @@ globally unique IDs.  However this today does not work for a handful of reasons:
 4. DSNs are limited to a single project and in some cases that might not be ideal.  In particular
    for frontend + backend deployment scenarios being able to use one token to manage releases
    across projects might be desirable.
+
+## Why not JWT?
+
+We initially set out to try to use JWT as a format. However, since we are not interested in signing the tokens (which is a fundamental concept of JWT), this lead to problems. Skipping signing means we have to use `algorithm='none'`, which is not very well supported. When using this algorithm, the resulting tokens always end in `.`, as the final part would be based on the key, which is missing. Having a trailing `.` after each token is an unnecessary error source (users may not copy it, ...). We _could_ try to handle this when decoding, but this would still make this technically invalid JWT. 
+
+Since we do not need signing/verification of the token client side, we decided against using JWT as a format.
 
 ## Why not PASETO?
 
