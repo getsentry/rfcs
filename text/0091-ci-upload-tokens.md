@@ -63,7 +63,7 @@ sntrys_eyJpYXQiOjE2ODczMzY1NDMuNjk4NTksInVybCI6bnVsbCwicmVnaW9uX3VybCI6Imh0dHA6L
 
 * `PREFIX`: `sntrys_` - this is static and helps to identify this is a Sentry token.
 * `FACTS`: A padding-less base64 encoded JSON string of the facts.
-* `SECRET`: A random secret part for the token. We may use `base64_encode_str(secrets.token_hex(32))`, but this is an implementation detail. 
+* `SECRET`: A random secret part for the token. We may use `b64encode(uuid4().bytes).decode("ascii").rstrip("=")`, but this is an implementation detail. 
 
 A serialized token is added a custom prefix `sntrys_` (sentry structure) to make
 it possible to detect it by security scrapers.  Anyone handling such a token is
