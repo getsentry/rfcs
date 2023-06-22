@@ -62,7 +62,7 @@ sntrys_eyJpYXQiOjE2ODczMzY1NDMuNjk4NTksInVybCI6bnVsbCwicmVnaW9uX3VybCI6Imh0dHA6L
 ```
 
 * `PREFIX`: `sntrys_` - this is static and helps to identify this is a Sentry token.
-* `FACTS`: A padding-less base64 encoded JSON string of the facts.
+* `FACTS`: A base64 encoded JSON string of the facts.
 * `SECRET`: A random secret part for the token. We may use `b64encode(secrets.token_bytes(32)).decode("ascii").rstrip("=")`, but this is an implementation detail. 
 
 A serialized token is added a custom prefix `sntrys_` (sentry structure) to make
@@ -130,10 +130,7 @@ def parse_token(token: str):
     if not token.startswith("sntrys_") or token.count('_') != 2:
         return None
 
-    # Note: We add == to the end of the string, because we remove the base64 padding when generating the token
-    # But python expects the correct amount of padding to be present, erroring out otherwise
-    # However, any _excess_ padding is ignored, so we just add the max. amount of padding and it works
-    payload_hashed = token[7:token.rindex('_')] + '=='
+    payload_hashed = token[7:token.rindex('_')]
     payload_str = b64decode((payload_hashed).encode('ascii')).decode("ascii")
     return json.loads(payload_str)
 ```
