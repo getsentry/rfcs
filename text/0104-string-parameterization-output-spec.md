@@ -26,7 +26,7 @@ SELECT * FROM cities WHERE country = 'AU';
 A successful parameterizer will ingest these span descriptions, and determine that `"CA"`, `"US"`, and `"AU"` were probably a parameter inserted dynamically by the application depending on some condition. The three query descriptions are examples of this parameterized query:
 
 ```sql
-SELECT * FROM cities WHERE county = ?;
+SELECT * FROM cities WHERE country = ?;
 ```
 
 where `?` is a country code parameter that varies from query to query.
