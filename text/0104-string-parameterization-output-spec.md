@@ -65,6 +65,7 @@ This spec documents the desired output of a parameterizer, regardless of context
 - Parameterize *every* parameter. If a string contains multiple parameters, parameterize each one according to the relevant rules
 - Re-order unordered parameters in alphabetical order if it does not change the meaning of the string (e.g., see “Query Strings”)
 - Do not alter the string in any other way (e.g., do not re-format the whitespace, quotes, or any other symbols)
+- Output syntax-highlightable, but not necessarily valid strings (e.g., parameterized SQL queries don't have to be executable as-is, but they should be syntax-highlightable)
 
 ## Parameterizing SQL Commands
 
