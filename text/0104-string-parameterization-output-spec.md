@@ -25,7 +25,7 @@ The main goal of parameterization is to remove dynamic values from strings in or
 
 Firstly, when looking at application data (traces, URLs, spans, etc.) it is most useful to look at parameterized values, because they represent aggregate behaviour. In the routing example, the `/users/:id` route is a useful entity to examine, while the unparameterized URLs are not. The first and most important outcome of parameterization is successful aggregation. Aggregation makes it possible to store, query, and compare data easily.
 
-The second outcome is downstream processing. Successful and consistent parameterization allows downstream features like Performace Issues, Span Groups, and Starfish to work correctly. Parameterization allows identifying which spans are abstractly "the same", which powers downstream features, and UIs.
+The second outcome is downstream processing. Successful and consistent parameterization allows downstream features like Performance Issues, Span Groups, and Starfish to work correctly. Parameterization allows identifying which spans are abstractly "the same", which powers downstream features, and UIs.
 
 Lastly, good parameterization will reduce cardinality, and therefore reduce data storage costs and data processing times.
 
@@ -49,7 +49,7 @@ In another example, the SDKs might pass the query `SELECT * FROM country WHERE c
 
 In another example, Ingest and Relay both do some parameterization of URLs, for different purposes. Relay will parameterize host names like `someclient.api.com` into `*.api.com` for span metrics. Ingest does not do that for span groups. This creates inconsistency in the system, where span groups might not match span metrics.
 
-Lastly, we do not give format parameterization recommendatiosn to our users. If users implement manual parameterization (e.g., in a `before_send` hook) incorrectly, their spans will be ineligible for downstream features like Performance issues.
+Lastly, we do not give format parameterization recommendations to our users. If users implement manual parameterization (e.g., in a `before_send` hook) incorrectly, their spans will be ineligible for downstream features like Performance issues.
 
 This spec documents the desired output of a parameterizer, regardless of context. This makes it possible for different parameterizers to agree, conform to a standard, share code, and create consistent correct behaviour in our systems.
 
