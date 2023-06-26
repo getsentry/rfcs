@@ -9,51 +9,49 @@
 
 This RFC describes a spec for the output of string parameterizers, and proposes that we adopt the spec and recommend it to our users. A parameterizer is any system or function that accepts text strings, detects dynamic parameters in those strings, and replaces those parameters with placeholders. A parameter can be a value in a SQL query, a path segment in a URL, or any value interpolated into a string. A successful parameterizer can check a string (or a set of strings), and determine whether any part of those strings corresponds to a dynamic value.
 
-Parameterization applies to many aspects of distributed tracing, like transaction names, span description, and breadcrumbs. For example, consider a traced application that returns cities in given countries by fetching them from a SQL database. Each SQL query will create a corresponding span, and the query will be the span’s description. Over its runtime, the application might generate these descriptions:
+Examples or parameterizers in Sentry include:
 
-```sql
-SELECT * FROM cities WHERE country = 'CA';
-```
-
-```sql
-SELECT * FROM cities WHERE country = 'US';
-```
-
-```sql
-SELECT * FROM cities WHERE country = 'AU';
-```
-
-A successful parameterizer will ingest these span descriptions, and determine that `"CA"`, `"US"`, and `"AU"` were probably a parameter inserted dynamically by the application depending on some condition. The three query descriptions are examples of this parameterized query:
-
-```sql
-SELECT * FROM cities WHERE country = ?;
-```
-
-where `?` is a country code parameter that varies from query to query. Examples or parameterizers in Sentry include:
-
+- Python SDKs that provide parameterized SQL queries when sending transactions. Instead of `SELECT * FROM users WHERE ID = 17`, the SDK provides `SELECT * FROM users WHERE ID = %s`
+- Relay's URL parameterizer parameterizes URLs like `/resources/17/data` into `/resources/*/data`
 - `beforeSend` hooks written by users to strip out URL segments for manual instrumentation
-- Django instrumentation that replaces URLs with corresponding Django routes
-- Relay's URL parameterizer
 
-This RFC describes a spec that provides standards for the output of a parameterizer. The spec explains the desired string formatting, the payload structure, and character escaping. Parameterization methods and infrastructure are outside the scope of this spec.
+This RFC describes a spec that provides standards for the output of a parameterizer. The spec explains the desired string formatting, the payload structure, and character escaping. It covers SQL queries, URLs, and key-value store key names. Parameterization methods and infrastructure are outside the scope of this spec.
 
 ## Motivation
 
-The main goal of parameterization is to remove dynamic values from strings, in order to group “the same” strings together. “The same” loosely means that the strings represent the same underlying resource. For example, the strings `GET /users/17` and `GET /users/781` might represent accessing the web application route `/users/:id`. The strings `SCARD org:18:active` and `SCARD org:98:active` represent access to the same kind of Redis resource, and so on. When looking at application data (traces, URLs, spans, etc.) it is most useful to look at parameterized values, because they represent aggregate behaviour. In the routing example, the `/users/:id` route is a useful entity to examine, while the unparameterized URLs are not. Parameterization enables aggregation, and aggregation makes it possible to store, query, and compare data easily.
+### Importance of Parameterization
 
-Sentry performs parameterization in many different part of the application. The SDKs, Relay, and Ingest are three examples. There is no agreement between these parts beyond conventions. As a result, the output of parameterization is inconsistent.
+The main goal of parameterization is to remove dynamic values from strings in order to remove PII, and group “the same” strings together. “The same” loosely means that the strings represent the same underlying resource. For example, the strings `GET /users/17` and `GET /users/781` might represent accessing the web application route `/users/:id`. The strings `SCARD org:18:active` and `SCARD org:98:active` represent access to the same kind of Redis resource, and so on. Correct parameterization has three important outcomes.
 
-Here are three ways different SDKs might parameterize a SQL query:
+Firstly, when looking at application data (traces, URLs, spans, etc.) it is most useful to look at parameterized values, because they represent aggregate behaviour. In the routing example, the `/users/:id` route is a useful entity to examine, while the unparameterized URLs are not. The first and most important outcome of parameterization is successful aggregation. Aggregation makes it possible to store, query, and compare data easily.
 
-- `SELECT * FROM countries WHERE id = ?`
-- `SELECT * FROM countries WHERE id = %s`
-- `SELECT * FROM countries WHERE id = $1`
+The second outcome is downstream processing. Successful and consistent parameterization allows downstream features like Performace Issues, Span Groups, and Starfish to work correctly. Parameterization allows identifying which spans are abstractly "the same", which powers downstream features, and UIs.
 
-As another example, the SDKs might pass the query `SELECT * FROM country WHERE code IN (?, ?)` to Ingest, which will further parameterize that as `SELECT * FROM country WHERE code IN (?)`. The string `(?, ?)` is technically only partially parameterized from the system's perspective.
+Lastly, good parameterization will reduce cardinality, and therefore reduce data storage costs and data processing times.
 
-This has important downstream effects on user experience. A good parameterizer will correctly group similar strings together in a way that represents the original intent. If parameterization is successful, users will see groups that make sense to them. Good parameterization will also reduce cardinality, and therefore reduce data storage costs. A bad parameterizer will fill the users’s lists of transactions and spans with noisy similar descriptions that drown out the signal.
+This RFC is mostly concerned with the downstream processing aspect of parameterization, though it also has small improvements that may help with cardinality.
 
-This spec documents the desired output of a parameterizer. This makes it possible for different parameterizers to agree, conform to a standard, share code, and create consistency in the system.
+### Current Problem
+
+Many of Sentry's systems provide parameterized strings. For example, SDKs provide parameterized transaction names by converting strings like `/user/2453` to `/user/:id`. Relay clusters URLs in span descriptions, converts strings like `/organizations/sentry/projects/sentry` to `/organizations/*/projects/*`, and provides the output as a tag in span metrics. Other systems consume these parameterized strings. e.g., the Performance Issues product uses parameterized span descriptions to detect issues like N+1 Queries, and the Starfish project shows parameterized spans URLs directly in the UI.
+
+Right now, there is no formal agreement between parameterizers on the format of parameterized strings.
+
+As an example, here are three ways different SDKs might parameterize a SQL query:
+
+- `SELECT * FROM countries WHERE id = ?` in PHP
+- `SELECT * FROM countries WHERE id = %s` in Python
+- `SELECT * FROM countries WHERE id = $1` in Ruby
+
+Consumers of these strings must account for all three possibilities when scanning for parameterized content. If another SDK decides to provide a fourth format, all consumers must be updated.
+
+In another example, the SDKs might pass the query `SELECT * FROM country WHERE code IN (?, ?)` to Ingest, which will further parameterize that as `SELECT * FROM country WHERE code IN (?)`. The string `(?, ?)` is only partially parameterized from Ingest's perspective.
+
+In another example, Ingest and Relay both do some parameterization of URLs, for different purposes. Relay will parameterize host names like `someclient.api.com` into `*.api.com` for span metrics. Ingest does not do that for span groups. This creates inconsistency in the system, where span groups might not match span metrics.
+
+Lastly, we do not give format parameterization recommendatiosn to our users. If users implement manual parameterization (e.g., in a `before_send` hook) incorrectly, their spans will be ineligible for downstream features like Performance issues.
+
+This spec documents the desired output of a parameterizer, regardless of context. This makes it possible for different parameterizers to agree, conform to a standard, share code, and create consistent correct behaviour in our systems.
 
 ## Definitions
 
