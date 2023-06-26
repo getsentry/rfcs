@@ -7,7 +7,7 @@
 
 ## Summary
 
-This RFC describes a spec for the output of a string parameterizer. A parameterizer is a system that accepts text strings, detects dynamic parameters in those strings, and replaces those parameters with placeholders. A parameter can be a value in a SQL query, a path segment in a URL, or any value interpolated into a string. A successful parameterizer can check a string (or a set of strings), and determine whether any part of those strings corresponds to a dynamic value.
+This RFC describes a spec for the output of string parameterizers, and proposes that we adopt the spec and recommend it to our users. A parameterizer is any system or function that accepts text strings, detects dynamic parameters in those strings, and replaces those parameters with placeholders. A parameter can be a value in a SQL query, a path segment in a URL, or any value interpolated into a string. A successful parameterizer can check a string (or a set of strings), and determine whether any part of those strings corresponds to a dynamic value.
 
 Parameterization applies to many aspects of distributed tracing, like transaction names, span description, and breadcrumbs. For example, consider a traced application that returns cities in given countries by fetching them from a SQL database. Each SQL query will create a corresponding span, and the query will be the span’s description. Over its runtime, the application might generate these descriptions:
 
@@ -29,9 +29,13 @@ A successful parameterizer will ingest these span descriptions, and determine th
 SELECT * FROM cities WHERE country = ?;
 ```
 
-where `?` is a country code parameter that varies from query to query.
+where `?` is a country code parameter that varies from query to query. Examples or parameterizers in Sentry include:
 
-This spec outlines standards for the output of a parameterizer, including but not limited to the desired string formatting, payload structure, and character escaping. The spec is organized by data type. Parameterization methods and infrastructure are outside the scope of this spec.
+- `beforeSend` hooks written by users to strip out URL segments for manual instrumentation
+- Django instrumentation that replaces URLs with corresponding Django routes
+- Relay's URL parameterizer
+
+This RFC describes a spec that provides standards for the output of a parameterizer. The spec explains the desired string formatting, the payload structure, and character escaping. Parameterization methods and infrastructure are outside the scope of this spec.
 
 ## Motivation
 
