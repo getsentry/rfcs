@@ -249,6 +249,30 @@ Return:
 SADD orgs:*:emails jane@myorg.com
 ```
 
+## Structured JSON
+
+Databases like MongoDB structure operations as JSON payloads. In structured JSON languages, **the parameterizer must replace every leaf parameter with a single unquoted `?` character**.
+
+Given:
+
+```
+{
+  status: {
+    $in: ["active"]
+  }
+}
+```
+
+Return:
+
+```
+{
+  status: {
+    $in: [?]
+  }
+}
+```
+
 ## Storing Parameterization Results
 
 **Parameterizers must keep the original value as it was sent, and add the parameterized description as a separate key in the payload.** For example, when parameterizing the `description` key of a payload:
