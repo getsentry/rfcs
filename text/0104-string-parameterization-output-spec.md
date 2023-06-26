@@ -148,13 +148,15 @@ Given:
 GET http://someservice.com/users/tom/
 ```
 
-If the parameterizer determines that `tom` is a route parameter named `:name`, it must return:
+If the parameterizer determines that `tom` is a route parameter named `:userName`, it must return:
 
 ```
-GET http://someservice.com/users/{name}
+GET http://someservice.com/users/{userName}
 ```
 
-**Note:** The parameterizer should replace the smallest possible substring. e.g., the URL `/service/id-17` should be parameterized as `/service/id-{user_id}` rather than `/service/{user_id}`.
+**Note:** The parameterizer should replace the smallest possible substring. e.g., the URL `/service/id-17` should be parameterized as `/service/id-{userId}` rather than `/service/{userId}`.
+
+**Note:** The parameterizer must output parameter names in `camelCase` format.
 
 ### Unknown Route Segments
 
