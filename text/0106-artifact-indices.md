@@ -68,6 +68,7 @@ Built on top of `ReleaseFile`s, this does not index each individual file, but ra
 - **con**: The index needs to be merged/updated when uploading new bundles.
 - **con**: For disjoint / unique file names, the index will grow very large.
 - **con**: Needs a `Release` object as foreign key.
+- **con**: Can lead to "merge conflicts" with concurrent uploads touching the same index.
 
 ## Artifact Bundle
 
@@ -122,6 +123,7 @@ index, a flat-file format was proposed. However the exact format is rather an in
 - **con**: Needs to re-create / replicate most of the artifact-index logic, and inherits all of its cons:
   - updating / merging the index on uploads
   - the index growing monotonically on disjoint uploads
+- **con**: Automatic deletions (expired files) need to be taken into account when maintaining index.
 
 ## Index individual files in the Database
 
@@ -148,11 +150,12 @@ The table could look something the following:
 The idea was brought up to only index individual files if the number of uploaded bundles per release exceeds a certain
 threshold `N`.
 
-This takes advantage of the fact that the downstream consumer (Symbolicator) will query all the returned `N` bundles
-for the needed files as well.
+This takes advantage of the fact that the downstream consumer (Symbolicator) will use the `manifest.json` index in
+the returned `N` bundles, and no additional server-side index might be needed in that case.
 
 - **mixed**: All the pros/cons of the above _individual files_, just with a lower number of indexed files.
 - **pro**: No additional overhead for the one-bundle-per-release use-case.
+- **pro**: The consumer (Symbolicator) side already has all the logic for dealing with `manifest.json` indices.
 - **con**: Needs jobs and logic to backfill a per-file index if the threshold was exceeded.
 
 ## _Store_ individual files
