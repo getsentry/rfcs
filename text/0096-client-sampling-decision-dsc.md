@@ -16,22 +16,20 @@ During development of tagging we realized that there is an edge case in which th
 # Solution
 
 The solution to this problem would be to add a new field to the `DynamicSamplingContext` which will contain a boolean value marking whether or not the head of the trace was sampled out client side. This field will be used on:
-- SDKs: to maintain a consistent client side sampling decision. If the head is sampled on the client, all the components of the trace will be sampled. (We need to decide whether the opposite will also hold true, since we might also want to keep certain transactions in a trace even though the head has been sampled out).
+- SDKs: to maintain a consistent client side sampling decision. If the head is sampled on the client, all the components of the trace will be sampled.
 - Relay: to tag errors with the correct trace state. If the incoming error has in the dsc that the head was sampled out, we will mark `sampled = false` in the trace context.
 
-The resulting DSC could be something like this:
+To share the sampling decision, the new updated DSC will have a new field named `sampled`, like this:
 ```json
 {
   "trace_id": "12345678901234567890123456789012",
   // Boolean to mark whether or not the head was sampled on the client, where true means that the head was kept.
-  "sampled_on_client": true,
+  "sampled": true,
   ...
 }
 ```
 
-# Unresolved questions
-
-- TBD
+_The `sampled` field will be set only in case a transaction was started and was kept or dropped by the head of the trace. In all the other cases, the field should NOT be set._
 
 # Connected issues
 
