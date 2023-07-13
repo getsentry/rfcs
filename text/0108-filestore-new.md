@@ -1,6 +1,6 @@
-- Start Date: YYYY-MM-DD
-- RFC Type: feature / decision / informational
-- RFC PR: <link>
+- Start Date: 2023-07-13
+- RFC Type: informational
+- RFC PR: https://github.com/getsentry/rfcs/pull/108
 - RFC Status: draft
 
 # Summary
