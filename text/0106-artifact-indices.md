@@ -25,11 +25,11 @@ _We need to accommodate a scenario where a customer release is constructed from 
 
 ### Overwriting existing files for one release
 
-This is a use-case that we discourage, but may eventually even expand upon (see next point).
+This is a use-case that we discourage, but may eventually even expand upon (see the point about uploading without a release).
 
 Customers might hardcode a _release_ identifier somewhere in their codebase, which is very seldom updated or bumped. However, the customer's CI may regularly build new bundles, overwriting a previously existing bundle with a new build.
 
-_We need to accommodate a scenario in which a single release has an arbitrarily large set of highly joint bundles, that is, bundles with many files in common. We need to address this by being clear about the semantics of choosing which file to resolve a specific error._
+_We need to accommodate a scenario in which a single release has an arbitrarily large set of highly joint bundles, that is, bundles with many files in common. We need to address this by being clear about the semantics of choosing the file used for processing._
 
 ### Uploading the same bundle for multiple releases
 
@@ -51,14 +51,16 @@ Sentry has had several iterations of how to handle uploaded files, each with its
 
 ## Release Files
 
-This refers to the 'ReleaseFile' model, which indexes individual files associated with a release.
+This refers to the `ReleaseFile` model, which indexes individual files associated with a release.
+
 - **Pro**: It indexes individual files, allowing for simple and fast lookup of individual files.
 - **Con**: It requires a `Release` object as a foreign key.
 - **Con**: Indexing each individual file is considered to be costly.
 
 ## Release Bundle / Artifact Index
 
-Built on top of 'ReleaseFiles', this doesn't index each individual file, but rather maintains an index that is merged into.
+Built on top of `ReleaseFile`s, this doesn't index each individual file, but rather maintains an index that is merged into.
+
 - **Pro**: There is a single index for each release which references all included files.
 - **Pro**: It doesn't index individual files and thus puts less pressure on the database.
 - **Con**: Lookups require fetching and parsing the index file.
@@ -71,6 +73,7 @@ Built on top of 'ReleaseFiles', this doesn't index each individual file, but rat
 ## Artifact Bundle
 
 Constructed as the successor of Release Bundles, this has a distinct index for `DebugId`s and supports expiration through database partitioning.
+
 - **Pro**: It does not require a `Release` object.
 - **Pro**: It provides a method to expire and remove unused bundles.
 - **Con**: It does not maintain an index and has limited support for more than N bundles per release.
@@ -78,6 +81,7 @@ Constructed as the successor of Release Bundles, this has a distinct index for `
 # Supporting Data
 
 In order to revise the indexing mechanism for bundles, we have gathered some data to support our proposals and guide technical decisions:
+
 - We have observed customers uploading more than 200 bundles per release.
 - We have also observed customers uploading up to 20,000 individual files per release.
 - We have found that approximately 23% of release/distribution pairs have more than one bundle connected to them.
@@ -86,6 +90,7 @@ In order to revise the indexing mechanism for bundles, we have gathered some dat
 # Assumptions
 
 During the technical discussions for the new indexing system, we have made some assumptions:
+
 - Most of the files inside of bundles are never used.
 - The most recent uploads have more likelihood of being used by incoming errors.
 - Most of the edge cases we're trying to solve can be reduced in magnitude by providing more education to our users.
@@ -101,12 +106,14 @@ Early iterations of the `artifact-lookup` API utilized artifact indexes. However
 The solution was to replace it by simply returning the newest `N` release bundles. This, however, resulted in extreme load on the database. Upon investigation, it was discovered that sorting these release bundles by date was two orders of magnitude slower than just returning `N` bundles unsorted. In this context, 'unsorted' refers to the primary key order, which effectively means returning the oldest `N` bundles.
 
 Reintroducing support for artifact index lookups could temporarily resolve the regression in SourceMap processing. However, this relies on release bundles and artifact indices, which are currently being phased out.
+
 - **Pros**: This would allow for the querying and accessing of the necessary files.
 - **Cons**: It requires downloading or querying the index on API servers. It also relies on a deprecated technology that is in the process of being phased out.
 
 ## Using a replacement flat-file index
 
 This would involve creating a replacement for artifact indexes based on the newer artifact bundles. Instead of a JSON index, a flat-file format has been proposed. However, the exact format is a relatively insignificant detail.
+
 - **Pro**: This would allow querying or accessing the necessary files.
 - **Pro**: This would address one major issue with artifact indexes: there would be no more need for a `Release` object.
 - **Con**: This would require downloading or querying the index on API servers.
@@ -118,6 +125,7 @@ This would involve creating a replacement for artifact indexes based on the newe
 ## Index individual files in the Database
 
 This would create a database table or index similar to `ReleaseFile`, but with different constraints.
+
 - **Pro**: Files are individually indexed.
 - **Pro**: A database-based solution might be simpler than maintaining a separate index manually.
 - **Pro**: No `Release` object is needed.
@@ -132,6 +140,7 @@ This would create a database table or index similar to `ReleaseFile`, but with d
 The idea was proposed to index individual files only if the number of uploaded bundles per release surpasses a certain threshold `N`.
 
 This capitalizes on the fact that the downstream consumer, Symbolicator, will utilize the `manifest.json` index in the returned `N` bundles, and there may not be a need for an additional server-side index in that scenario.
+
 - **Mixed**: This has all the advantages and disadvantages of the above-mentioned _individual files_, but with a smaller number of indexed files.
 - **Pro**: There is no additional overhead for the one-bundle-per-release use case.
 - **Pro**: The consumer side, Symbolicator, already possesses all the logic for dealing with `manifest.json` indices.
@@ -140,19 +149,20 @@ This capitalizes on the fact that the downstream consumer, Symbolicator, will ut
 ## Store individual files
 
 Instead of merely indexing files individually while still referring to the bundle they are included in, it might be feasible to store the files themselves individually, potentially deduplicated by a content hash.
+
 - **Pro**: This solves the file decompression performance issue of Symbolicator.
 - **Pro**: We assume that most files within bundles are unused.
 - **Pro**: We assume that many files will not change across bundles (polyfills, dependencies, etc).
 - **Con**: We need a more efficient method to store numerous small files.
 - **Mixed**: We have insufficient data to validate assumptions about the usage of files per bundle, duplicated files across bundles, and the complexity/cost of storing individual files, etc.
 
-# Options Experimented
+# Implementation history
 
-In the last couple of weeks we experimented with two viable alternatives for indexing:
-- **Individual file indexing guarded by threshold.**
-- **Bundle indexing with scoped flat file per triple.**
+Two separate approaches were developed and considered in this time.
 
-## Individual File Indexing Guarded By Threshold
+## Database Indexing
+
+This approach is described above as _Index individual files in the Database_.
 
 The solution involved creating a table called `ArtifactBundleIndex`, which would contain a `url` and an `artifact_bundle_id` associated with that URL.
 
@@ -160,36 +170,53 @@ This table would be populated upon upload, and once the threshold was reached, t
 
 We tried several implementations of this indexing, initially with a de-duplication mechanism both in-memory and in-database. This allowed us to keep the table size relatively small, especially in cases of highly joint bundles. However, this approach led to problems when users deleted bundles that were last indexed, and we had to start re-indexing older bundles. This process presented both technical complexity and infrastructure load.
 
-After some testing, we decided to remove the de-duplication feature and simply insert all the files each time. This change resulted in a significant increase in the table size. In approximately one week, the table gained 40 million rows, which raised concerns about its size and lookup scalability, even though auto-expiration could potentially keep this number steady or lower.
+After some testing, we decided to remove the de-duplication feature and simply insert all the files each time. This change resulted in a significant increase in the table size. In approximately one week, the table gained 40 million rows, which raised concerns about its size and lookup scalability, even though auto-expiration could potentially keep this number steady.
 
 On the lookup end, the system would use a release/dist to first identify the bound bundle ids, and then search for the specific url for each bundle, using last writer wins semantics for resolving possible url conflicts. This lookup mechanism involves several joins, and depending on the cardinality of the associations of the release/dist pair, performance could vary significantly.
 
-### Bundle Indexing with Scoped Flat File per Triple
+The limiting factor here seemed to be the size and the query performance of the main index.
 
-Since Symbolicator has very large caches, we have started considering an alternative indexing system. This system involves more duplication but might provide better indexing performance.
+## Improved Flat File Indexing
+
+This approach is similar to the _Using a replacement flat-file index_ listed above, but tries to improve upon some of the shortcomings.
+
+- The index is not being queried on the API servers, but it is being processed directly in Symbolicator.
+- The index format itself is being adapted to support bundle removals.
 
 The concept is to index each uploaded bundle based on the triple `project_id, release, dist`, where `release` and `dist` are considered `""` for debug IDs upload. This is done under the presumption that this is the triple in an incoming error, which can help the system determine where to potentially look for SourceMaps.
 
-The indexes stored for each triple would be formatted as `.json` files. As a result, the database will scale in relation to the number of bundles uploaded to different projects and releases. The schema of the database will contain the triple and a link to the `File` object storing the `.json` file.
+The indexes stored for each triple would be formatted as `.json` files. As a result, the database will scale in relation to the number of bundles uploaded to different projects and releases. The schema of the database will contain the triple and a link to the `.json` file.
 
-The file could have a format like:
+The file could have a format like, though the format is not finalized yet:
 
-```
+```json
 {
- "bundles": {1: date, 2: date},
- "files_by_url": {"~/app.js": [1,2]},
- "files_by_debug_id": {"f3bb9849-e17d-4880-b720-666a84c14b59": [2]}
+  "bundles": [
+    { "bundle_id": "bundle_1" },
+    { "bundle_id": "bundle_2" },
+    { "bundle_id": "bundle_3" }
+  ],
+  "files_by_url": {
+    "~/url/in/bundle": [1, 0]
+  },
+  "files_by_debug_id": {
+    "5b65abfb-2338-4f0b-b3b9-64c8f734d43f": [2]
+  }
 }
 ```
 
-In practice, we will store debug IDs and URL indexes separately. Specifically, all debug IDs will be stored in the index identified by the triple `project_id, "", ""`, while the URLs will be identified by the standard triple `project_id, release, dist`. The rationale for this division is to allow faster lookup on the Symbolicator side, as the index's identifier can be immediately computed given the desired lookup (e.g., first by debug IDs and then by release/dist).
+In practice, we will store debug IDs and URL indexes separately. Specifically, all debug IDs will be stored in the index identified by the triple `project_id, "", ""`, while the URLs will be identified by the standard triple `project_id, release, dist`.
+The rationale for this division is to better allow `DebugId`-based lookups for events that are lacking a proper `release`.
 
 The creation of this index will be performed _asynchronously_ after a bundle has been uploaded. It will be protected against concurrent access through a _retry mechanism_ (there may be a need to better define concurrency semantics if we find that retries during high contention lead to task starvation). The indexing operation to be implemented will be both _idempotent_ and _commutative_, as we will establish a total order of bundles by timestamp and ID. This facilitates a simpler design for the asynchronous execution of indexing tasks.
 
-On the lookup side, Sentry will append to each error sent to Symbolicator the indexes that will be used to resolve that specific error, by merely examining the error payload (e.g., project\_id, release, dist). The data sent to Symbolicator will either be the ID of the `File` containing the index or a version number of the index given the triple identifier. Symbolicator will use versioning to determine whether a new version of the index should be downloaded.
+The most recent _per-release_ index containing indexed `URL`s, and the most recent _per-project_ containing `DebugId`s will be sent
+directly to Symbolicator with each event to be processed.
+This will improve caching on the Symbolicator side, and avoid frequent round-trips to the `artifact-lookup` API.
 
 Symbolicator will then use the downloaded indexes to perform lookups. Since each index represents a 1:1 relationship with the files bound to the triple `project_id, release, dist`, the system will easily handle cases where a release has multiple bundles or a bundle has multiple releases. In the case of a bundle with multiple releases, the system will create duplicate indexes. The triple identifier will differ, but since the indexes are within a single file, we are not overly concerned about scalability. The primary goal of indexing is to quickly bisect the locations to look for when resolving a specific stack trace.
 
 Deletions will be more complex with this system, as we don't have any consistency guarantees offered by the database. Currently, our idea is to perform a repair on read, but this is something we will investigate once the scalability of the indexing has been evaluated with a write-only implementation.
 
-Such a system also has an additional benefit. In the index, we will maintain an ordered list of bundles that had that specific URL. This means that bundle deletions will not cause the indexing to fail. We will notice that a specific bundle is no longer there, resulting in Symbolicator trying the next possible candidate, ordered by descending date.
+Such a system also has an additional benefit. In the index, we will maintain an ordered list of bundles that had that specific URL.
+This means that the index is consistent even when considering bundle deletions.
