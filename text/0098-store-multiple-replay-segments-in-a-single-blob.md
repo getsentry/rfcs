@@ -9,19 +9,63 @@ Recording data is sent in segments. Each segment is written to its own file. Wri
 
 # Motivation
 
-1. Minimize costs.
-2. Increase write throughput.
+1. Increase consumer throughput.
+2. Minimize costs.
 3. Enable new features in a cost-effective manner.
 
-# Background
+# FAQ
 
-This document was originally written to respond to a percieved problem in the Session Replays recording consumer. However, upon exploring these ideas more it was determined that this could be more generally applied to the organization as a whole. For that reason I've made many of the names generic but have also retained many references to Session Replay.
+**Can this idea be abstracted into a generic service?**
+
+No. Though it was not codified in this document several of my comments and my own thinking at the time alluded to me pursuing a "generic service" concept. Where a Kafka consumer would accept file-parts and perform the buffering, encrypting, and uploading for other product-focused consumers. This seemed like a good way to abstract the problem and make everyones lives easier.
+
+However, publishing to Kafka incurs a network cost. And that cost essentially means that you lose a huge amount of throughput potential. Possibly so much throughput that the benefits of this proposal ceases to be worth relative to the complexity it introduces.
+
+**Is this a replacement for filestore?**
+
+No. The primary focus is on deriving a set of tools and libraries that developers can implement on their consumers. To achieve the desired levels of throughput files must be buffered in-memory.
+
+**Can this proposal be used with filestore?**
+
+Yes. This is additive. Filestore does not need to implement this feature-set to achieve its mission.
+
+**Can filestore buffer files transparently for your consumer?**
+
+Sure but you would not achieve the efficiency numbers listed elsewhere in this document. Pushing to Kafka has some network cost. Maintaining the buffer in-memory is the only way to minimize network transit cost. Regardless of destination.
+
+To be clear, filestore absolutely can buffer if it wants to reduce costs or achieve higher throughput _for itself_ but upsteam processes will not receive any throughput improvements from its implementation.
+
+**How large of a throughput improvement can we expect in the replay recording consumer?**
+
+99% of the current replays task time is spent in I/O. If we assume a buffer size of 10MB we can expect a gross throughput improvement of 222,750% (see supporting data section). This value ignores the cost new operations which have not yet been measured. Those operations include:
+
+- Encrypting the data.
+- Fetching the key encryption key.
+- Bulk inserting the offsets into a database.
 
 # Supporting Data
+
+**Network Overhead Considerations**
+
+Consider two files. One is one-thousand bytes in size. The other is one-million bytes in size. Assuming you want to upload these file to a remote storage provider over the open internet which file will upload faster? The answer is you don't have enough information to know. The 1MB file may finish up to twice as quickly for no reason other than it followed a happier path to the data-center.
+
+But that's not a scenario we always face. More commonly we upload from within Google's network. Additionally, its typical for consumers and storage buckets to share the same datacenter location. This reduces cost and greatly improves network reliability and performance. With these considerations in mind which file uploads faster? The answer is still "it depends". Mostly the 1KB file will upload faster than the 1MB file but it is not guaranteed. A good estimate is the 1MB file will be 33% slower on average. In other words, a 1MB file is 750x faster to upload on a byte per byte basis than a 1KB file.
+
+What about a 10MB file? You can expect latency to be 2 to 3 times higher than a 1KB file. This makes the 10MB file 3x faster to upload than the 1MB file and 2,250x faster than the 1KB file.
+
+There are clearly economies of scale when submitting and fetching data from a remote storage provider. What is the exepected total throughput improvement for a Replay's consumer which buffers 10MB worth of data before submitting as a single file? About 100x.
+
+With this level of throughput improvement the Replay's recording ingestion service can be operated by a single machine.
+
+These figures were derived from experimentation with Google Cloud Platform. Compute and storage layers were located in the Iowa data center (us-central1).
+
+**Cost Minimization**
 
 Google Cloud Storage lists the costs for writing and storing data as two separate categories. Writing a file costs $0.005 per 1000 files. Storing that file costs $0.02 per gigabyte. For the average Session Replay file (with a retention period of 90 days) this works out to: $0.000000012 for storage and $0.00000005 for the write.
 
 In practical terms, this means 75% of our spend is allocated to writing new files.
+
+Additionally, when considering the reduction in compute power needed to upload these files, the Replay's recording ingestion service could reduce its Kafka replica count by 31. A 97% reduction in compute cost.
 
 # High Level Overview
 
