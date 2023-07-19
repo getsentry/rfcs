@@ -15,7 +15,7 @@ We have discovered that the transition to non-indexed Artifact Bundles and the m
 
 Customers may use our product in a multitude of ways. Although we may want to guide and encourage users to use the product in a specific manner, such as _uploading only a single bundle per release_, this may not be practical and it restricts the customers' freedom. Furthermore, it may not align with the direction we wish to pursue.
 
-We spent some time analyzing all the edge cases that our system permits and e
+We spent some time analyzing all the edge cases that our system permits and identified those we feel like are important to support.
 
 ### Uploading disjoint Bundles for one release
 
