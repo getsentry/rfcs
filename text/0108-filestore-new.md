@@ -15,9 +15,9 @@ into this system and proposes a path forward.
 
 # Motivation
 
-Various issues have ocurred over the years with this system so that some decisions were
+Various issues have occurred over the years with this system so that some decisions were
 made that over time have resulted in new requirements for filestore and alternative
-implementations.  Replay for instance operates a seperate infrastructure that goes
+implementations.  Replay for instance operates seperate infrastructure that goes
 straight to GCS but is running into write throughput issues that file store the Go service
 solves.  On the other hand race conditions and complex blob book-keeping in Sentry itself
 prevent expiring of debug files and source maps after a period of time.
@@ -50,11 +50,11 @@ These are some plans about what can be done to improve the system:
 ## Removal of Blob Deduplication
 
 Today it's not possible for us to use GCS side expiration.  That's because without the
-knowledge of the usage of blobs from the database it's not save to delete blobs.  This
+knowledge of the usage of blobs from the database it's not safe to delete blobs.  This
 can be resolved by removing deduplication.  Blobs thus would be written more than once.
 This works on the `filestore` level, but it does not work on the `FileBlob` level.
 However `FileBlob` itself is rather well abstracted away from most users.  A new model
-could be added to replace the one one.  One area where `FileBlob` leaks out is the
+could be added to replace the current one.  One area where `FileBlob` leaks out is the
 data export system which would need to be considered.
 
 `FileBlobOwner` itself could be fully removed, same with `FileBlobIndex` as once
