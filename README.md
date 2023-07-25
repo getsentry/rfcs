@@ -53,3 +53,4 @@ This repository contains RFCs and DACIs. Lost?
  access tokens specifically for this environment
 - [0092-replay-issue-creation](text/0092-replay-issue-creation.md): Replay Issue Creation
 - [0095-escalating-forecasts-merged-issues](text/0095-escalating-forecasts-merged-issues.md): Issue States and Escalating Forecasts for Merged issues
+- [0109-simple-severity-detection-using-issue-metadata-type](text/0109-simple-severity-detection-using-issue-metadata-type.md): Simple Severity Detection using Issue Metadata Type
