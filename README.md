@@ -49,7 +49,8 @@ This repository contains RFCs and DACIs. Lost?
 - [0087-graphql-errors](text/0087-graphql-errors.md): Request and Response bodies for GraphQL errors
 - [0088-fix-memory-limitiations-in-session-replays-access-pattern](text/0088-fix-memory-limitiations-in-session-replays-access-pattern.md): Fix Memory Limitiations in Session Replay's Access Pattern
 - [0091-ci-upload-tokens](text/0091-ci-upload-tokens.md): This RFC Proposes an improved CI experience for uploading source maps, debug symbols,
- and potentially other CI based operations by proposing a new way to get and manage
- access tokens specifically for this environment
+  and potentially other CI based operations by proposing a new way to get and manage
+  access tokens specifically for this environment
 - [0092-replay-issue-creation](text/0092-replay-issue-creation.md): Replay Issue Creation
 - [0095-escalating-forecasts-merged-issues](text/0095-escalating-forecasts-merged-issues.md): Issue States and Escalating Forecasts for Merged issues
+- [0101-revamping-the-sdk-performance-api](text/0101-revamping-the-sdk-performance-api.md): Revamping the SDK Performance API
