@@ -183,4 +183,4 @@ def zero_bytes_in_range(blob: io.BytesIO, start: int, length: int) -> None:
 
 # Conclusion
 
-Buffering files can provide significant throughput and cost advantages and poses minimal downside.
+Buffering files can provide significant throughput and cost advantages and poses minimal downside. Kafka is the suggested implementation mechanism for batching files. It has strong client support for batched network-operations and is a well understood software-system within Sentry.
