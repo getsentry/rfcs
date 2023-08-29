@@ -1,6 +1,6 @@
-- Start Date: YYYY-MM-DD
-- RFC Type: feature / decision / informational
-- RFC PR: <link>
+- Start Date: 2023-08-29
+- RFC Type: feature
+- RFC PR: <https://github.com/getsentry/rfcs/pull/111>
 - RFC Status: draft
 
 # Summary
@@ -82,4 +82,4 @@ If sample rate is missing, sever applies DS like before.
 # Unresolved questions
 
 - Client SDK option
-- Session sampling (see RFC 0109)
+- Session sampling (see [RFC 0109](https://github.com/getsentry/rfcs/pull/109))
