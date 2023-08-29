@@ -7,7 +7,7 @@
 
 Small files are more expensive to upload than larger files. Larger files are better able to ammortize the costs of an upload on a byte-for-byte basis. When considering the latency cost of uploading one large file versus many small files, the single large file can be up to 300x faster in workloads commonly experienced by the Sentry org. When considering total network utilization larger files can utilize up to 5000x more networking resources than smaller files over some interval.
 
-Batching is a common feature of high-performance, network-oriented software. As an example, we utilize this behavior every day when publishing to Kafka producers.
+Batching is a common feature of high-performance, network-oriented software. As an example, we utilize this behavior every day when publishing with Kafka producers.
 
 This RFC seeks to codify a system of batching and addressing files.
 
