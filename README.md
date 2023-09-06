@@ -53,4 +53,6 @@ This repository contains RFCs and DACIs. Lost?
   access tokens specifically for this environment
 - [0092-replay-issue-creation](text/0092-replay-issue-creation.md): Replay Issue Creation
 - [0095-escalating-forecasts-merged-issues](text/0095-escalating-forecasts-merged-issues.md): Issue States and Escalating Forecasts for Merged issues
+- [0096-client-sampling-decision-dsc](text/0096-client-sampling-decision-dsc.md): Client Sampling Decision in Dynamic Sampling Context
 - [0101-revamping-the-sdk-performance-api](text/0101-revamping-the-sdk-performance-api.md): Revamping the SDK Performance API
+- [0106-artifact-indices](text/0106-artifact-indices.md): Improvements to Source Maps Processing
