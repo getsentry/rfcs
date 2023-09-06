@@ -25,6 +25,7 @@ The are three kinds of RFCs:
 - `draft`: this RFC is currently in draft state.
 - `active`: this RFC is currently active, which means that the contents of the document reference the current state of affairs and are supposed to be followed.
   This status is used for RFCs that are informational or general guides.
+- `implementation`: The RFC was discussed and is currently in a trail period of being implemented. Potential learnings will go into the RFC before it's finally approved. This step is optional and can be considered by the author as a forcing function to move forward.
 - `approved`: the approver of an RFC approved the decision.
 - `withdrawn`: the RFC was withdrawn. Typically such RFCs are not visible in the repository as the corresponding PRs are not merged unless they are withdrawn after being accepted.
 - `replaced`: the RFC was later replaced by another RFC.
