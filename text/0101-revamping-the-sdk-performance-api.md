@@ -18,9 +18,9 @@ Note: In a previous version of this RFC there was a focus on updating the span s
 
 # Planned Work
 
-The primary planned work in this RFC is to introduce three new top-level methods, `Sentry.startActiveSpan` and `Sentry.startSpan` and their language-specific variants as well as `Sentry.setMeasurement`.
+The primary planned work in this RFC is to introduce three new top-level methods, `Sentry.startSpan` and `Sentry.startInactiveSpan` and their language-specific variants as well as `Sentry.setMeasurement`.
 
-This allows us to de-emphasize the concept of hubs, scopes, and transactions from users, and instead have them think about just spans. Under the hood, `Sentry.startActiveSpan` and `Sentry.startSpan` should create transactions/spans as appropriate. `Sentry.setMeasurement` is used to abstract away `transaction.setMeasurement` and similar.
+This allows us to de-emphasize the concept of hubs, scopes, and transactions from users, and instead have them think about just spans. Under the hood, `Sentry.startSpan` and `Sentry.startInactiveSpan` should create transactions/spans as appropriate. `Sentry.setMeasurement` is used to abstract away `transaction.setMeasurement` and similar.
 
 In a previous version of the RFC, there was a follow-up step to update the span schema. This will be focused on later and for now, is not in scope for performance API improvements.
 
@@ -111,13 +111,13 @@ The new SDK API has the following requirements:
 
 ### Span Creators
 
-There are two top-level methods we'll be introducing to achieve this: `Sentry.startActiveSpan` and `Sentry.startSpan`. `Sentry.startActiveSpan` will take a callback and start/stop a span automatically. In addition, it'll also set the span on the current scope. Under the hood, the SDK will create a transaction or span based on if there is already an existing span on the scope.
+There are two top-level methods we'll be introducing to achieve this: `Sentry.startSpan` and `Sentry.startInactiveSpan`. `Sentry.startSpan` will take a callback and start/stop a span automatically. In addition, it'll also set the span on the current scope. Under the hood, the SDK will create a transaction or span based on if there is already an existing span on the scope.
 
-The reason for electing to have `startActiveSpan` and `startSpan` as separate top-level methods is to not burden the user with having to know about scope propagation, since the concept of a scope might change in future versions of the unified API. If this is not viable at all for a language or certain frameworks, SDK authors can opt to include the `onScope` parameter to the `startSpan` call that will automatically set the span on the current scope, but this is not recommended.
+The reason for electing to have `startSpan` and `startInactiveSpan` as separate top-level methods is to not burden the user with having to know about scope propagation, since the concept of a scope might change in future versions of the unified API. If this is not viable at all for a language or certain frameworks, SDK authors can opt to include the `onScope` parameter to the `startInactiveSpan` call that will automatically set the span on the current scope, but this is not recommended.
 
 ```ts
 namespace Sentry {
-  declare function startActiveSpan<T>(
+  declare function startSpan<T>(
     spanContext: SpanContext,
     callback: (span: Span) => T
   ): T;
@@ -126,9 +126,8 @@ namespace Sentry {
 // span that is created is provided to callback in case additional
 // attributes have to be added.
 // ideally callback can be async/sync
-const returnVal = Sentry.startActiveSpan(
-  { name: "expensiveCalc" },
-  (span: Span) => expensiveCalc()
+const returnVal = Sentry.startSpan({ name: "expensiveCalc" }, (span: Span) =>
+  expensiveCalc()
 );
 
 // If the SDK needs async/sync typed differently it can be exposed as `startActiveSpanAsync`
@@ -138,7 +137,7 @@ const returnVal = Sentry.startActiveSpan(
 // ): Promise<T>;
 ```
 
-In the ideal case, `startActiveSpan` should generally follow this code path.
+In the ideal case, `startSpan` should generally follow this code path.
 
 1. Get the active span from the current scope
 2. If the active span is defined, create a child span of that active span based on the provided `spanContext`, otherwise create a transaction based on the provided `spanContext`.
@@ -146,26 +145,26 @@ In the ideal case, `startActiveSpan` should generally follow this code path.
 4. Finish the child span/transaction created in Step 2
 5. Remove the child span/transaction from the current scope and if it exists, set the previous active span as the active span in the current scope.
 
-If the provided callback throws an exception, the span/transaction created in Step 2 should be marked as errored. This error should not be swallowed by `startActiveSpan`.
+If the provided callback throws an exception, the span/transaction created in Step 2 should be marked as errored. This error should not be swallowed by `startSpan`.
 
-`startActiveSpan` only provides the correct parent-child relationship if your platform has proper support for forking scopes. For platforms that have a single hub/scope (like the mobile SDKs), this method will not lead to the correct parent-child relationship. The SDK will have to provide a different method for these platforms. The recommended option here is for `startActiveSpan` to always attach the span it creates to the root span (the transaction), which means users don't get exact parent-child relationships, but they do get relative relationships between spans using relative durations.
+`startSpan` only provides the correct parent-child relationship if your platform has proper support for forking scopes. For platforms that have a single hub/scope (like the mobile SDKs), this method will not lead to the correct parent-child relationship. The SDK will have to provide a different method for these platforms. The recommended option here is for `startSpan` to always attach the span it creates to the root span (the transaction), which means users don't get exact parent-child relationships, but they do get relative relationships between spans using relative durations.
 
-`Sentry.startSpan` will create a span, but not set it as the active span in the current scope.
+`Sentry.startInactiveSpan` will create a span, but not set it as the active span in the current scope.
 
 ```ts
 namespace Sentry {
-  declare function startSpan(spanContext: SpanContext): Span;
+  declare function startInactiveSpan(spanContext: SpanContext): Span;
 }
 
 // does not get put on the scope
-const span = Sentry.startSpan({ name: "expensiveCalc" });
+const span = Sentry.startInactiveSpan({ name: "expensiveCalc" });
 
 expensiveCalc();
 
 span.finish();
 ```
 
-The goal here is to make span creation consistent across all SDKs, but we also want to make sure that the SDKs are idiomatic for their language/runtime. SDK authors are free to add additional methods to start spans if they feel that `startActiveSpan` and `startSpan` are not appropriate for their language/framework/runtime.
+The goal here is to make span creation consistent across all SDKs, but we also want to make sure that the SDKs are idiomatic for their language/runtime. SDK authors are free to add additional methods to start spans if they feel that `startSpan` and `startInactiveSpan` are not appropriate for their language/framework/runtime.
 
 For example, with go we could have a method that starts a span from a go context:
 
@@ -173,11 +172,11 @@ For example, with go we could have a method that starts a span from a go context
 sentry.StartSpanFromContext(ctx, spanCtx)
 ```
 
-SDK authors can also change the behaviour of `startActiveSpan` and `startSpan` if they feel that the outlined behaviour is not idiomatic for their language/framework/runtime, but this is not recommended and should be discussed with the greater SDK team before being implemented.
+SDK authors can also change the behaviour of `startSpan` and `startInactiveSpan` if they feel that the outlined behaviour is not idiomatic for their language/framework/runtime, but this is not recommended and should be discussed with the greater SDK team before being implemented.
 
 ### Span Name
 
-To accommodate the inclusion of `Sentry.startActiveSpan` and `Sentry.startSpan`, the `span.name` field should be used and is an alias for `span.description`. Span name should become required for the span context argument that is accepted by `Sentry.startActiveSpan` and `Sentry.startSpan`.
+To accommodate the inclusion of `Sentry.startSpan` and `Sentry.startInactiveSpan`, the `span.name` field should be used and is an alias for `span.description`. Span name should become required for the span context argument that is accepted by `Sentry.startSpan` and `Sentry.startInactiveSpan`.
 
 This means methods for setting a span name should be added to the span interface.
 
