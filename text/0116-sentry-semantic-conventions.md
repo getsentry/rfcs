@@ -6,11 +6,11 @@
 
 # Summary
 
-The purpose of this RFC is to formalize the a set of semantic conventions in Sentry, aligning with [OpenTelemetry's semantic conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/). These will be a standardized naming scheme for operations and data that will be shared across the SDKs, ingest, and the product.
-
-Implementing this RFC will lead us to formalize the semantic conventions in code via a versioned JSON schema that is published as packages for Python, JavaScript, and Rust. This allows us to have a single source of truth for the semantic conventions, and also allows us to generate code for all parts of the stack (ingest, frontend, backend, data pipelines) that need to be aware of the semantic conventions.
+The purpose of this RFC is to formalize the a set of semantic conventions in Sentry, aligning with [OpenTelemetry's semantic conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/). These will be a standardized naming scheme for operations and data that will be shared across the SDKs, ingest, and the product. We will implement the semantic conventions via a versioned JSON schema that is published as packages for Python, JavaScript, and Rust. This allows us to have a single source of truth for the semantic conventions, and also allows us to generate code for all parts of the stack (ingest, frontend, backend, data pipelines) that need to be aware of this.
 
 This moves us closer to OpenTelemetry, helps reduce friction when creating new product features that rely on conventions around data, and helps us avoid the need to create new conventions for data that is already covered by OpenTelemetry.
+
+We've found much success adopting the approach outlined by the RFC for [span data conventions](https://develop.sentry.dev/sdk/performance/span-data-conventions/), and we believe that this approach can be extended to other parts of the product.
 
 # Motivation
 
