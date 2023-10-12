@@ -114,8 +114,6 @@ By having a versionig/packaging structure like this, it also makes it much easie
 
 Right now we have a variety of top level fields that need to be mapped to attributes, and some of them match existing OpenTelemetry semantic conventions. We should map these fields to attributes as follows (the dots in the initial fields represent nested fields):
 
-### Event/Transaction Fields
-
 Top level fields:
 
 - `release` -> `sentry.release`
@@ -150,7 +148,12 @@ Top level fields:
 
 For the contexts defined in as part of our contexts payload, we can flatten it so that the context name become the prefix to the attribute key. For example the `os` context would become `os.name`, `os.version`, `os.kernel_version`, etc.
 
-# Unresolved questions
+## Review process
 
-- What parts of the design do you expect to resolve through this RFC?
-- What issues are out of scope for this RFC but are known?
+Generally as per OpenTelemetry's semantic conventions, we can split up the attributes into required and optional attributes into various categories (browser, mobile, http, etc). This means we can have each category have it's own set of owners that can review and approve changes to the attributes in that category. This will help us scale the review process for the attributes.
+
+## Backwards Compatibility
+
+We will support the `data` field as an alias for `attributes` for backwards compatibility. This means that breadcrumbs and spans can adopt the `data` field immediately. There is no timeline for us to remove the `data` field, but new signals like crons or metrics should use `attributes` as the field name.
+
+We can also have an integrated test suite throughout Relay, the frontend, and the backend to ensure that any changes to the schema does not break product expectations.
