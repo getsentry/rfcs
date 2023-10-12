@@ -146,7 +146,7 @@ Top level fields:
 - `sdk.integrations` -> `sentry.sdk.integrations`
 - `sdk.packages` -> `sentry.sdk.packages`
 
-For the contexts defined in as part of our contexts payload, we can flatten it so that the context name become the prefix to the attribute key. For example the `os` context would become `os.name`, `os.version`, `os.kernel_version`, etc.
+For the contexts defined in as part of our contexts payload, we can flatten it so that the context name become the prefix to the attribute key. For example the `os` context would become `os.name`, `os.version`, `os.kernel_version`, etc. Some of these new keys will have to be renamed to better match OpenTelemetry's semantic conventions, but that can be approached in a case by case basis.
 
 ## Review process
 
