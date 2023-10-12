@@ -49,13 +49,13 @@ Currently this is confusing, and it can even be hard to tell what data is genera
 
 # Sentry Semantic Conventions
 
-This RFC proposes adding semantic conventions that behave exactly like OpenTelemetry's semantic conventions. Each signal will get a new `attributes` field that is dictionary of key value pairs.
+This RFC proposes adding semantic conventions that behave exactly like OpenTelemetry's semantic conventions. Each signal will get a new `attributes` field that is dictionary of key value pairs. For purposes of backwards comptability, this field can also be called `data` (means it can be instantly adopted for breadcrumbs and spans), but new signals like crons should use `attributes`.
 
 For the purposes of rollout, we recommend this field is adopted by spans and metrics (DDM) first, and then adopted by errors, crons, replays, and breadcrumbs after it has been further validated.
 
 ## Attributes Schema
 
-Attribute keys should be unique and well-known, and should not be used for multiple purposes. In OpenTelemetry
+Attribute keys should be unique and well-known, and should not be used for multiple purposes. In OpenTelemetry the attribute values cannot be dictionaries, only primitives and arrays of primitives. We will try to follow this convention as well, but we will allow dictionaries as attribute values for better backwards compatibility with existing Sentry fields.
 
 ```ts
 export interface Attributes {
@@ -129,7 +129,15 @@ Top level fields:
 - `request.url` -> [`url.full`](https://github.com/open-telemetry/semantic-conventions/blob/cadfe53949266d33476b15ca52c92f682600a29c/model/trace/http.yaml#L47)
 - `request.query_string` -> [`url.query_string`](https://github.com/open-telemetry/semantic-conventions/blob/cadfe53949266d33476b15ca52c92f682600a29c/model/trace/http.yaml#L47)
 - `request.cookies` -> `http.request.cookies`
-- `request.cookies` -> `http.request.headers` (needs to be )
+- `request.cookies` -> `http.request.headers`
+- `request.env` -> `http.request.env`
+
+[SDK interface](https://develop.sentry.dev/sdk/event-payloads/sdk/)
+
+- `sdk.name` -> `sentry.sdk.name`
+- `sdk.version` -> `sentry.sdk.version`
+- `sdk.integrations` -> `sentry.sdk.integrations`
+- `sdk.packages` -> `sentry.sdk.packages`
 
 # Unresolved questions
 
