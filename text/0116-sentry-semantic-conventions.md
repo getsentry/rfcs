@@ -31,9 +31,16 @@ For spans specifically we have:
 - Tags, string to string key value pairs that are indexed and searchable in Sentry, behaves exactly like tags for errors/transactions.
 - [Data](https://develop.sentry.dev/sdk/event-payloads/breadcrumbs/), arbitrary contextual data attached to breadcrumbs (similar to contexts for errors/transactions). There is no formal schema for span data, but we have been maintaining a set of [span data conventions](https://develop.sentry.dev/sdk/performance/span-data-conventions/) that is a superset of OpenTelemetry's semantic conventions.
 
-For replays we have: TODO (relies on tags/contexts/breadcrumbs data)
+For replays we have:
 
-For crons we have: TODO (nothing at the moment)
+- [Top level fields](https://develop.sentry.dev/sdk/event-payloads/) like [user](https://develop.sentry.dev/sdk/event-payloads/user/)/release/environment.
+- Tags, string to string key value pairs that are indexed and searchable in Sentry.
+- Breadcrumbs data, which is heavily relied on by the replay product.
+
+For crons we have:
+
+- [Top level fields](https://develop.sentry.dev/sdk/event-payloads/) like release/environment.
+- [Contexts](https://develop.sentry.dev/sdk/event-payloads/contexts/), our current implementation of arbitrary contextual data attached to events. Only the trace context is supported for crons at the current time.
 
 For metrics we have:
 
@@ -138,6 +145,8 @@ Top level fields:
 - `sdk.version` -> `sentry.sdk.version`
 - `sdk.integrations` -> `sentry.sdk.integrations`
 - `sdk.packages` -> `sentry.sdk.packages`
+
+For the contexts defined in as part of our contexts payload, we can flatten it so that the context name become the prefix to the attribute key. For example the `os` context would become `os.name`, `os.version`, `os.kernel_version`, etc.
 
 # Unresolved questions
 
