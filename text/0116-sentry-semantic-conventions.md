@@ -58,7 +58,9 @@ Currently this is confusing, and it can even be hard to tell what data is genera
 
 This RFC proposes adding semantic conventions that behave exactly like OpenTelemetry's semantic conventions. Each signal will get a new `attributes` field that is dictionary of key value pairs. For purposes of backwards comptability, this field can also be called `data` (means it can be instantly adopted for breadcrumbs and spans), but new signals like crons should use `attributes`.
 
-For the purposes of rollout, we recommend this field is adopted by spans and metrics (DDM) first, and then adopted by errors, crons, replays, and breadcrumbs after it has been further validated.
+For the purposes of rollout, we recommend this field is adopted by spans, metrics (DDM), and breadcrumbs first, and then adopted by crons after it has been further validated given there is no arbitrary context on crons at the moment.
+
+This does not replace tags, which should still be part of their respective signal payloads. The product can make decisions on how to promote different attributes to become tags. This happens with contexts and span data today.
 
 ## Attributes Schema
 
