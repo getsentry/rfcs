@@ -93,7 +93,16 @@ I took a sample transaction from our sentry.io dashboard and and added a random 
 Since spans already include a link to their parent span via the parent_span_id field value, the tid information could be omitted as long as it matches that of the parent span. One pitfall of this approach is that it would make the raw format more obscure and force everyone to construct the span tree in order to figure out what span the thread was started on. Seeing how fast the calls to get thread identifiers are, this could also be sensitive to a performance impact greater than the one of just calling the get thread information handlers each time. #tradeoffs
 
 **Conclusion**
-For future compatibility with OTel and our own direction, store thread id and thread using flattened key representations ("thread.id" and "thread.name" respectively) under span.data. The values for both keys should be of type string.
+For future compatibility with OTel and our own efforts, store thread id and thread name using flattened key representations ("thread.id" and "thread.name" respectively) under span.data. Both values are optional and should be of type string. Thread names should not be sent without thread identifiers and runtimes without reliable access to thread information should omit these keys entirely.
+
+```json
+{
+  "data": {
+    "thread.id": "unique_thread_identifier",
+    "thread.name": "thread_name"
+  }
+}
+```
 
 # Unresolved questions
 
