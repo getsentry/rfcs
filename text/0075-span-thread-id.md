@@ -29,9 +29,9 @@ Marking thread id as a recommended attributes also gives us flexibility in terms
 The common data type for a thread identifier is uint64 (also the one we currently use in profiling) and one that we likely should be using.
 
 Suggestion:
+
 - collect thread.id on spans regardless if profiling is enabled or not
 - collect thread.id on spans only during an active profiling session
-
 
 Where do we store the data?
 There are two places where we could store thread information - either on the span data dict and using setData or by adding new fields to the span object. The former has the benefit of a prexisting API, we would only have to ensure the data is properly set while the later seems more involved and might have infrastructure implications. Since the data dict is public, we would probably want to ensure that users do not override the thread information or discard it if they do - it sounds like acceptable risk to me.
@@ -45,17 +45,19 @@ One obvious drawback is that by design, we would also be collecting some of the 
 Some platforms also provide different ways of obtaining the thread id (e.g. python with get_ident and get_native_id) and we would need to ensure consistency between the different sites where we would collect this data.
 
 Benchmarks (ran on M1 mbp)
+
 <details><summary>Ruby 3.2.1 ~3ms (wall time)</summary>
 
 ```ruby
 require 'benchmark'
- 
+
 puts Benchmark.measure {
   50_000.times do
     Thread.current.object_id
   end
 }
 ```
+
 </details>
 
 <details><summary>Python3 ~20ns (wall time, get_ident seems to be 3x faster at ~7ns)</summary>
@@ -63,6 +65,7 @@ puts Benchmark.measure {
 ```bash
 python3 -m timeit -s "from threading import get_native_id" "get_native_id()"
 ```
+
 </details>
 
 <details><summary>Cocoa 0.05ms (wall time)</summary>
@@ -74,9 +77,11 @@ python3 -m timeit -s "from threading import get_native_id" "get_native_id()"
     }];
 }
 ```
+
 </details>
 
 **Network payload impact**
+
 - ~7 bytes for the field, depends exactly what we pick "thread_id", thread.id" or maybe the shorter version "tid"?
 - 4 bytes for uint64.
 
@@ -87,5 +92,9 @@ I took a sample transaction from our sentry.io dashboard and and added a random 
 **Possible format optimization:**
 Since spans already include a link to their parent span via the parent_span_id field value, the tid information could be omitted as long as it matches that of the parent span. One pitfall of this approach is that it would make the raw format more obscure and force everyone to construct the span tree in order to figure out what span the thread was started on. Seeing how fast the calls to get thread identifiers are, this could also be sensitive to a performance impact greater than the one of just calling the get thread information handlers each time. #tradeoffs
 
+**Conclusion**
+For future compatibility with OTel and our own direction, store thread id and thread using flattened key representations ("thread.id" and "thread.name" respectively) under span.data. The values for both keys should be of type string.
+
 # Unresolved questions
+
 - Should breadcrumbs also track thread ids?
