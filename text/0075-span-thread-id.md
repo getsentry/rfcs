@@ -1,11 +1,11 @@
 - Start Date: 2023-02-15
 - RFC Type: feature
 - RFC PR: https://github.com/getsentry/rfcs/pull/75
-- RFC Status: draft
+- RFC Status: approved
 
 # Summary
 
-Enrich spans with thread id and name information.
+Enrich spans and breadcrumbs with thread id and thread name information.
 
 # Motivation
 
@@ -103,7 +103,3 @@ For future compatibility with OTel and our own efforts, store thread id and thre
   }
 }
 ```
-
-# Unresolved questions
-
-- Should breadcrumbs also track thread ids?
