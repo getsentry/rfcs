@@ -6,7 +6,9 @@
 
 # Summary
 
-The purpose of this RFC is to formalize the a set of semantic conventions in Sentry, aligning with [OpenTelemetry's semantic conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/). These will be a standardized naming scheme for operations and data that will be shared across the SDKs, ingest, and the product. We will implement the semantic conventions via a versioned JSON schema that is published as packages for Python, JavaScript, and Rust. This allows us to have a single source of truth for the semantic conventions, and also allows us to generate code for all parts of the stack (ingest, frontend, backend, data pipelines) that need to be aware of this.
+The purpose of this RFC is to formalize the a set of semantic conventions in Sentry, aligning with [OpenTelemetry's semantic conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/). At the curren time, these semantic conventions are meant to apply to spans, breadcrumbs, and metrics, but not to errors/transactions/replays/crons. This may change in the future.
+
+These will be a standardized naming scheme for operations and data that will be shared across the SDKs, ingest, and the product. We will implement the semantic conventions via a versioned JSON schema that is published as packages for Python, JavaScript, and Rust. This allows us to have a single source of truth for the semantic conventions, and also allows us to generate code for all parts of the stack (ingest, frontend, backend, data pipelines) that need to be aware of this.
 
 This moves us closer to OpenTelemetry, helps reduce friction when creating new product features that rely on conventions around data, and helps us avoid the need to create new conventions for data that is already covered by OpenTelemetry.
 
@@ -58,13 +60,13 @@ Currently this is confusing, and it can even be hard to tell what data is genera
 
 This RFC proposes adding semantic conventions that behave exactly like OpenTelemetry's semantic conventions. Each signal will get a new `attributes` field that is dictionary of key value pairs. For purposes of backwards comptability, this field can also be called `data` (means it can be instantly adopted for breadcrumbs and spans), but new signals like crons should use `attributes`.
 
-For the purposes of rollout, we recommend this field is adopted by spans, metrics (DDM), and breadcrumbs first, and then adopted by crons after it has been further validated given there is no arbitrary context on crons at the moment.
+For the purposes of rollout, we recommend this field is adopted by spans, metrics (DDM), and breadcrumbs first. There are no plans to adapt these conventions for crons/errors/transactions/replays, but we can consider it in the future.
 
 This does not replace tags, which should still be part of their respective signal payloads. The product can make decisions on how to promote different attributes to become tags. This happens with contexts and span data today.
 
 ## Attributes Schema
 
-Attribute keys should be unique and well-known, and should not be used for multiple purposes. In OpenTelemetry the attribute values cannot be dictionaries, only primitives and arrays of primitives. We will try to follow this convention as well, but we will allow dictionaries as attribute values for better backwards compatibility with existing Sentry fields.
+Attribute keys should be unique and well-known, and should not be used for multiple purposes. In OpenTelemetry the attribute values cannot be dictionaries, only primitives and arrays of primitives. We will try to follow this convention as well, which represents a change in values for some of the usages of contexts we have today.
 
 ```ts
 export interface Attributes {
@@ -82,8 +84,7 @@ export type AttributeValue =
   | boolean
   | Array<string>
   | Array<number>
-  | Array<boolean>
-  | Record<string, AttributeValue>;
+  | Array<boolean>;
 ```
 
 ```ts
@@ -112,16 +113,20 @@ By having a versionig/packaging structure like this, it also makes it much easie
 
 ## Mapping Sentry Specific Fields to Attributes
 
-Right now we have a variety of top level fields that need to be mapped to attributes, and some of them match existing OpenTelemetry semantic conventions. We should map these fields to attributes as follows (the dots in the initial fields represent nested fields):
+Right now we have a variety of top level fields that need to be mapped to attributes, and some of them match existing OpenTelemetry semantic conventions. We should map these fields to attributes as best we can. The following represents some examples of transformations we'll be doing (the dots in the initial fields represent nested fields). This is a subset of all the involved fields, which will be documented in the JSON schema.
 
 Top level fields:
 
 - `release` -> `sentry.release`
 - `environment` -> `sentry.environment`
+- `origin` -> `sentry.origin`
+- `op` -> `sentry.op`
+- `source` -> `sentry.source`
+- `sample_rate` -> `sentry.sample_rate`
 
 [User interface](https://develop.sentry.dev/sdk/event-payloads/user/):
 
-- `user.id` -> `sentry.user.id`
+- `user.id` -> `enduser.id`
 - `user.username` -> `sentry.user.username`
 - `user.email` -> `sentry.user.email`
 - `user.ip_address` -> `sentry.user.ip_address`
@@ -136,7 +141,7 @@ Top level fields:
 - `request.url` -> [`url.full`](https://github.com/open-telemetry/semantic-conventions/blob/cadfe53949266d33476b15ca52c92f682600a29c/model/trace/http.yaml#L47)
 - `request.query_string` -> [`url.query_string`](https://github.com/open-telemetry/semantic-conventions/blob/cadfe53949266d33476b15ca52c92f682600a29c/model/trace/http.yaml#L47)
 - `request.cookies` -> `http.request.cookies`
-- `request.cookies` -> `http.request.headers`
+- `request.headers.X` -> `http.request.headers.X` (for example, `request.headers.content-type`)
 - `request.env` -> `http.request.env`
 
 [SDK interface](https://develop.sentry.dev/sdk/event-payloads/sdk/)
