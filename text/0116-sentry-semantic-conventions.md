@@ -1,7 +1,7 @@
 - Start Date: 2023-10-12
 - RFC Type: feature
 - RFC PR: https://github.com/getsentry/rfcs/pull/116
-- RFC Status: draft
+- RFC Status: implementation
 - RFC Driver: [Abhijeet Prasad](https://github.com/AbhiPrasad/)
 
 # Summary
