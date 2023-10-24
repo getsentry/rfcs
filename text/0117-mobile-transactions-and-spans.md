@@ -1,6 +1,6 @@
 - Start Date: 2023-10-23
 - RFC Type: decision
-- RFC PR: https://github.com/getsentry/rfcs/pull/117
+- RFC PR: https://github.com/getsentry/rfcs/pull/118
 - RFC Status: draft
 
 # Summary
