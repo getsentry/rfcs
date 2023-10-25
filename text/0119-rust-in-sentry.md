@@ -58,8 +58,28 @@ Rust crate.
 - **pro**: Simpler release / update flow. Ideally things would only require a single commit to `sentry`.
 - **con**: Setting up and maintaining a workflow in the Monolith repo that suits every developer might be more complex.
 
+# Proposed Workflow
+
+- Have a separate repo ([`$repo-TBD`]) for the Rust bindings, using PyO3 / maturin.
+- Use the standard _release_/_publish_ workflow.
+- Manually trigger publishes and [auto-approve](https://github.com/getsentry/publish/blob/main/.github/workflows/auto-approve.yml).
+- The _publish_ workflow will publish to _public_ PyPI.
+- The package will be public, but we will not have any SemVer obligations whatsoever.
+- The internal PyPI mirror will automatically pick this up.
+- Trigger the [bump-version] workflow to update this in Sentry.
+
+Put even simpler:
+
+- Get PR in [`$repo-TBD`] approved and merged.
+- Trigger _release_/_publish_ workflow in [`$repo-TBD`].
+- Either run [bump-version] workflow in [`sentry`], or open a PR that bumps the dependency version.
+
 # Unresolved questions
 
-- Can this live in the main `sentry` repo, or does it need to be a separate repo / project?
-- How would the developer workflow look like?
-- As in: Can Python-only developers just install pre-built binaries without the need to care about parts written in Rust at all?
+- ~Can this live in the main `sentry` repo, or does it need to be a separate repo / project?~
+- ~How would the developer workflow look like?~
+- ~As in: Can Python-only developers just install pre-built binaries without the need to care about parts written in Rust at all?~
+
+[bump-version]: https://github.com/getsentry/sentry/actions/workflows/bump-version.yml
+[`$repo-TBD`]: https://github.com/getsentry/$repo-TBD
+[`sentry`]: https://github.com/getsentry/sentry
