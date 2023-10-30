@@ -155,7 +155,7 @@ metrics.
   the total sum of emitted values, `count` is a running counter of the number of values reported).
 
 * **distribution**(*key*, *value*, *unit* = `"none"`, *tags* = `{}`, *timestamp* = `null`):
-  Records a value for a distribution.  The aggregation state is a lis of all values encountered.
+  Records a value for a distribution.  The aggregation state is a list of all values encountered.
   This means that distributions are reduced to their quantiles only post emission.  This also means
   that in practical terms distributions are likely to be more expensive on the SDK side in terms of
   memory consumption than many other metric types and might cause early flushes.
