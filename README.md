@@ -58,3 +58,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0101-revamping-the-sdk-performance-api](text/0101-revamping-the-sdk-performance-api.md): Revamping the SDK Performance API
 - [0106-artifact-indices](text/0106-artifact-indices.md): Improvements to Source Maps Processing
 - [0116-sentry-semantic-conventions](text/0116-sentry-semantic-conventions.md): Sentry Semantic Conventions
+- [0117-mobile-transactions-and-spans](text/0117-mobile-transactions-and-spans.md): Transactions and Spans for Mobile Platforms
