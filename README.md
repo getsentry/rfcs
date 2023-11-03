@@ -57,4 +57,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0096-client-sampling-decision-dsc](text/0096-client-sampling-decision-dsc.md): Client Sampling Decision in Dynamic Sampling Context
 - [0101-revamping-the-sdk-performance-api](text/0101-revamping-the-sdk-performance-api.md): Revamping the SDK Performance API
 - [0106-artifact-indices](text/0106-artifact-indices.md): Improvements to Source Maps Processing
-- [0118-mobiletransactionsandspans](text/0118-mobiletransactionsandspans.md): mobile-transactions-and-spans
+- [0117-mobile-transactions-and-spans](text/0117-mobile-transactions-and-spans.md): Transactions and Spans for Mobile Platforms

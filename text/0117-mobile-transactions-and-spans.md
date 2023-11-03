@@ -1,7 +1,7 @@
 - Start Date: 2023-10-23
 - RFC Type: decision
 - RFC PR: https://github.com/getsentry/rfcs/pull/118
-- RFC Status: draft
+- RFC Status: approved
 
 # Summary
 
@@ -30,10 +30,10 @@ As of now the way transactions are created has several drawbacks:
 The idea is to use transactions as carriers for measurements on mobile instead of trying to make the backend heavy concept work on mobile. There is no active "open" transaction, but we rather create transactions on-demand, whenever there is span data to send.
 In Sentry, we need pick apart these special transactions (that we shouldn’t consider as such anymore, maybe use `transaction->transaction_info->source` to identify carrier transaction) and only use their content, which are the spans we measured. In short, we only use transactions to understand which Spans (measurements) should be aggregated.
 
-TBD:
+Future considerations:
 * How can we ensure that spans are packaged up efficiently, ultimately creating not to little and not too many web requests.
-* As of now, some performance grouping is done based on transactions op and description. With this change they will simply act as carriers, so we need to ensure the span context has enough information that aggregation (e.g. by screen) can still be performed.
-* Profiles are right now captured based on transaction start signals, we need to find a reliable way to keep the remaining functionality.
+* As of now, some performance grouping is done based on transactions op and description. With this change, transactions will simply act as carriers, thus we need to ensure the span context has enough information that aggregation (e.g. by screen) can still be performed.
+* Profiles are bound to transactions via a 1:1 mapping right now, we'd need to move towards a "continous profiling" model.
 
 
 **Pros**
