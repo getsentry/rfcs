@@ -1,6 +1,6 @@
 - Start Date: 2023-11-06
 - RFC Type: feature
-- RFC PR: <link>
+- RFC PR: https://github.com/getsentry/rfcs/pull/120
 - RFC Status: draft
 
 # Summary
