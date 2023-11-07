@@ -60,7 +60,7 @@ This repository contains RFCs and DACIs. Lost?
 - [0116-sentry-semantic-conventions](text/0116-sentry-semantic-conventions.md): Sentry Semantic Conventions
 - [0118-mobile-transactions-and-spans](text/0118-mobile-transactions-and-spans.md): Transactions and Spans for Mobile Platforms
 - [0119-rust-in-sentry](text/0119-rust-in-sentry.md): Make it easier to use Rust code from Sentry/Python.
-- [0121-draft-environment-variable-conventions](text/0121-draft-environment-variable-conventions.md): DRAFT: Environment Variable conventions
+- [0121-draft-environment-variable-conventions](text/0121-draft-environment-variable-conventions.md): Environment Variable conventions
 - [0123-metrics-correlation](text/0123-metrics-correlation.md): This RFC addresses the high level metrics to span correlation system
 - [0126-sdk-spans-aggregator](text/0126-sdk-spans-aggregator.md): SDK Spans Aggregator
 - [0129-video-replay-envelope](text/0129-video-replay-envelope.md): Video-based replay envelope format
