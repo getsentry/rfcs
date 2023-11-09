@@ -55,7 +55,7 @@ export function makeCurrentScope(scope: Scope): void;
 
 The following APIs already exist but will behave differently:
 
-* `withScope()` will still work, but it will actually fork an execution context. So this will roughyl the same as doing `hub.run()` today.
+* `withScope()` will still work, but it will actually fork an execution context. So this will roughly do the same as doing `hub.run()` today.
 
 APIs that are currently on the hub should instead be called directly on the scope (e.g. `scope.captureException()` etc.), or via a global method (e.g. `Sentry.captureException()`).
 
