@@ -5,16 +5,18 @@
 
 # Summary
 
-We want to streamline Hub & Scope usage for the JavaScript SDK and beyond, to also better align with OpenTelemetry models etc.
+This RFC proposes changes on top of [RFC #122](https://github.com/getsentry/rfcs/pull/122). 
+While that RFC proposes general changes to merge Hub & Scope, this RFC goes further and proposes a way to ensure we can get the correct breadcrumb & context data for any events, specifically in JavaScript but potentially also in other SDKs.
+
+Things proposed in this RFC _do not_ have to be followed/implemented by all languages/SDKs, but any language/SDK may pick things from it that are relevant.
 
 # Motivation
 
-Generally, Hubs and Scopes are a very Sentry-specific concept, and can be a bit hard to explain. 
-Also, how Hub & Scope forking behaves is currently a bit tricky, and does not play well e.g. with how OpenTelemetry contexts work.
+Especially when working with OpenTelemetry, the way how we currently always assign data to the current scope can break down in unexpected ways.
 
-In OpenTelemetry, contexts are forked very often, because Contexts are copy-on-write - each time you want to set _anything_ on a context, you need to fork it.
-This frequent forking leads to a lot of problems with how sentry scopes apply. 
-Because any function or callback may have a forked context, attaching data inside of e.g. such a callback would lead to this never being applied to events correctly:
+Because OpenTelemetry has to fork a context each time _anything_ is changed on it (copy-on-write), you end up with a lot of deeply nested scopes.
+
+This leads to many scenarios where data is added to the "wrong" scope, from a users perspective:
 
 ```js
 app.get('/my-route', function() {
@@ -38,77 +40,32 @@ TODO
 
 # Proposed Solution
 
-Hubs will be removed as a concept for SDK users. 
-Instead, from a users perspective only Scopes remain, which will become the singular entity to hold context data etc.
+We introduce a new global (or client) scope, as well as a request scope.
 
-Scopes will be _similar_ to how they work today, but not entirely the same. 
-Scopes can have data (e.g. tags, user, ...) added to them the same way you can do today. 
-This RFC _does not_ aim to change any of the data that is kept on the scope and is applied to events.
+There will be new APIs for this:
 
-The following APIs will be removed:
+* `getGlobalScope()`
+* `getRequestScope()`
 
-* `getCurrentHub()`
-* `configureScope()` (instead just get the scope and set on it directly)
-* Any APIs currently on the Hub only: 
-  * `hub.pushScope()`
-  * `hub.popScope()`
-  * `hub.isOlderThan()`
-  * `hub.bindClient()`
-  * `hub.getStack()`
-  * `hub.getStackTop()`
-  * `hub.run()` (use `withScope()` instead)
+Plus an escape hatch for power users to make queues etc. easier to work with:
 
-Instead, we will introduce some new APIs:
+* `scope.captureBreadcrumbsHere()`
 
-* `getScope()` - get the currently active scope. replacement for `getCurrentHub().getScope()`
-* `getClient()` - get the currently active client. May return undefined if no client is configured. Replacement for `getCurrentHub().getClient()`.
-* `bindClient(client)` - make a client the "current" client 
-* The following new APIs that will be explained more below:
-  * `getGlobalScope()`
-  * `getRequestScope()`
-  * `getRootScope()`
-  * `setRootScope()`
+## Breadcrumbs
 
-The following APIs already exist but will behave differently:
+Breadcrumbs are a key case we want to solve with this RFC. This RFC proposes the following logic for adding/getting breadcrumbs:
 
-* `withScope()` will still work, but it will actually fork an execution context. So this will roughyl the same as doing `hub.run()` today.
+* Each scope has a list of breadcrumbs
+* When a breadcrumb is added, it is added based on the following logic:
+  * Is there a "Breadcrumbs Scope" defined? If so, add it there.
+  * Else, is there a "Request Scope" defined? if so, add it there.
+  * Else, add it to the "Global Scope"
 
-Note: The following hub APIs are already exported on their own and can continue to be used as before:
+This means that e.g. in Browser JS SDK, all breadcrumbs will be global, while in request-based backend SDKs, they will be per-request.
 
-* `captureException()`
-* `captureMessage()`
-* `captureEvent()`
-* `lastEventId()`
-* `addBreadcrumb()`
-* `setUser()`
-* `setTags()`
-* `setExtras()`
-* `setTag()`
-* `setExtra()`
-* `setContext()`
-* `getIntegration()`
-* `captureCheckIn()`
+In cases where you want to isolate breadcrumbs manually (e.g. a queue job), you can manually define a breadcrumbs scope.
 
-These are not exported yet separately, but probably should be:
-
-* `traceHeaders()`
-* `captureSession()`
-* `startSession()`
-* `endSession()`
-* `shouldSendDefaultPii()`
-
-
-## Special Scopes
-
-In addition to the inherited scope data, it is also possible to add data via additional scopes: 
-
-* There is a special global scope, which always exists.
-* And in addition to this, users can also add additional scopes which will be applied to events. 
-
-This RFC proposes to add two types of scopes which can be added, request scopes & root scopes. 
-They behave very similarly, the distinction is mostly to make things clearer for users.
-
-### Global Scope
+## Global Scope
 
 First, there is a _Global Scope_. This scope is tied to the client, and anything added to the global scope will always be added to _all_ events.
 Note that the global scope _is not_ the initial scope, but a separate, "empty" scope. This way, you cannot accidentally pollute it. 
@@ -163,52 +120,47 @@ app.get('/my-route', () => {
 
 This is also done to a) avoid accidentally polluting the request scope, and b) to clarify things and avoid relying on internals (e.g. what is the exact scope that is active in a route handler depends on the instrumentation implementation).
 
-### Root Scope
+If not in a request, `getRequestScope()` will return `undefined`. While this means that users have to always check this return value, it will at least ensure that users capture incorrect cases - otherwise, they may be confused why their code is working but things are not actually added to the request events.
 
-A root scope is functionally the same as a request scope, only that it is designed to be set by the user.
-This can be useful for e.g. manually instrumenting queue jobs or similar, where we don't have a request.
-Users can use `setRootScope()` and `getRootScope()` to interact with this:
+## Breadcrumbs Scope
+
+If you need to manually isolate breadcrumbs, e.g. for a queue function, you can do this with the following new function:
 
 ```js
-function myJob() {
-  // Isolate this function
-  withScope((jobScope) => {
-    // Everything in this scope should have a root scope
-    setRootScope();
-
-    withScope(innerScope => {
-        getRootScope()?.setTag('job', 'done');
-    });
+function myQueueJob() {
+  Sentry.withScope((scope) => {
+    scope.captureBreadcrumbsHere();
+    // do something
   });
 }
 ```
 
-The root scope behaves the same way as the request scope.
+Note that breadcrumbs scopes are "invisible", we really just mark a scope with this. you cannot add other data to this scope. 
+You can still add "queue spefific" data normally by just adding it to the initial scope.
 
-The main reason to have these two different types is that "Request Scope" is a much more natural way to think about this for our users in
-actual scenarios. Having per-request isolation is by far the most common execution context scenario we care about, 
-and explaining a request scope is much easier than the more abstract root scope. 
-
-It is also a bit easier to explain that root scopes are _always_ manual while request scopes are generally defined by us or other instrumentation.
+Also note that implementation wise, `captureBreadcrumbsHere()` does _not_ mean that breadcrumbs should be put on this specific scope. 
+The semantic meaning of this should be that breadcrumbs should be isolated to this scope and it's child scope - so any child scope should get these breadcrumbs as wel.
 
 ### How scopes are applied
 
-Internally, scopes work as follows:
+When an event is prepared, scope data is applied as follows: 
 
-* Each scope can have additional scopes applied to them
-  * These applied scopes are inherited by child scopes
-  * When a request or root scope is defined, this is added to the current scope as additional scope
-  * This means that this scope and all child scopes will have the request/root scope attached
-* Technically, a scope can have x request/root scopes attached to it.
-* When an event is captured, scope data is applied as follows:
 ```js
 function applyScopeToEvent(event, scope) {
   // Global scope is always applied first
   const scopeData = getGlobalScope().getScopeData();
 
-  // After that, all additional scopes are applied _in order_:
-  for (const additionalScope of scope.getAdditionalScopes()) {
-    merge(scopeData, additionalScope.getScopeData());
+  const requestScope = scope.getRequestScope();
+
+  // If it has a request scope, apply it next
+  if (requestScope) {
+    merge(scopeData, requestScope.getScopeData());
+  }
+
+  const breadcrumbsScope = scope.getBreadcrumbsScope();
+
+  if (breadcrumbsScope) {
+    mergeBreadcrumbs(scopeData, breadcrumbsScope.getBreadcrumbs());
   }
 
   // Now the scope data itself is added
@@ -219,62 +171,17 @@ function applyScopeToEvent(event, scope) {
 }
 ```
 
-## Breadcrumbs
-
-Adding breadcrumbs will have a new logic. Instead of adding to the current scope, breadcrumbs should be added like this:
-
-```js
-function addBreadcrumb(breadcrumb) {
-  const requestScope = getRequestScope();
-  const rootScope = getRootScope();
-  // const currentScope = getScope(); <-- not used here
-  const globalScope = getGlobalScope();
-
-  const scope = requestScope || rootScope || globalScope;
-  scope.addBreadcrumb(breadcrumb);
-}
-```
-
-This way, breadcrumbs should be available consistently, no matter where in the scope hierarchy they've been added.
-
 ## What about frontend/non-request environments?
 
 In frontend or other non-request environments, request scopes will simply never be set. 
-This means that breadcrumbs go on the global scope by default, unless a user manually creates a root scope somewhere.
+This means that breadcrumbs go on the global scope by default, unless a user manually creates a breadcrumb scope somewhere.
 
-## What about other Hub references?
-
-While the Hub is mainly exposed via `getCurrentHub()`, it is also used as argument or similar in many places. 
-These occurences should be updated to instead take a scope or a client.
-
-## What about backwards compatibility?
-
-We should strive to provide a wrapper/proxy `getCurrentHub()` method that still exposes the key functionality to ease upgrading. E.g.:
-
-```js
-import {getScope, getClient} from '../internals';
-
-function getCurrentHub() {
-  return {
-    getClient,
-    getScope
-  }
-}
-```
-
-We need to decide what to keep in that proxy and what not.
-
-## What about globals?
-
-Currently, we keep the hub as a global and on the execution context. 
-Instead, we should either keep scope & client there, or only the scope with a reference to the client.
 
 # Drawbacks
 
-* This changes _a lot_ of public APIs and behavior.
+* TODO
 
 # Unresolved questions
 
-* Do we _need_ to provide the custom root scope functionality? Or can we get away without it?
-* Is there a better naming than "Root Scope" for this behavior/functionality?
-* Should we remove Request Scope in favor of just using root scope?
+* Do we prefer `getGlobalScope()` or `getClientScope()`?
+* What actual API should we use for the scope breadcrumbs? `scope.captureBreadcrumbsHere()` is just an initial draft...
