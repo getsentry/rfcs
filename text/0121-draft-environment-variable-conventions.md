@@ -30,6 +30,7 @@ A first list of environment variables that all server sides SDKs should support 
 - `SENTRY_SAMPLE_RATE`
 - `SENTRY_TRACES_SAMPLE_RATE`
 - `SENTRY_PROFILES_SAMPLE_RATE`
+- `SENTRY_DEBUG`
 
 Further additions could include but are not limited to:
 
