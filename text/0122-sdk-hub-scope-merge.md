@@ -59,6 +59,8 @@ The following APIs already exist but will behave differently:
 
 APIs that are currently on the hub should instead be called directly on the scope (e.g. `scope.captureException()` etc.), or via a global method (e.g. `Sentry.captureException()`).
 
+The current scope may be kept similar to how we currently keep the current hub, but this is SDK specific and not part of this RFC.
+
 ## Clients
 
 Instead of a client being optional, there will now _always_ be a client. It may be a Noop Client that does nothing, if `init()` has not been called yet.
@@ -111,7 +113,18 @@ Basically, `withScope()` should behave like `hub.run()` does today in languages 
 
 From a users perspective, this should mostly not be noticeable - they can always run `getScope()` to get the current scope, or `withScope(callback)` to fork a new scope off the current scope.
 
-You can make a scope the current one via `setCurrentScope(scope)`, which should bind the scope to the current execution context (or a global, in SDKs without execution context).
+You can make a scope the current one via `setCurrentScope(scope)`, which should bind the scope to the current execution context (or a global, in SDKs without execution context). This is a replacement for the current APIs like `makeMain(hub)` or `setCurrentHub(hub)`.
+
+You can still clone scopes manually the same way as before, e.g. via `Scope.clone(oldScope)` or a similar API. In contrast to `withScope()`, this will _not_ fork an execution context.
+
+You can update the client of a scope via `scope.setClient(newClient)`. This will not affect any scope that has already been forked off this scope, but any scope forked off _after_ the client was updated will also receive the updated client.
+
+## Should users care about Clients?
+
+Generally speaking, for most regular use cases the client should be mostly hidden away from users. 
+Users should just call `Sentry.init()`, which will setup a client under the hood. Users should generally only interact with scopes, and we should keep clients out of most public facing APIs.
+
+The client is only there to allow an escape hatch when users need to do more complex/special things, like isolating Sentry instances or multiplexing. So client APIs should be designed to _allow_ to do things that cannot be done via `Sentry.init()`, but our main focus should be on making the default experience easy to understand, which includes that users should not have to care about the concept of clients by default.
 
 ## What about other Hub references?
 
