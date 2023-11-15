@@ -10,44 +10,94 @@ This RFC addresses the high level metrics to span correlation system.
 # Motivation
 
 We believe the value in a good metrics solution is the correlation to traces and other signals.
-This means that we need to store evidence of metric measurements on the spans.
-
-There are two APIs related to metrics in an SDK.  The low-level `metrics` API which directly
-throws a data point into a local aggregator, and a higher-level span-bound API that more
-explicitly associates measurements with spans directly.  Because there are two APIs provided
-we need to be careful setting customers on the path of success.
+This means that we need to store evidence of metric measurements on the spans.  These
+measurements are automatically added when using the basic `metrics` API.
 
 # Basics
 
-For correlation purposes, measurements can be stored on the span within the `measurements`
-data bag:
+Whenever a metrics API is used it operates in either span seeking or span creating mode.  Most
+of the metrics APIs are span seeking which means that they record a measurement in relation
+to that span.  Some APIs (such as `metrics.timing` when used with a code block) will instead
+create a span and bind it.
+
+```python
+def process_batch(batch):
+    processor = Processor()
+
+    # This creates a span with op `timing_measurement`
+    with metrics.timing("processor.process_batch"):
+        for item in batch:
+            success = processor.process_item(item)
+            # This records an increment of 1
+            metrics.incr("processor.item_processed", tags={"success": success})
+        # This records a gauge
+        metrics.gauge("processor.peak_memory_usage", processor.peak_memory_usage)
+```
+
+Each metric locally "aggregates" into something that represents a gauge and is persisted with
+the closest span.  In the above case the following span gets recorded assuming a batch size of 5
+where 3 succeed and two fail, the following measurements might be associated:
 
 ```json
 {
-  "span_id": "deadbeef",
-  "op": "whatever",
-  "metric": "my.span",
-  "measurements": {
-    "duration": { "value": 32.0, "unit": "millisecond" },
-    "block_size": { "value": 1024, "type": "g" }
-  }
+    "span_id": "deadbeef",
+    "op": "timing_measurement",
+    "measurements": {
+        "d:processor.process_batch@millisecond": [
+            {
+                "min": 421.0,
+                "max": 421.0,
+                "count": 1,
+                "sum": 421.0
+            }
+        ],
+        "c:processor.item_processed": [
+            {
+                "min": 1,
+                "max": 1,
+                "count": 3,
+                "sum": 3,
+                "tags": {"success": True}
+            },
+            {
+                "min": 1,
+                "max": 1,
+                "count": 2,
+                "sum": 2,
+                "tags": {"success": False}
+            }
+        ],
+        "g:processor.peak_memory_usage@megabyte": {
+            {
+                "min": 42.0,
+                "max": 421.0,
+                "count": 1,
+                "sum": 421.0,
+            }
+        }
+    }
 }
 ```
 
-The key `duration` here is special in that it is the "trivial" metric name.  Any
-other measurement can be stored there.  The key of in the bag is concatenated to the
-`metric` key of the span except for the `duration` case.  That means that in the above
-case the metrics `custom/my.span` is emitted as distribution (the default) with
-`32.0` as value and `custom/my.span.block_size` for instance as gauge.
+Note that per-span all metrics (other than `sets` which are not yet accounted for) are
+stored as gauges.  That means that despite the fact that `incr` was called 5 times, only
+two gauges are stored.  The values of `min` and `max` are then useful for finding spans
+within the search radius.  Likewise tags are stored per metric and might diverge from
+the span tags.
 
-# Trivial Correlations
+In a way this implies that there are two aggregators: a global aggregator and a per-span
+local gauge level minimal aggregator.
 
-These are correlations where a metric almost directly correlates to a span.
+# Intended Correlations
+
+The following correlations are useful for metrics to span queries:
 
 ## Spans linked Timings
 
-Per definition when a span is attributed with a `metric` name, it's duration is reported
-as metric.  The tags associated with that metric are taken from the `metric_tags` parameter
+When a code block is timed with `metrics.timing` (or potentially a span is named with the
+`metric` parameter) it emits a distribution as timing.  That also binds and creates a span
+and attached that metric directly as measurement.  In that case the tags for metrics
+might also have to be explicitly recorded with `metric_tags` as parameter.
 
 ```python
 with start_span(description="something human readable", metric="my.span"):
@@ -62,38 +112,29 @@ are equivalent:
 with metrics.timing("foo"):
     pass
 
-with start_span(op="measurement", metric="foo"):
+with start_span(op="timing_measurement", metric="foo"):
     pass
 ```
 
-## Arbitrary Distributions
+To find corresponding spans the `min` and `max` values on span measurements can be used
+for correlation.
 
-Distributions are relatively easy to attach to spans.  By definition we only permit
-distributions (other than timing) to be associated with a span that itself is also
-named with a `metric`.  For instance imagine the following code which processes a bunch
-of spans:
+## Counters
 
-```python
-def process():
-    message_buffer = recv()
-    with start_span(metric="process.process-buffer") as span:
-        for message in message_buffer:
-            process_message(message)
-        span.set_measurement("message-count", len(message_buffer))
-```
+Counters should be primarily seen as "events".  The existence of an `incr` on a span is
+in fact the signal, more than the number is.  The reason for this is that things such as
+throughput do not make a lot of sense.  The number of requests per second for instance
+might be in the thousands, whereas each individual request only adds "1" to the counter.
 
-This would
+However for finding interesting samples, the existence of a span that has that metric
+in it (eg: `count > 0`) on the right tags might be sufficient.
 
-# API Proposal
-
-If `metrics.timing` is used and there is no active span that already has a metrics attribute,
-we automatically add a "measurement" span:
-
-```python
-with metrics.timing("foo"):
-    pass
-```
+On the other hand if `incr` is incremented multiple times, it might also be worth finding
+the spans sorted by the highest `count` or highest total sum / max value.
 
 # Open Questions
 
 * Metric vs span tags
+* Sets
+* Sampling of measurements
+* On span storage vs across span storage
