@@ -1,7 +1,7 @@
-- Start Date: YYYY-MM-DD
+- Start Date: 2023-11-17
 - RFC Type: feature
-- RFC PR: <link>
-- RFC Status: draft
+- RFC PR: https://github.com/getsentry/rfcs/pull/123
+- RFC Status: approved
 
 # Summary
 
