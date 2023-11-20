@@ -137,7 +137,7 @@ Every scope is always tied to a client.
 In addition to the currently active scope, there will also be a new special scope, the **Global Scope**.
 The global scope is _not_ the initial scope, but a special scope that belongs to a client and is applied to any event that belongs to this client.
 
-You can get the current global scope via `getGlobalScope()`. There _may_ be a function `setGlobalScope(scope)` to update the global scope - or SDKs can decide that there is no need to update the global scope, you can only mutate it.
+You can get the current global scope via `getGlobalScope()`. There _may_ be a function `setGlobalScope(scope)` to replace the global scope - or SDKs can decide that there is no need to replace the global scope, you can only mutate it.
 
 If you call `getGlobalScope()` before a client is initialized, we should still get a global scope back (tied to a Noop client). Once an actual client is initialized, the global scope of the noop client should be merged into the new global scope for the new client. This should ensure that even if you call `getGlobalScope().setTag(...)` before the SDK is initialized, no data is lost.
 
