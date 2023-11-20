@@ -57,14 +57,14 @@ where 3 succeed and two fail, the following measurements might be associated:
                 "max": 1,
                 "count": 3,
                 "sum": 3,
-                "tags": {"success": True}
+                "tags": {"success": true}
             },
             {
                 "min": 1,
                 "max": 1,
                 "count": 2,
                 "sum": 2,
-                "tags": {"success": False}
+                "tags": {"success": false}
             }
         ],
         "g:processor.peak_memory_usage@megabyte": {
