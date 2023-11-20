@@ -59,4 +59,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0106-artifact-indices](text/0106-artifact-indices.md): Improvements to Source Maps Processing
 - [0116-sentry-semantic-conventions](text/0116-sentry-semantic-conventions.md): Sentry Semantic Conventions
 - [0117-mobile-transactions-and-spans](text/0117-mobile-transactions-and-spans.md): Transactions and Spans for Mobile Platforms
-* [0123-metrics-correlation](text/0123-metrics-correlation.md): This RFC addresses the high level metrics to span correlation system
+- [0123-metrics-correlation](text/0123-metrics-correlation.md): This RFC addresses the high level metrics to span correlation system
