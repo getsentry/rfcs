@@ -95,7 +95,7 @@ scope.getClient(); // <-- returns client1
 
 The current scope may be kept similar to how we currently keep the current hub, but this is SDK specific and not part of this RFC.
 
-When calling `getCurrentScope()` before a scope was made the current one (=before init was called), we will return a new scope with a noop client.
+When calling `getCurrentScope()` before a scope was made the current one (=before `Sentry.init` was called), we will return a new scope with a noop client.
 A noop client is a regular client that simply does not send anything.
 
 This way, the API for `getClient()` can always return a client, and users do not have to guard against this being undefined all the time.
