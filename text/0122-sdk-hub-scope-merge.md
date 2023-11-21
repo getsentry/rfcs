@@ -196,26 +196,11 @@ async function setupGlobalData() {
 }
 ```
 
-The global scope is _not_ the initial scope, but a separate, special scope. The global scope is different for each client, in order to avoid polluting this on accident when working with multiple completely separate clients.
+The global scope is _not_ the initial scope, but a separate, special scope. The global scope is the same for all clients - if you care about per-client isolation, you should not use the global scope.
 
-You can get the current global scope via `getGlobalScope()`. There _may_ be a function `setGlobalScope(scope)` to replace the global scope - or SDKs can decide that there is no need to replace the global scope, you can only mutate it.
+You can get the current global scope via `getGlobalScope()`. There _may_ be a function `setGlobalScope(scope)` to replace the global scope - or SDKs can decide that there is no need to replace the global scope, you can only mutate it. 
 
-If you call `getGlobalScope()` before a client is initialized, we should still get a global scope back (tied to a Noop client). Once an actual client is initialized, the global scope of the noop client should be merged into the new global scope for the new client. This should ensure that even if you call `getGlobalScope().setTag(...)` before the SDK is initialized, no data is lost:
-
-```js
-// This global scope has a Noop client, because init was not called yet!
-const globalScopeBeforeInit = Sentry.getGlobalScope();
-globalScopeBeforeInit.setTag("tag1", "aa");
-
-// When init() is called, we make sure to inherit from the global scope, if data was set before
-Sentry.init();
-
-const globalScope = Sentry.getGlobalScope();
-// A new scope instance is created as global scope when a client is created & bound to current scope
-globalScope !== globalScopeBeforeInit;
-// Global scope inherits from globalScopeBeforeInit
-globalScope.getTags(); // -> tag1: aa
-```
+If you call `getGlobalScope()` before a client is initialized, we should still get a global scope back. This way, we can avoid race conditions if mutating the global scope before `Sentry.init()` is called.
 
 The reason that the global scope is not the same as the initial scope of a client, is that you cannot accidentally mutate it - nothing ever inherits off the global scope.
 
@@ -253,9 +238,9 @@ scope.isolate();
 export function withIsolationScope(callback: (scope) => void): void;
 ```
 
-You can fetch the current isolation scope via `getIsolationScope()`. You can define a new isolation scope via `scope.isolate()`, which will define a new isolation scope for this scope, and for all scopes that will be forked off this scope. When a client is created & bound, an isolation scope will immediately be created, similar to the global scope for a client.
+You can fetch the current isolation scope via `getIsolationScope()`. You can define a new isolation scope via `scope.isolate()`, which will define a new isolation scope for this scope, and for all scopes that will be forked off this scope. There is always an isolation scope, even if `Sentry.init()` was not called yet.
 
-An isolation scope is attached to the current execution context, similar to the current scope. There is always exactly one current isolation scope. If you call `getIsolationScope()` before a client has been created, a noop isolation scope is returned, which should be merged in once a client is actually created (same as with the global scope).
+An isolation scope is attached to the current execution context, similar to the current scope. There is always exactly one current isolation scope. 
 
 Similar to the global scope, an isolation scope is always a separate scope, so nothing will inherit off it - except for a potential superseding isolation scope.
 If an isolation scope is created, and there is already an isolation scope in the current execution context, then the new isolation scope should be forked off the previous one (with copy-on-write):
@@ -277,6 +262,18 @@ app.get("/my-route", function () {
 ```
 
 Note that in environments where you do not have multiple execution contexts (e.g. Browser JS), there is basically only a single isolation scope that is fundamentally the same as the global scope. In these environments, global & isolation scope can be used completely interchangeably. However, for consistency we still have these concepts everywhere - but users do not need to care about them, and we can reflect this in the SDK specific documentation.
+
+### How does the isolation scope differ from the current scope?
+
+If you are unsure why this exists, here an example:
+
+```js
+app.get('/my-route', function() {
+  Sentry.withScope(scope1 => {
+
+  })
+})
+```
 
 ### How to document isolation scopes
 
