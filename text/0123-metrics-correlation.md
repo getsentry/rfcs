@@ -10,12 +10,17 @@ This RFC addresses the high level metrics to span correlation system.
 # Motivation
 
 We believe the value in a good metrics solution is the correlation to traces and other signals.
-This means that we need to store evidence of metric measurements on the spans.  These
-measurements are automatically added when using the basic `metrics` API.
+This means that we need to store evidence of metrics on the spans in the form of metric summaries.
+These summaries are automatically added when using the basic `metrics` API.
+
+# Terms
+
+* **Connected metric:** a metric that is connected to a trace and not just free floating
+* **Metric summary:** the concept of a summarized metric associated to a span
 
 # Basics
 
-Whenever a metrics API is used it operates in either span seeking or span creating mode.  Most
+Whenever a metrics API is used it operates in either span seeking or in span creating mode.  Most
 of the metrics APIs are span seeking which means that they record a measurement in relation
 to that span.  Some APIs (such as `metrics.timing` when used with a code block) will instead
 create a span and bind it.
@@ -24,7 +29,7 @@ create a span and bind it.
 def process_batch(batch):
     processor = Processor()
 
-    # This creates a span with op `timing_measurement`
+    # This creates a span with op `metric.timer`
     with metrics.timing("processor.process_batch"):
         for item in batch:
             success = processor.process_item(item)
@@ -36,13 +41,13 @@ def process_batch(batch):
 
 Each metric locally "aggregates" into something that represents a gauge and is persisted with
 the closest span.  In the above case the following span gets recorded assuming a batch size of 5
-where 3 succeed and two fail, the following measurements might be associated:
+where 3 succeed and two fail, the following summaries might be associated:
 
 ```json
 {
     "span_id": "deadbeef",
-    "op": "timing_measurement",
-    "measurements": {
+    "op": "metric.timer",
+    "_metrics_summary": {
         "d:processor.process_batch@millisecond": [
             {
                 "min": 421.0,
@@ -96,7 +101,7 @@ The following correlations are useful for metrics to span queries:
 
 When a code block is timed with `metrics.timing` (or potentially a span is named with the
 `metric` parameter) it emits a distribution as timing.  That also binds and creates a span
-and attached that metric directly as measurement.  In that case the tags for metrics
+and attached that metric directly as summary.  In that case the tags for metrics
 might also have to be explicitly recorded with `metric_tags` as parameter.
 
 ```python
@@ -112,12 +117,16 @@ are equivalent:
 with metrics.timing("foo"):
     pass
 
-with start_span(op="timing_measurement", metric="foo"):
+with start_span(op="metrics.timing", metric="foo"):
     pass
 ```
 
-To find corresponding spans the `min` and `max` values on span measurements can be used
-for correlation.
+(Note that `metric` as a parameter is not something we are going to implement for the
+time being).
+
+To find corresponding spans the `min` and `max` values on span summaries can be used
+for correlation.  Tags associated with the timer are also automatically added to the
+span.
 
 ## Counters
 
@@ -134,7 +143,21 @@ the spans sorted by the highest `count` or highest total sum / max value.
 
 # Open Questions
 
-* Metric vs span tags
-* Sets
-* Sampling of measurements
-* On span storage vs across span storage
+Here are some unresolved questions:
+
+## Sets
+
+For now the suggestion is that sets are only stored as "value has been added to set" but not
+which value.  We do not have a lot of product support for spans today but at a later point
+we might need to extend this.
+
+## Sampling of metrics
+
+OpenTelemetry uses a rather elaborate system to filter out "exemplars".  There is a chance
+that an individual metric measurement is associated with trace and span via the concept
+of an exemplar.  In our case we attach summaries to spans which means that the dynamic
+sampling system can evict them together.  However if we were to support open telemetry
+exemplars we need to figure out how to sample these properly.
+
+If also the volume of measurements is too significant, we might have to introduce a sample
+rate for metrics.
