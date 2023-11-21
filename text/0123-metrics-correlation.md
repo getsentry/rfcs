@@ -17,6 +17,8 @@ These summaries are automatically added when using the basic `metrics` API.
 
 * **Connected metric:** a metric that is connected to a trace and not just free floating
 * **Metric summary:** the concept of a summarized metric associated to a span
+* **Measurements:** these are "legacy" transaction level custom metrics.  We would like to
+  eventually align them, but it's unclear at the moment how.
 
 # Basics
 
