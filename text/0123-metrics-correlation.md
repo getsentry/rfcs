@@ -159,5 +159,5 @@ of an exemplar.  In our case we attach summaries to spans which means that the d
 sampling system can evict them together.  However if we were to support open telemetry
 exemplars we need to figure out how to sample these properly.
 
-If also the volume of measurements is too significant, we might have to introduce a sample
+If also the volume of metric summaries is too significant, we might have to introduce a sample
 rate for metrics.
