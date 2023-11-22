@@ -22,6 +22,16 @@ Hubs and Scopes have been part of the unified SDK API for a long time.
 While they have generally served us well, the shortcomings of the current systems have become apparent over time.
 Apart from generally being unclear to users - what is applied when, why, how? - there are also problems with the way we currently instruct users to add event data.
 
+A major reason for this change is also to better align with OpenTelemetry. In OpenTelemetry (OTEL), the equivalent to our scope is the "Context". However, the Context is immutable in OTEL, and works via copy-on-write - so each time you want to change _anything_ on the context, you fork it. This means that you have much more forking than you have in Sentry currently, and also since you always fork a context when you change the active span (as the span is set on the context, and updating it means forking a context), you can quickly get into deeply nested context situations due to auto instrumentation. 
+
+This RFC aims to align this so we can handle the OTEL way of context forking (=doing this very frequent and liberally).
+
+Also, the RFC acknoledges that not all of the concepts laid out below are equally important for every environment - e.g. for Browser JS or mobile, we may not have multiple execution contexts, so some of the concept may not be so relevant. However, we still want to align the concepts across all SDKs for the following reasons:
+
+1. To ensure the experience is somewhat consistent across SDKs, and concepts can be ported.
+2. To handle isomorphic cases, e.g. in JS you have Server and Client code, and it should be as portable as possible.
+3. To prepare for the future - even if e.g. multi-execution-context is not important in an SDK right now, it may become so in the future.
+
 # Proposed Solution
 
 Hubs will be removed as a concept for SDK users.
@@ -31,7 +41,7 @@ Scopes will be _similar_ to how they work today, but not entirely the same.
 Scopes can have data (e.g. tags, user, ...) added to them the same way you can do today.
 This RFC _does not_ aim to change any of the data that is kept on the scope and is applied to events.
 
-The following APIs will be removed/deprecated:
+The following APIs will be deprecated:
 
 - `getCurrentHub()`
 - `configureScope()` (instead just get the scope and set on it directly)
@@ -76,22 +86,26 @@ APIs that are currently on the hub should instead be called directly on the scop
 
 The current scope may be kept similar to how we currently keep the current hub, but this is SDK specific and not part of this RFC.
 
+You can find some examples for how the APIs can/should be used [here](https://gist.github.com/mitsuhiko/1bc78d04ea7d08e5b50d27e42676db80).
+
 ## Clients
 
-Instead of a client being optional, there will now _always_ be a client. It may be a Noop Client that does nothing, if `init()` has not been called yet.
+Instad of picking the client from the current hub, going forward a client should always be fetched via `Sentry.getClient()`. 
+This should _always_ return a client. If `Sentry.init()` was not called yet, it should return a Noop Client that does nothing.
 
-A scope has a reference to a client. By default it will reference a noop client. You can bind a client to a scope via `scope.setClient()`.
-The client is inherited by forked scopes.
+A scope _may_ have a reference to a client. When fetching the active client via `getClient()`, the SDK will look up the chain of active scopes and pick the first client it finds:
 
-```js
-const client1 = new Client();
-const scope = new Scope();
+1. `getCurrentScope().client`
+2. `getIsolationScope().client`
+3. `getGlobalScope().client`
+4. Else, return Noop client
 
-scope.getClient(); // <-- returns a noop client by default
+You can bind a client to a scope viaa `scope.setClient(client)`. The client is inherited by forked scopes.
 
-scope.setClient(client1);
-scope.getClient(); // <-- returns client1
-```
+When calling `Sentry.init()`, by default we will simply update the client on the global scope. This way, you can update the client even for existing scopes, if we have to delay calling `Sentry.init()`. 
+When working with multiple clients, we would set the clients on the isolation scopes to make sure they are correctly picked up.
+
+In environments without execution contexts (like Browser), this generally does not work (not today, not with this proposal) reliably. There, users can only manually create clients & scopes without any global integrations and call `scope.captureException()` manually & directly.
 
 The current scope may be kept similar to how we currently keep the current hub, but this is SDK specific and not part of this RFC.
 
@@ -116,7 +130,7 @@ scope2.setClient(client2);
 scope1.captureException(); // <-- isolated from scope2
 ```
 
-A client continues to be stateless - it holds no reference to any scope. In contrast, each scope _always_ has a client reference (it _may_ reference a Noop client if nothing was initialized yet).
+A client continues to be stateless - it holds no reference to any scope. A scope _may_ have a client attached.
 
 ## Scopes
 
@@ -134,7 +148,7 @@ You can still clone scopes manually the same way as before, e.g. via `Scope.clon
 
 You can update the client of a scope via `scope.setClient(newClient)`. This will not affect any scope that has already been forked off this scope, but any scope forked off _after_ the client was updated will also receive the updated client.
 
-Every scope holds a reference to its client.
+A current scope always inherits from the previous current scope. 
 
 ## Special Scopes
 
@@ -153,17 +167,19 @@ The following chart gives an overview of how these scopes work and to which even
 
 Similar to how we currently store the current hub, we also need to store the current scope. The exact mechanism to do that is up to the concrete SDK/language. In environments with multiple execution contexts (or thread locals), we should attach the current scope to the execution context (or thread local). In other environments, it may be attached to some global (e.g. in Browser JS). This RFC does not propose to change this, so generally the current scope may be stored the same was as the current hub used to be.
 
-In addition to the current scope, the current [Global Scope](#global-scope) and [Isolation Scope](#isolation-scope) (see below for an in-depth explanation on what these are) also need to be stored. These should be stored _next to_ the current scope. If you have executution context, you may store/access them like this:
+In addition to the current scope, the current [Isolation Scope](#isolation-scope) (see below for an in-depth explanation on what these are) also needs to be stored. This should be stored _next to_ the current scope. If you have executution context, you may store/access them like this:
 
 ```js
 const executionContext1 = getExecutionContext();
-const { scope, globalScope, isolationScope } = executionContext1.getScopes();
-executionContext1.setScopes({ scope, globalScope, isolationScope });
+const { scope, isolationScope } = executionContext1.getScopes();
+executionContext1.setScopes({ scope, isolationScope });
 ```
 
 In environments where you don't have execution contexts, you may store them in a global place. The exact mechanism to do this is up to the concrete SDK/language.
 
-For each execution context, there will _always_ be exactly one current, global & isolation scope. When the execution context is forked, these are forked along.
+For each execution context, there will _always_ be exactly one current & isolation scope. When the execution context is forked, these are forked along.
+
+The [Global Scope](#global-scope) is truly global and can be kept in a global place.
 
 ### Global Scope
 
@@ -263,6 +279,8 @@ app.get("/my-route", function () {
 
 Note that in environments where you do not have multiple execution contexts (e.g. Browser JS), there is basically only a single isolation scope that is fundamentally the same as the global scope. In these environments, global & isolation scope can be used completely interchangeably. However, for consistency we still have these concepts everywhere - but users do not need to care about them, and we can reflect this in the SDK specific documentation.
 
+The isolation scope always inherits from the previously active isolation scope.
+
 ### How does the isolation scope differ from the current scope?
 
 If you are unsure why this exists, here an example:
@@ -359,6 +377,7 @@ Note that there is _always_ exactly one global & one isolation scope active.
 Inside of the SDK, this is how current code patterns can/should be migrated:
 
 - `getCurrentHub().getScope()` --> `getCurrentScope()` - wherever we used to use the current hub, we can instead use the current scope instead.
+- `getCurrentHub().getClient()` --> `getClient()`
 - `hub.configureScope(scopeCallback)` --> `const scope = getCurrentScope()` - just get & set on the scope directly
 - `hub.withScope(scopeCallback)` --> `withScope(scopeCallback)`
 - `hub.run()` --> `withIsolationScope()` - in places where you've currently forked the hub, you can instead fork a scope with an isolation scope
@@ -391,6 +410,8 @@ Sentry.captureMessage();
 ```
 
 SDKs _may_ also add an option to the client to opt-in to put breadcrumbs on the global scope instead (e.g. for mobile or scenarios where you always want breadcrumbs to be global).
+
+Note that since most data should generally be put on the isolation scope, we should not generally have to copy data that much on frequent scope forking. Since the isolation scope is rarely forked, most data does not need to be copied that frequently.
 
 ## Should users care about global / isolation scopes?
 
@@ -450,6 +471,5 @@ This RFC does not propose any concrete way to store the active scope. This is up
 
 - How should we handle this in docs?
 - Naming: Can we come up with something better than Isolation Scope?
-- Global Scope: Should it be per-client (current RFC) or truly global?
-  - If per-client, should this be called "Client Scope" instead to be clearer?
-- Naming: `getScope()` vs. `getCurrentScope()`
+- Should we have a different API for global/isolation scope?
+  - We don't expect the need to e.g. call `isolationScope.captureException()`, and maybe we should actually make this impossible
