@@ -100,7 +100,7 @@ A scope _may_ have a reference to a client. When fetching the active client via 
 3. `getGlobalScope().client`
 4. Else, return Noop client
 
-You can bind a client to a scope viaa `scope.setClient(client)`. The client is inherited by forked scopes.
+You can bind a client to a scope via `scope.setClient(client)`. The client is inherited by forked scopes.
 
 When calling `Sentry.init()`, by default we will simply update the client on the global scope. This way, you can update the client even for existing scopes, if we have to delay calling `Sentry.init()`. 
 When working with multiple clients, we would set the clients on the isolation scopes to make sure they are correctly picked up.
