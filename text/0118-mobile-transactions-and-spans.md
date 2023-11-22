@@ -78,7 +78,7 @@ Whilst being the least effort, this option doesn't add any value and we remain w
 
 ### 4. Single Span Ingestion <a name="option-4"></a>
 
-Use single-span ingestion (PR) and keep screen load transactions. Whenever the SDK creates an auto-generated span, it sends it stand-alone to Sentry. To avoid multiple network requests, SDKs need to batch spans together; for example, send an envelope for every ten spans. The batch logic is still up for definition and is not the goal for this RFC. Instead, we are going to define this in an extra RFC.
+Keep screen load transactions, and use single-span ingestion ([PR](https://github.com/getsentry/relay/pull/2620)) whenever the SDK creates an auto-generated span and sends it stand-alone to Sentry. To avoid multiple network requests, SDKs need to batch spans together; for example, send an envelope for every ten spans. The batch logic is still up for definition and is not the goal for this RFC. Instead, we are going to define this in an extra RFC.
 We want to keep the screen load transactions as Mobile Starfish already relies on them, and we want to be backward compatible.
 
 #### Pros
