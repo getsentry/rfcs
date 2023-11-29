@@ -70,18 +70,12 @@ Scenario: 1 span added app crashes
     When the SDK detects a crash
     Then the SDK does nothing with the SpanBuffer
     And loses the spans in the SpanBuffer
+
 Scenario: Unfinished spans
     Given no span is in the SpanBuffer
     When the SDK starts a span but doesn't finish it
-    Then the SpanBuffer is still empty
-    
-Scenario: Open span, many children
-    Given no span is in the SpanBuffer
-    When the SDK starts a span but doesn't finish it yet
-    And starts+finishes 60 child spans
-    When the span finishes
-    Then the SpanBuffer contains 61 spans
-    And sends the envelope to Sentry
+    Then the SpanBuffer is empty
+```
 
 ### Pros <a name="option-1-pros"></a>
 
