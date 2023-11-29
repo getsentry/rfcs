@@ -29,7 +29,7 @@ We planned on implementing [carrier transactions](https://github.com/getsentry/t
 
 ## Option 1: Batch Span Ingestion <a name="option-1"></a>
 
-A strategy to achieve this is to keep a buffer of spans in memory and batch them together in envelopes. The buffer starts a timeout of x seconds when the SDK adds the first span. When the timeout exceeds, the buffer sends all spans no matter how many items it contains. The buffer also sends all items after the SDK captures y spans. When the buffer sends all spans, it resets its timeout and removes all spans in the buffer. The buffer handles both auto-instrumented and manual spans.
+A strategy to achieve this is to keep a buffer of finished spans in memory and batch them together in envelopes. The buffer starts a timeout of x seconds when the SDK adds the first span. When the timeout exceeds, the buffer sends all spans no matter how many items it contains. The buffer also sends all items after the SDK captures y spans. When the buffer sends all spans, it resets its timeout and removes all spans in the buffer. The buffer handles both auto-instrumented and manual spans.
 
 The specification is written in the [Gherkin syntax](https://cucumber.io/docs/gherkin/reference/) and uses x = 10 seconds for the timeout and y = 50 spans for the maximum spans in the buffer. SDKs may use different values for x and y depending on their needs. Initially, we don’t plan adding options for these variables, but we can make them configurable if required in the future, similar to `maxCacheItems`.
 
