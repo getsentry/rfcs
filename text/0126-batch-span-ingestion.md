@@ -75,6 +75,24 @@ Scenario: Unfinished spans
     Given no span is in the SpanBuffer
     When the SDK starts a span but doesn't finish it
     Then the SpanBuffer is empty
+
+Scenario: Spans in buffer, span with children
+    Given 49 spans in the SpanBuffer
+    When the SDK finishes a span with one child
+    Then the SDK puts the 49 spans already in the SpanBuffer into an envelope
+    And sends the envelope to Sentry.
+    And stores the span with its child into the SpanBuffer
+
+Scenario: Span with more children than buffer size
+    Given one span A is in the SpanBuffer
+    When the SDK starts a span B
+    And starts 50 child spans
+    When the SDK finishes the span B and all it's children
+    Then the SDK directly puts all spans of span B into one envelope
+    And sends the envelope to Sentry.
+    And doesn't store the spans of span B in the SpanBuffer
+    And keeps the existing span A in the SpanBuffer
+
 ```
 
 ### Pros <a name="option-1-pros"></a>
