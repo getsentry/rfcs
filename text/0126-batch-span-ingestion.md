@@ -1,7 +1,7 @@
 - Start Date: 2023-11-28
 - RFC Type: feature
 - RFC PR: https://github.com/getsentry/rfcs/pull/126
-- RFC Status: draft
+- RFC Status: In Progress
 - RFC Driver: [Philipp Hofmann](https://github.com/philipphofmann)
 
 # Summary
@@ -87,7 +87,7 @@ Scenario: Spans in buffer, span with children
 Scenario: Span with more children than buffer size
     Given one span A is in the SpanBuffer
     When the SDK starts a span B
-    And starts 50 child spans
+    And starts 50 child spans for span B
     When the SDK finishes the span B and all it's children
     Then the SDK directly puts all spans of span B into one envelope
     And sends the envelope to Sentry.
