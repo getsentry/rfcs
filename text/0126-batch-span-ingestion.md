@@ -23,7 +23,7 @@ As of November 28, 2023, the auto instrumentation of spans requires an active tr
 ## What happened to carrier transactions?
 
 On Mobile, we initially agreed on using transactions as carriers for spans in the [RFC mobile transactions and spans](https://github.com/getsentry/rfcs/blob/760467b85dbf86bd8b2b88d2a81f1a258dc07a1d/text/0118-mobile-transactions-and-spans.md).
-We planned on implementing [carrier transactions](https://github.com/getsentry/team-mobile/issues/157), but then [reverted the RFC](https://github.com/getsentry/rfcs/pull/125) and decided to use span ingestion instead because it won’t take long until the [PR for it gets merged](https://github.com/getsentry/relay/pull/2620).
+We planned on implementing [carrier transactions](https://github.com/getsentry/team-mobile/issues/157), but then [reverted the RFC](https://github.com/getsentry/rfcs/pull/125) and decided to use span ingestion instead because the [PR for it is already merged](https://github.com/getsentry/relay/pull/2620).
 
 # Options Considered
 
