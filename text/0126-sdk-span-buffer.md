@@ -6,7 +6,7 @@
 
 # Summary
 
-This RFC aims to find a strategy for batching spans together to avoid sending one envelope per span.
+This RFC aims to find a strategy for buffering spans to avoid sending one envelope per span.
 
 # Motivation
 
@@ -23,11 +23,11 @@ As of November 28, 2023, the auto instrumentation of spans requires an active tr
 ## What happened to carrier transactions?
 
 On Mobile, we initially agreed on using transactions as carriers for spans in the [RFC mobile transactions and spans](https://github.com/getsentry/rfcs/blob/760467b85dbf86bd8b2b88d2a81f1a258dc07a1d/text/0118-mobile-transactions-and-spans.md).
-We planned on implementing [carrier transactions](https://github.com/getsentry/team-mobile/issues/157), but then [reverted the RFC](https://github.com/getsentry/rfcs/pull/125) and decided to use span ingestion instead because the [PR for it is already merged](https://github.com/getsentry/relay/pull/2620).
+We planned on implementing [carrier transactions](https://github.com/getsentry/team-mobile/issues/157), but then [reverted the RFC](https://github.com/getsentry/rfcs/pull/125) and decided to use single span ingestion instead because the [PR for it is already merged](https://github.com/getsentry/relay/pull/2620).
 
 # Options Considered
 
-## Option 1: Batch Span Ingestion <a name="option-1"></a>
+## Option 1: Span Buffer <a name="option-1"></a>
 
 A strategy to achieve this is to keep a buffer of **only finished spans** in memory and batch them together in envelopes. The buffer starts a timeout of x seconds when the SDK adds the first span. When the timeout exceeds, the buffer sends all spans no matter how many items it contains. The buffer also sends all items after the SDK captures y spans, but it must keep the span children together with their parents in the same envelope. When the buffer sends all spans, it resets its timeout and removes all spans in the buffer. When a span and its children have more items than the buffer size, the SDK surpasses the buffer and sends the spans together in one envelope directly to Sentry. The buffer handles both auto-instrumented and manual spans.
 
