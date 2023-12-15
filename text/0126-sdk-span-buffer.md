@@ -31,7 +31,9 @@ We planned on implementing [carrier transactions](https://github.com/getsentry/t
 
 A strategy to achieve this is to keep a buffer of **only finished spans** in memory and batch them together in envelopes. The buffer starts a timeout of x seconds when the SDK adds the first span. When the timeout exceeds, the buffer sends all spans no matter how many items it contains. The buffer also sends all items after the SDK captures y spans, but it must keep the span children together with their parents in the same envelope. When the buffer sends all spans, it resets its timeout and removes all spans in the buffer. When a span and its children have more items than the buffer size, the SDK surpasses the buffer and sends the spans together in one envelope directly to Sentry. The buffer handles both auto-instrumented and manual spans.
 
-The specification is written in the [Gherkin syntax](https://cucumber.io/docs/gherkin/reference/) and uses x = 10 seconds for the timeout and y = 50 spans for the maximum spans in the buffer. SDKs may use different values for x and y depending on their needs. Initially, we don’t plan adding options for these variables, but we can make them configurable if required in the future, similar to `maxCacheItems`.
+This concept is similar to [OpenTelemetry's Batch Processors](https://github.com/open-telemetry/opentelemetry-collector/blob/main/processor/batchprocessor/README.md).
+
+The specification is written in the [Gherkin syntax](https://cucumber.io/docs/gherkin/reference/) and uses x = 10 seconds for the timeout and y = 50 spans for the maximum spans in the buffer. SDKs may use different values for x and y depending on their needs. If the timeout is set to `0`, then the SDK sends every span immediately. Initially, we don’t plan adding options for these variables, but we can make them configurable if required in the future, similar to `maxCacheItems`.
 
 ```Gherkin
 Scenario: No spans in buffer 1 span added
@@ -94,6 +96,24 @@ Scenario: Span with more children than buffer size
     And doesn't store the spans of span B in the SpanBuffer
     And keeps the existing span A in the SpanBuffer
     And doesn't reset the timeout
+
+Scenario: Timeout set to 0 span without children
+    Given the timeout is set to 0
+    When the SDK finishes one span without any children
+    Then the SDK puts the span into one one envelope
+    And sends the envelope to Sentry.
+
+Scenario: Timeout set to 0 span with children
+    Given the timeout is set to 0
+    When the SDK finishes one span with 10 children
+    Then the SDK puts the span with the 10 children into one envelope
+    And sends the envelope to Sentry.
+
+Scenario: Timeout set to 0 spans without children
+    Given the timeout is set to 0
+    When the SDK finishes two spans without any children
+    Then the SDK puts every span into one envelope
+    And sends both envelopes to Sentry.
 
 ```
 
