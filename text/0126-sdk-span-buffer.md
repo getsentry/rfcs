@@ -29,11 +29,55 @@ We planned on implementing [carrier transactions](https://github.com/getsentry/t
 
 ## Option 1: Span Buffer <a name="option-1"></a>
 
-A strategy to achieve this is to keep a buffer of **only finished spans** in memory and batch them together in envelopes. The buffer starts a timeout of x seconds when the SDK adds the first span. When the timeout exceeds, the buffer sends all spans no matter how many items it contains. The buffer also sends all items after the SDK captures y spans, but it must keep the span children together with their parents in the same envelope. When the buffer sends all spans, it resets its timeout and removes all spans in the buffer. When a span and its children have more items than the buffer size, the SDK surpasses the buffer and sends the spans together in one envelope directly to Sentry. The buffer handles both auto-instrumented and manual spans.
+A strategy to achieve this is to keep a buffer of **only finished spans**  in memory and batch them together in envelopes. The buffer uses a combination of **timeout** and **weight**, approximating how much memory a single span allocates. This concept is similar to [OpenTelemetry's Batch Processors](https://github.com/open-telemetry/opentelemetry-collector/blob/main/processor/batchprocessor/README.md).
 
-This concept is similar to [OpenTelemetry's Batch Processors](https://github.com/open-telemetry/opentelemetry-collector/blob/main/processor/batchprocessor/README.md).
+A simple way to calculate the weight of a span is to call serialize and recursively count the number of elements in the dictionary. Every key in a dictionary and every element in an array add a weight of one. For a detailed explanation of how to count the weight, see the example below. As serialization is expensive, the span buffer will keep track of the serialized spans and directly pass them to the envelope item to avoid serializing multiple times.
 
-The specification is written in the [Gherkin syntax](https://cucumber.io/docs/gherkin/reference/) and uses x = 10 seconds for the timeout and y = 50 spans for the maximum spans in the buffer. SDKs may use different values for x and y depending on their needs. If the timeout is set to `0`, then the SDK sends every span immediately. Initially, we don’t plan adding options for these variables, but we can make them configurable if required in the future, similar to `maxCacheItems`.
+```JSON
+{
+    // All simple properties count as 1 so in total 12
+    "timestamp": 1705031078.623853,                     
+    "start_timestamp": 1705031078.337715,
+    "description": "ExtraViewController full display",
+    "op": "ui.load.full_display",
+    "span_id": "794d0cba0ac64235",
+    "parent_span_id": "45054abc6ded413a",
+    "trace_id": "65880cfc084f4bd5ab3abc7d598b3c14",
+    "status": "ok",
+    "origin": "manual.ui.time_to_display",
+    "hash": "a925395473cfe97d",
+    "sampled": true,
+    "type": "trace",
+
+    // The data object has 5 simple properties, which count as 5
+    // and one list with 3 elements counting as 3
+    "data": {
+        "frames.frozen": 0,
+        "frames.slow": 1,
+        "frames.total": 1,
+        "thread.id": 259,
+        "thread.name": "main",
+        "list" : [1, 2, 3]
+    },
+
+    // Tags count as 2
+    "sentry_tags": {
+        "environment": "ui-tests",
+        "main_thread": "true",
+    },
+
+    // The weight is 
+    // 12 (simple properties)
+    // 8  (data)
+    // 2  (tags)
+    // = 22
+}
+```
+
+The buffer starts a timeout of `x` seconds when the SDK adds the first span. When the timeout exceeds, the buffer sends all spans no matter how many items it contains. The buffer also sends all items after the SDK captures spans with weight more than `y`, but it must keep the span children together with their parents in the same envelope. When the buffer sends all spans, it resets its timeout and removes all spans in the buffer. When a span and its children have more weight than the max buffer weight `y`, the SDK surpasses the buffer and sends the spans together in one envelope directly to Sentry. The buffer handles both auto-instrumented and manual spans.
+
+
+The specification is written in the [Gherkin syntax](https://cucumber.io/docs/gherkin/reference/) and uses `x = 10` seconds for the timeout and `y = 500` spans for the maximum span weight in the buffer. SDKs may use different values for `x` and `y` depending on their needs. If the timeout is set to `0`, then the SDK sends every span immediately. Initially, we don’t plan adding options for these variables, but we can make them configurable if required in the future, similar to `maxCacheItems`.
 
 ```Gherkin
 Scenario: No spans in buffer 1 span added
@@ -51,18 +95,18 @@ Scenario: Span added before timeout exceeds
     And doesn't reset the timeout
     And doesn't send the spans in the SpanBuffer to Sentry
 
-Scenario: 49 span added, timeout exceeds
-    Given 49 span in the SpanBuffer
+Scenario: Spans with weight of 499 added, timeout exceeds
+    Given spans with a weight of 499 in the SpanBuffer
     When the timeout exceeds
     Then the SDK adds all the spans to one envelope
     And sends them to Sentry
     And resets the timeout
     And clears the SpanBuffer
 
-Scenario: 50 spans added within 9.9 seconds
+Scenario: Spans with weight of 500 added within 9.9 seconds
     Given no spans in the SpanBuffer
-    When the SDK adds 50 spans within 9.9 seconds
-    Then the SDK puts all 50 spans into one envelope
+    When the SDK adds spans with a weight of 500 within 9.9 seconds
+    Then the SDK puts all spans into one envelope
     And sends the envelope to Sentry
     And resets the timeout
     And clears the SpanBuffer
@@ -79,17 +123,17 @@ Scenario: Unfinished spans
     Then the SpanBuffer is empty
 
 Scenario: Spans in buffer, span with children
-    Given 49 spans in the SpanBuffer
+    Given spans with a weight of 499 in the SpanBuffer
     When the SDK finishes a span with one child
-    Then the SDK puts the 49 spans already in the SpanBuffer into an envelope
+    Then the SDK puts the spans with a weight of 499 already in the SpanBuffer into an envelope
     And sends the envelope to Sentry.
     And stores the span with its child into the SpanBuffer
     And resets the timeout
 
-Scenario: Span with more children than buffer size
+Scenario: Span with more children than max buffer weight
     Given one span A is in the SpanBuffer
     When the SDK starts a span B
-    And starts 50 child spans for span B
+    And starts child spans with a weight of 500 for span B
     When the SDK finishes the span B and all it's children
     Then the SDK directly puts all spans of span B into one envelope
     And sends the envelope to Sentry.
@@ -105,8 +149,8 @@ Scenario: Timeout set to 0 span without children
 
 Scenario: Timeout set to 0 span with children
     Given the timeout is set to 0
-    When the SDK finishes one span with 10 children
-    Then the SDK puts the span with the 10 children into one envelope
+    When the SDK finishes one span with children of a weight of 100
+    Then the SDK puts the span with the children into one envelope
     And sends the envelope to Sentry.
 
 Scenario: Timeout set to 0 spans without children
@@ -134,3 +178,4 @@ Please add any drawbacks you can think of as a comment or just commit directly.
 
 - What values are SDKs going to pick for x and y?
 - Should we add an option to make x and y configurable from the start?
+- Do SDKs have to send span children in the same envelope as their parent?
