@@ -7,6 +7,9 @@
 
 Make it easier to use Rust code from Sentry/Python.
 
+This is now live in the [`ophio`] repo. See the [Proposed Workflow](#proposed-workflow) section,
+or the README of the [`ophio`] repo to learn how to create / publish / use these bindings.
+
 # Motivation
 
 We want to improve the adoption of Rust within the Sentry/Python codebase, making it easier to do so,
@@ -32,6 +35,22 @@ for the sole purpose of having Python bindings for that functionality (example: 
 
 # Options Considered
 
+We settled on creating a "dumping group"
+
+## Create a single Sentry-specific bindings package
+
+With this approach, we would a single project/package that acts a Rust binding layer.
+We would pull in only the Rust dependencies that we need, and only expose functionality to Python that we actually use.
+It would also make it possible to move functionality from Python to Rust that does not make sense as a standalone
+Rust crate.
+
+- **pro**: Only pulling in the dependencies that are actually needed.
+- **pro**: Only a single Python extension module to build / care about with fixed overhead.
+- **pro**: Ability to move functionality from Python to Rust more fine-grained.
+- **pro**: No need to ~maintain public PyPI packages and~ care about SemVer.
+- **pro**: Simpler release / update flow. ~Ideally things would only require a single commit to `sentry`.~
+- **con**: Setting up and maintaining a workflow in the Monolith repo that suits every developer might be more complex.
+
 ## Maintain crate-specific Python bindings
 
 This approach is listed for completeness, I do _not_ advocate for it.
@@ -44,23 +63,9 @@ With this approach, each Rust crate we are interested in would have its own Pyth
 - **con**: Having multiple smaller Python extension modules will increased the fixed per-module overhead.
   In particular, each module would have its own bundled copy of the Rust `std`.
 
-## Create a single Sentry-specific bindings package
-
-With this approach, we would a single project/package that acts a Rust binding layer.
-We would pull in only the Rust dependencies that we need, and only expose functionality to Python that we actually use.
-It would also make it possible to move functionality from Python to Rust that does not make sense as a standalone
-Rust crate.
-
-- **pro**: Only pulling in the dependencies that are actually needed.
-- **pro**: Only a single Python extension module to build / care about with fixed overhead.
-- **pro**: Ability to move functionality from Python to Rust more fine-grained.
-- **pro**: No need to maintain public PyPI packages and care about SemVer.
-- **pro**: Simpler release / update flow. Ideally things would only require a single commit to `sentry`.
-- **con**: Setting up and maintaining a workflow in the Monolith repo that suits every developer might be more complex.
-
 # Proposed Workflow
 
-- Have a separate repo ([`$repo-TBD`]) for the Rust bindings, using PyO3 / maturin.
+- Have a separate repo ([`ophio`]) for the Rust bindings, using PyO3 / maturin.
 - Use the standard _release_/_publish_ workflow.
 - Manually trigger publishes and [auto-approve](https://github.com/getsentry/publish/blob/main/.github/workflows/auto-approve.yml).
 - The _publish_ workflow will publish to _public_ PyPI.
@@ -70,8 +75,8 @@ Rust crate.
 
 Put even simpler:
 
-- Get PR in [`$repo-TBD`] approved and merged.
-- Trigger _release_/_publish_ workflow in [`$repo-TBD`].
+- Get PR in [`ophio`] approved and merged.
+- Trigger _release_/_publish_ workflow in [`ophio`].
 - Either run [bump-version] workflow in [`sentry`], or open a PR that bumps the dependency version.
 
 # Unresolved questions
@@ -81,5 +86,5 @@ Put even simpler:
 - ~As in: Can Python-only developers just install pre-built binaries without the need to care about parts written in Rust at all?~
 
 [bump-version]: https://github.com/getsentry/sentry/actions/workflows/bump-version.yml
-[`$repo-TBD`]: https://github.com/getsentry/$repo-TBD
+[`ophio`]: https://github.com/getsentry/ophio
 [`sentry`]: https://github.com/getsentry/sentry
