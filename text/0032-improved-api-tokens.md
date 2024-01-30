@@ -17,10 +17,10 @@
     - [Secret Verification Service](#secret-verification-service)
 - [Background](#background)
 - [Options Considered](#options-considered)
-  - [Option #1](#option--1)
-  - [Option #2](#option--2)
+  - [Option #1](#option-1)
+  - [Option #2](#option-2)
     - [Drawbacks](#drawbacks)
-  - [Option #3](#option--3)
+  - [Option #3](#option-3)
     - [Drawbacks](#drawbacks-1)
 - [Unresolved questions](#unresolved-questions)
 
