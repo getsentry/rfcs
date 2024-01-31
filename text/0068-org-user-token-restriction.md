@@ -78,3 +78,9 @@ Secret or API token leaks are commonplace:
 - Instead of a simple on/off toggle, we could create a more complex _policy_ system
   allowing user API tokens to be used for certain scopes within an org, meet
   required maximum lifetimes, etc.
+
+# Unanswered Questions
+
+- How do we account for API application tokens?
+  - Should they still be allowed?
+  - What about those that are created in the backend by using integrations?
