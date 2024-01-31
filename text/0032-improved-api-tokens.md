@@ -144,20 +144,25 @@ Second, we will need to secure the tokens. This involves four primary goals.
    >
    > _It's important to note that this does not update the token to the new prefixed format._
 
-4. A notification/warning in the UI should be displayed recommending users recreate their tokens, resulting in the new token version.
-5. New tokens are only displayed once at creation time to the user.
-6. New tokens are created following the new format.
-   - A Django migration will be needed to add fields: `hashed_token`, `version`, and `name`.
-   - legacy tokens will be `version = 1` and new tokens `version = 2`
-7. As old tokens are used, they are hashed and stored in the database.
-   - This does not update the token to the new format.
-   - The plaintext token value should be removed in this action.
+4. A nullable `token_type` field is added to the `ApiToken` model. It should accept a limited set of choices to indicate whether the token is `sntryu_`, `sntrya_`, etc. A _null_
+   value would indicate a legacy token that is not prefixed regardless of whether it is a user or application token.
+5. A new _class method_ named `create_token(..)` is created on the `ApiToken` model. This method will return the plaintext token, plaintext refresh token, and `ApiToken`
+   instance to the caller. The plaintext token will be needed to display to the user temporarily in the UI.
+6. Calls to `ApiToken.objects.create(..)` should be replaced with the new `ApiToken.create_token(..)` method.
+7. A notification/banner in the UI should be displayed recommending users recreate their tokens, resulting in the new token version.
 
-**In the second release:**
+Next, any remaining legacy tokens that do not have hashed values will need to be handled:
 
 1. As a Django migration, a bulk operation is executed to update all remaining legacy tokens in the database.
-   - This operation will hash the legacy token value, store it in the database, and remove the plaintext value.
-   - It does **not** update the token to the new format.
+   - This operation will hash the legacy `token` and `refresh_token` values and store them in the database.
+   - It does **not** update the tokens to the new format.
+
+Lastly, after enough time and we are comfortable:
+
+1. The codebase is updated to not access the `token` and `refresh_token` attributes of the `ApiToken` model.
+2. The `token` and `refresh_token` fields are removed from the model and the migration is applied.
+
+   > _These should be done in two separate deployments to ensure we have no release running in production that may try to use these fields before the migration removes the columns._
 
 ## Option #2
 
@@ -180,12 +185,7 @@ We would then follow a similar approach to Option #1 or Option #2 to generate th
 
 # Unresolved questions
 
-- How do we deploy the necessary changes for the backend and frontend separately and in a backwards compatible way?
-- Implementation path for `APIApplication` secrets.
-- Is there a downside to allowing `null` in the additional columns?
 - What is the median time between token use?
   - _This value could be used to inform how long we wait between versions for the migration that will edit pending rows in the database._
-- Do we want to support [API Keys](https://docs.sentry.io/api/auth/#api-keys) as well, even though they are considered a legacy means of authentication?
-- Are there additional secret types we would like to apply this to?
-- Should the secret verification service live within the monolith or run as a separate service entirely?
-  - _Github [mentions that there could be large batches of secrets sent for verification](https://docs.github.com/en/developers/overview/secret-scanning-partner-program#create-a-secret-alert-service:~:text=Your%20endpoint%20should%20be%20able%20to%20handle%20requests%20with%20a%20large%20number%20of%20matches%20without%20timing%20out.). It might make sense to keep this as a separate service to avoid impact._
+- What is the best way to store `token_type`?
+  - Can we use Django's `models.TextChoices` and store strings or should we use an integer-to-string mapping?
