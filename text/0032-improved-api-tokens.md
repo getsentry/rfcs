@@ -149,7 +149,8 @@ Second, we will need to secure the tokens. This involves four primary goals.
 5. A new _class method_ named `create_token(..)` is created on the `ApiToken` model. This method will return the plaintext token, plaintext refresh token, and `ApiToken`
    instance to the caller. The plaintext token will be needed to display to the user temporarily in the UI.
 6. Calls to `ApiToken.objects.create(..)` should be replaced with the new `ApiToken.create_token(..)` method.
-7. A notification/banner in the UI should be displayed recommending users recreate their tokens, resulting in the new token version.
+7. API endpoints that retrieve the full plaintext token value should be updated to no longer do so. This should only be available on creation.
+8. A notification/banner in the UI should be displayed recommending users recreate their tokens, resulting in the new token version.
 
 Next, any remaining legacy tokens that do not have hashed values will need to be handled:
 
