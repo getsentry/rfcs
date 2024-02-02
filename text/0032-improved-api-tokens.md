@@ -36,6 +36,8 @@ Improve on Sentry's API token implementation to a more secure pattern. Our major
 3. Allow users to _name_ the tokens ([Tracking Issue #9600](https://github.com/getsentry/sentry/issues/9600))
    - [#58945](https://github.com/getsentry/sentry/pull/58945)
 4. Use a predictable prefix and suffix to integrate with various secret scanning services (ex. Github's Secret Scanning)
+5. Deprecate use of full token values in API endpoints
+   - https://github.com/getsentry/team-enterprise/issues/21
 
 # Motivation
 
@@ -161,7 +163,7 @@ Next, any remaining legacy tokens that do not have hashed values will need to be
 Lastly, after enough time and we are comfortable:
 
 1. The codebase is updated to not access the `token` and `refresh_token` attributes of the `ApiToken` model.
-2. The `token` and `refresh_token` fields are removed from the model and the migration is applied.
+2. The `token` and `refresh_token` fields are removed from the model and the migration is applied, dropping the columns from the table.
 
    > _These should be done in two separate deployments to ensure we have no release running in production that may try to use these fields before the migration removes the columns._
 
@@ -190,3 +192,8 @@ We would then follow a similar approach to Option #1 or Option #2 to generate th
   - _This value could be used to inform how long we wait between versions for the migration that will edit pending rows in the database._
 - What is the best way to store `token_type`?
   - Can we use Django's `models.TextChoices` and store strings or should we use an integer-to-string mapping?
+
+# Future Work
+
+- Allow users to actually set the expiration durations on their API tokens
+  - We can still support indefinite durations to maintain backwards compatibility
