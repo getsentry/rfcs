@@ -61,3 +61,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0118-mobile-transactions-and-spans](text/0118-mobile-transactions-and-spans.md): Transactions and Spans for Mobile Platforms
 - [0123-metrics-correlation](text/0123-metrics-correlation.md): This RFC addresses the high level metrics to span correlation system
 - [0126-sdk-spans-aggregator](text/0126-sdk-spans-aggregator.md): SDK Span Buffer
+- [0127-propagation-context-evolution](text/0127-propagation-context-evolution.md): Propagation Context Evolution
