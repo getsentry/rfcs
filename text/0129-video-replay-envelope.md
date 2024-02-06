@@ -18,7 +18,7 @@ This is based on an evaluation where a video has much smaller size than a sequen
 
 # Motivation
 
-We need this to to capture replays on platforms where it's not possible/feasible to produce an HTML DOM (i.e. the native format supported by RRWeb).
+We need this to to capture replays on platforms where it's not possible/feasible to produce an HTML DOM (i.e. the native format supported by RRWeb). For example: mobile apps.
 
 <!-- # Supporting Data -->
 <!-- Metrics to help support your decision (if applicable). -->
