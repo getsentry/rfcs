@@ -5,19 +5,18 @@
 
 # Summary
 
-One paragraph explanation of the feature or document purpose.
+In order to capture video replays and present them to the user, we need:
+
+- define how we transport the video data to the server
+- define how we integrate the video data into the RRWeb JSON format
+- how we combine multiple replay chunks to a single replay session
 
 # Motivation
 
-Why are we doing this? What use cases does it support? What is the expected outcome?
+We need this to to capture replays on platforms where it's not possible/feasible to produce an HTML DOM (i.e. the native format supported by RRWeb).
 
-# Background
-
-The reason this decision or document is required. This section might not always exist.
-
-# Supporting Data
-
-[Metrics to help support your decision (if applicable).]
+<!-- # Supporting Data -->
+<!-- Metrics to help support your decision (if applicable). -->
 
 # Options Considered
 
