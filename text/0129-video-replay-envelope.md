@@ -27,9 +27,22 @@ We need this to to capture replays on platforms where it's not possible/feasible
 
 ## Using a video, with EnvelopeItem:Attachment
 
-- From the SDK, we should be able to use the existing envelope item type, [`attachment`](https://develop.sentry.dev/sdk/envelopes/#attachment) to transport the video data.
-- Additionally, it would be accompanied with replay envelope item in RRWeb JSON format (**TODO link if any, see <https://github.com/getsentry/develop/issues/1144>**).
-- To link to the video (attachment) file in the replay JSON, we could use a [`EventType.Custom`](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L8-L16). (**TODO how can we link to a specific attachment coming with the event?**).
+- From the SDK, we should be able to use the existing envelope item type, [`ReplayRecording`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L115C5-L115C20) to transport the video data.
+- Additionally, it would be accompanied with replay envelope item type, [`ReplayEvent`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L113) in RRWeb JSON format.
+- To link to the video file in the replay JSON, we could use a [`EventType.Custom`](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L8-L16). The data would contain `segment_id` referencing the replay video recording attachment.
+
+  ```json
+  {
+   "type": 5,
+   "data": {
+      "tag": "video",
+      "payload": {
+        "segment_id": 4,
+        "duration": 5000
+      }
+    }
+  }
+  ```
 
 ## Other considered options
 
