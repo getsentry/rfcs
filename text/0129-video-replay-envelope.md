@@ -27,7 +27,8 @@ We need this to to capture replays on platforms where it's not possible/feasible
 
 ## Using a video, with EnvelopeItem:ReplayVideo
 
-- From the SDK, we would send a new envelope item type, [`ReplayVideo`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L115C5-L115C20) to transport the video data.
+- From the SDK, we would send a new envelope with the following items: `Replay`, `ReplayVideo` and `ReplayRecording`.
+- The newly introduced item type, [`ReplayVideo`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L115C5-L115C20) is used to transport the video data.
   The envelope item would consist of a single header line (JSON), followed by a new line and the raw video data.
   - The header should contain at least the following metadata:
     - replay segment ID
@@ -46,16 +47,20 @@ We need this to to capture replays on platforms where it's not possible/feasible
     {
       "type": 5,
       "data": {
-        "type": "video",
-        "size": 3440,
-        "duration": 5000,
-        "encoding": "whatever",
-        "container": "whatever",
-        "v-size": 1920,
-        "h-size": 1080,
-        "frame_count": 50,
-        "frame_rate_type": "constant|variable",
-        "frame_rate": 10
+        "payload": {
+          "segment-id": 4,
+          "type": "video",
+          "size": 3440,
+          "duration": 5000,
+          "encoding": "whatever",
+          "container": "whatever",
+          "v-size": 1920,
+          "h-size": 1080,
+          "frame-count": 50,
+          "frame-rate-type": "constant|variable",
+          "frame-rate": 10,
+          "timestamp": 1234567890
+        }
       }
     }
     ```
