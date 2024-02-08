@@ -68,6 +68,7 @@ We need this to to capture replays on platforms where it's not possible/feasible
       }
     }
     ```
+
     > Note: The format is based on [RRWeb Custom event type specification](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L53-L59).
 
 ## Other considered options
