@@ -13,7 +13,7 @@ This RFC aims to find a solution for passing auto-instrumented native SDK spans 
 The native SDKs instrument file IO operations, DB queries, HTTP requests, and more, but this
 information doesn't end up in the hybrid transactions or anywhere else. Our hybrid SDKs instrument
 most of the mentioned operations on the hybrid layer, but they lack information on how long the
-actual native operations take. It could happen that one DB query from the native layer gets
+actual native operations take. It could happen that one DB query from the hybrid layer gets
 converted into multiple native DB queries. Such information would be insightful for our users.
 Furthermore, there could be native-only operations that our hybrid SDKs currently don't capture. Therefore,
 we want to pass native spans up to the native layers so users know what's happening on the native layer.
