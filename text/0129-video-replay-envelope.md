@@ -31,7 +31,7 @@ We need this to to capture replays on platforms where it's not possible/feasible
   The envelope item would consist of a single header line (JSON), followed by a new line and the raw video data.
   - The header should contain at least the following metadata:
     - replay segment ID
-    - the raw size of the video data
+    - the raw size of the video data in bytes
     - the duration of the video in milliseconds
     - the encoder format
     - the container format
