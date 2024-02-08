@@ -27,7 +27,7 @@ We need this to to capture replays on platforms where it's not possible/feasible
 
 ## Using a video, with EnvelopeItem:ReplayVideo
 
-- From the SDK, we should be able to use a new envelope item type, [`ReplayVideo`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L115C5-L115C20) to transport the video data.
+- From the SDK, we would send a new envelope item type, [`ReplayVideo`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L115C5-L115C20) to transport the video data.
   The envelope item would consist of a single header line (JSON), followed by a new line and the raw video data.
   - The header should contain at least the following metadata:
     - the raw size of the video data
@@ -39,17 +39,17 @@ We need this to to capture replays on platforms where it's not possible/feasible
     - the number of frames in the video
     - the frame rate type (constant, variable)
     - the frame rate value
-- Additionally, it would be accompanied by the replay envelope item type, [`ReplayRecording`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L113) containing a header, e.g. `{"segment_id": 12}`, followed by a new line and the RRWeb JSON.
+- Additionally, it would be accompanied by an item [`ReplayRecording`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L113), containing a header, e.g. `{"segment_id": 12}`, followed by a new line and the RRWeb JSON.
   - The RRWeb JSON should start with an event of type [`EventType.Custom`](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L8-L16), containing the type `video`. If there's other data the UI needs, we can add it alongside the `type` to the `data` field. Because there's only a single `ReplayVideo` sent with a single `ReplayRecording`, there's a one-to-one mapping without further details necessary in the actual RRWeb JSON.
 
-  ```json
-  {
-   "type": 5,
-   "data": {
-      "type": "video",
+    ```json
+    {
+     "type": 5,
+     "data": {
+        "type": "video",
+      }
     }
-  }
-  ```
+    ```
 
 ## Other considered options
 
