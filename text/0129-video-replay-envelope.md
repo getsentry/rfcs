@@ -31,21 +31,24 @@ We need this to to capture replays on platforms where it's not possible/feasible
 - The newly introduced item type, [`ReplayVideo`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L115C5-L115C20) is used to transport the video data.
   The envelope item would consist of a single header line (JSON), followed by a new line and the raw video data.
   - The header should contain at least the following metadata:
-    - replay segment ID
-    - the raw size of the video data in bytes
-    - the duration of the video in milliseconds
-    - the encoder format
-    - the container format
-  - Additionally, it may be useful to include more information, such as:
-    - the number of frames in the video
-    - the frame rate type (constant, variable)
-    - the frame rate value
+
+    ```json
+    {
+      "segment-id": 4,
+      "size": 3440,
+      "duration": 5000,
+      "encoding": "whatever",
+      "container": "whatever",
+    }
+    ```
+
 - Additionally, it would be accompanied by an item [`ReplayRecording`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L113), containing a header, e.g. `{"segment_id": 12}`, followed by a new line and the RRWeb JSON.
   - The RRWeb JSON should start with an event of type [`EventType.Custom`](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L8-L16), containing the type `video`. If there's other data the UI needs, we can add it alongside the `type` to the `data` field. Because there's only a single `ReplayVideo` sent with a single `ReplayRecording`, there's a one-to-one mapping without further details necessary in the actual RRWeb JSON.
 
     ```json
     {
       "type": 5,
+      "timestamp":1681846559381,
       "data": {
         "payload": {
           "segment-id": 4,
@@ -59,7 +62,6 @@ We need this to to capture replays on platforms where it's not possible/feasible
           "frame-count": 50,
           "frame-rate-type": "constant|variable",
           "frame-rate": 10,
-          "timestamp": 1234567890
         }
       }
     }
