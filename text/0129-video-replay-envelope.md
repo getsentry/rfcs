@@ -34,7 +34,7 @@ We need this to to capture replays on platforms where it's not possible/feasible
 
     ```json
     {
-      "segment-id": 4,
+      "segment_id": 4,
     }
     ```
 
