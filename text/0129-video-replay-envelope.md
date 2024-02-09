@@ -56,7 +56,7 @@ We need this to to capture replays on platforms where it's not possible/feasible
   > Note: these dimensions may be different than the video dimensions in case only part of the screen is captured.
     In that case, the following video event will have non-zero `data.payload.left` & `data.payload.top` fields (see below).
 
-- The RRWeb JSON must contain a single event of type [`EventType.Custom`](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L8-L16), with `data.tag == 'vido'`.
+- The RRWeb JSON must contain a single event of type [`EventType.Custom`](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L8-L16), with `data.tag == 'video'`.
   This event must come at the second position in the array, right after the `EventType.Meta` event.
   If there's other data the UI needs, we can add it alongside the `type` to the `data` field. Because there's only a single `ReplayVideo` sent with a single `ReplayRecording`, there's a one-to-one mapping without further details necessary in the actual RRWeb JSON.
 
