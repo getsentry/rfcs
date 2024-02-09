@@ -1,7 +1,7 @@
 - Start Date: 2024-02-06
 - RFC Type: feature
 - RFC PR: [#129](https://github.com/getsentry/rfcs/pull/129)
-- RFC Status: draft
+- RFC Status: approved
 
 # Summary
 
