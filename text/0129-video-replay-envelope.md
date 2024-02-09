@@ -27,18 +27,11 @@ We need this to to capture replays on platforms where it's not possible/feasible
 
 ## Using a video, with EnvelopeItem:ReplayVideo
 
-- From the SDK, we would send a new envelope with the following items: `Replay`, `ReplayVideo` and `ReplayRecording`.
-- The newly introduced item type, [`ReplayVideo`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L115C5-L115C20) is used to transport the video data.
-  The envelope item would consist of a single header line (JSON), followed by a new line and the raw video data.
-  - The header should contain at least the following metadata: needed to ingest the item.
+- From the SDK, we would send an envelope with the following items: `Replay`, `ReplayVideo` and `ReplayRecording`.
+- The newly introduced item type, [`ReplayVideo`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L115C5-L115C20), is used to transport the video data.
+  The envelope item payload would consist of a single header line (`{"segment_id": 4}`), followed by a new line character (`\n`), followed by the raw video data.
 
-    ```json
-    {
-      "segment_id": 4,
-    }
-    ```
-
-- Additionally, it would be accompanied by an item [`ReplayRecording`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L113), containing a header, e.g. `{"segment_id": 12}`, followed by a new line and the RRWeb JSON.
+- Additionally, it would be accompanied by an envelope item [`ReplayRecording`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L113). The payload of this item consists of a header, e.g. `{"segment_id": 12}`, followed by a new line and the RRWeb JSON.
 - The RRWeb JSON may start with a single event of type [`EventType.Meta`](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L8-L16), with viewport (screen) dimensions. The `EventType.Meta` event is usually present in the first segment of a replay, or whenever the view port or screen orientation changes.
 
     ```json
@@ -91,14 +84,3 @@ We need this to to capture replays on platforms where it's not possible/feasible
 ### Using the existing RRWeb canvas replay format (image snapshots)
 
 It would be easy to implement this because the SDK already captures screenshots and with RRWeb being able to show them, there's not much to do. However, this would come with significantly larger data transfer size (compared to video), which should be kept as low as reasonably possible, considering this is currently aimed at mobile apps. Additionally, these images would need to be encoded in base64 so that they can be embedded in the RRWeb JSON.
-
-<!--
-# Drawbacks
-
-Why should we not do this? What are the drawbacks of this RFC or a particular option if
-multiple options are presented.
-
-# Unresolved questions
-
-- What parts of the design do you expect to resolve through this RFC?
-- What issues are out of scope for this RFC but are known? -->
