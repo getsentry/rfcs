@@ -14,7 +14,8 @@ In order to capture video replays and present them to the user, we need to defin
 All of these influence one another and need to be considered together in a single RFC.
 
 Note: SDK-side implementation that is currently being worked on relies on taking screenshots and encoding them to a video.
-This is based on an evaluation where a video has much smaller size than a sequence of images (**TODO fix these: factor of X for 720p video**).
+This is based on an evaluation where a video has much smaller size than a sequence of images.
+Preliminary testing yielded about 5-7 KiB per video frame (300x651), compared to about 30 KiB for a JPEG image of the same resolution (70 % quality setting).
 
 # Motivation
 
