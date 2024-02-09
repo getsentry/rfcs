@@ -39,8 +39,25 @@ We need this to to capture replays on platforms where it's not possible/feasible
     ```
 
 - Additionally, it would be accompanied by an item [`ReplayRecording`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L113), containing a header, e.g. `{"segment_id": 12}`, followed by a new line and the RRWeb JSON.
-  - The RRWeb JSON must start with an event of type [`EventType.Custom`](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L8-L16), containing the type `video`.
-  There must only be a single video custom event in the RRWeb JSON.
+- The RRWeb JSON must start a single event of type [`EventType.Meta`](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L8-L16), with viewport (screen) dimensions.
+
+    ```json
+    {
+      "type": 4,
+      "timestamp": 1681846559381,
+      "data": {
+        "href": "",
+        "height": 1920,
+        "width": 1080
+      }
+    }
+    ```
+
+  > Note: these dimensions may be different than the video dimensions in case only part of the screen is captured.
+    In that case, the following video event will have non-zero `data.payload.left` & `data.payload.top` fields (see below).
+
+- The RRWeb JSON must contain a single event of type [`EventType.Custom`](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L8-L16), with `data.tag == 'vido'`.
+  This event must come at the second position in the array, right after the `EventType.Meta` event.
   If there's other data the UI needs, we can add it alongside the `type` to the `data` field. Because there's only a single `ReplayVideo` sent with a single `ReplayRecording`, there's a one-to-one mapping without further details necessary in the actual RRWeb JSON.
 
     ```json
@@ -60,6 +77,8 @@ We need this to to capture replays on platforms where it's not possible/feasible
           "frameCount": 50,
           "frameRateType": "constant|variable",
           "frameRate": 10,
+          "left": 0,
+          "top": 0,
         }
       }
     }
