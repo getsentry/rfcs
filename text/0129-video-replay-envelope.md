@@ -39,7 +39,7 @@ We need this to to capture replays on platforms where it's not possible/feasible
     ```
 
 - Additionally, it would be accompanied by an item [`ReplayRecording`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L113), containing a header, e.g. `{"segment_id": 12}`, followed by a new line and the RRWeb JSON.
-- The RRWeb JSON must start a single event of type [`EventType.Meta`](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L8-L16), with viewport (screen) dimensions.
+- The RRWeb JSON may start with a single event of type [`EventType.Meta`](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L8-L16), with viewport (screen) dimensions. The `EventType.Meta` event is usually present in the first segment of a replay, or whenever the view port or screen orientation changes.
 
     ```json
     {
