@@ -141,6 +141,9 @@ Scenario: No active span, hybrid SpansAggregator flushes
 
 1. Please add your cons.
 
+### Open Questions
+
+1. How does this logic work with manual spans from the native layer?
 
 ## Option 3: Native Callbacks<a name="option-3"></a>
 
