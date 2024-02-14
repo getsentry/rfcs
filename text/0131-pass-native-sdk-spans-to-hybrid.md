@@ -171,4 +171,5 @@ multiple options are presented.
 # Unresolved questions
 
 - How expensive is a call from hybrid to native and vice versa? If they are very cheap, then
-[con 2 of option 3](#option-3-cons) is obsolete.
+[con 2 of option 3](#option-3-cons) is obsolete. We need to take into account that this could be
+different per platform.
