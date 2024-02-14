@@ -119,8 +119,11 @@ Scenario: Active span finishes
 Scenario: Active span, hybrid SpansAggregator flushes
     Given an active span
     When the hybrid SpansAggregator has to flush all its spans
-    Then it does not pull spans from the native SpansAggregator
-    And sends all hybrid spans from the SpansAggregator to Sentry
+    Then it pulls spans from the native SpansAggregator
+    And filters for spans belonging to the active span 
+    And adds these spans to the active span
+    And adds the non matching spans to the hybrid SpansAggregator
+    And sends all spans from the hybrid SpansAggregator to Sentry
 
 Scenario: No active span, hybrid SpansAggregator flushes
     Given no active span
