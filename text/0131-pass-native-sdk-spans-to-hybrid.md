@@ -74,7 +74,7 @@ The native SDKs use the [SpansAggregator](/text/0126-sdk-spans-aggregator.md) to
 The SpansAggregator doesn't pass the spans down to the transport for sending. Instead, when its
 timeout exceeds or aggregated spans exceed the maximum byte size, the SpansAggregator passes the
 spans up to the hybrid layer. The SpansAggregator implements a new method for retrieving all spans
-so that hybrid SDKs can attach spans to transactions bound to the scope or active spans.
+so that hybrid SDKs can attach spans to transactions bound to the scope, or to active spans.
 Furthermore, until single-span ingestion lands, the native SDKs offer a callback when all ongoing
 spans are finished to support `waitForChildren` and provide hooks to start and stop the
 SpansAggregator, same as [option 1](#option-1).
