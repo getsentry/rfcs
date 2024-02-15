@@ -28,12 +28,30 @@ We need this to to capture replays on platforms where it's not possible/feasible
 
 ## Using a video, with EnvelopeItem:ReplayVideo
 
-- From the SDK, we would send an envelope with the following items: `Replay`, `ReplayVideo` and `ReplayRecording`.
-- The newly introduced item type, [`ReplayVideo`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L115C5-L115C20), is used to transport the video data.
-  The envelope item payload would consist of a single header line (`{"segment_id": 4}`), followed by a new line character (`\n`), followed by the raw video data.
+SDKs which support sending replay playback information as a video will use the new `ReplayVideo` envelope item type. The envelope item's payload is a msgpack-encoded value containing three keys.
 
-- Additionally, it would be accompanied by an envelope item [`ReplayRecording`](https://github.com/getsentry/relay/blob/5fd3969e88d3eea1f2849e55b61678cac6b14e44/relay-server/src/envelope.rs#L113). The payload of this item consists of a header, e.g. `{"segment_id": 12}`, followed by a new line and the RRWeb JSON.
-- The RRWeb JSON may start with a single event of type [`EventType.Meta`](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L8-L16), with viewport (screen) dimensions. The `EventType.Meta` event is usually present in the first segment of a replay, or whenever the view port or screen orientation changes.
+1. The `replay_event` key. The value of this key is JSON bytes matching the protocol defined in [relay-event-schema](https://github.com/getsentry/relay/blob/master/relay-event-schema/src/protocol/replay.rs).
+2. The `replay_recording` key. The value of this key contains three parts.
+  1. Headers JSON. The headers must contain the `segment_id` value.
+  2. A new-line character.
+  3. RRWeb JSON bytes.
+3. The `replay_video` key. The value of this key is raw video bytes.
+
+An example payload is provided below (represented in Python syntax):
+
+    ```python
+    {
+      "replay_event": b"{ ... }",
+      "replay_recording": b'{"segment_id": 0}\n[{ ... }]',
+      "replay_video": b'\x00\x00',
+    }
+    ```
+
+In other languages (Rust for example) you might represent this as `HashMap<String, Vec<u8>>`.
+
+The `segment_id` header on the `replay_recording` key is redundant as its also specified on the `replay_event` key. This is to preserve compatibility with other platform event types.
+
+The RRWeb JSON provided on the `replay_recording` key may start with a single event of type [`EventType.Meta`](https://github.com/rrweb-io/rrweb/blob/8aea5b00a4dfe5a6f59bd2ae72bb624f45e51e81/packages/types/src/index.ts#L8-L16), with viewport (screen) dimensions. The `EventType.Meta` event is usually present in the first segment of a replay, or whenever the view port or screen orientation changes.
 
     ```json
     {
