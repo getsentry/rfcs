@@ -124,7 +124,7 @@ First, we will need to support naming and showing a mostly obfuscated token in t
 4. Change the `ApiToken` serializer to send the `token_last_characters` in the response for use in the frontend. [#63473](https://github.com/getsentry/sentry/pull/63473)
 5. Change the frontend to use the new `token_last_characters` value and show an obfuscated token in the UI. [#63485](https://github.com/getsentry/sentry/pull/63485)
 6. Update the backend serializer for `ApiToken` to accept and return an optional `name` field. [#64493](https://github.com/getsentry/sentry/pull/64493)
-7. Update the frontend to support creation of a token with a `name` and displaying of the `name` when listing tokens.
+7. Update the frontend to support creation of a token with a `name` and displaying of the `name` when listing tokens. [#64509](https://github.com/getsentry/sentry/pull/64509)
 
 Second, we will need to secure the tokens. This involves four primary goals.
 
