@@ -35,7 +35,7 @@ Improve on Sentry's API token implementation to a more secure pattern. Our major
    - ([#61941](https://github.com/getsentry/sentry/pull/61941))
 3. Allow users to _name_ the tokens ([Tracking Issue #9600](https://github.com/getsentry/sentry/issues/9600))
    - [#58945](https://github.com/getsentry/sentry/pull/58945)
-4. Use a predictable prefix and suffix to integrate with various secret scanning services (ex. Github's Secret Scanning)
+4. Use a predictable prefix to integrate with various secret scanning services (ex. Github's Secret Scanning)
 5. Deprecate use of full token values in API endpoints
    - https://github.com/getsentry/team-enterprise/issues/21
 
@@ -123,7 +123,7 @@ First, we will need to support naming and showing a mostly obfuscated token in t
 3. A backfill migration is created and ran to fill in the `token_last_characters` for all `ApiToken` entries. [#63342](https://github.com/getsentry/sentry/pull/63342)
 4. Change the `ApiToken` serializer to send the `token_last_characters` in the response for use in the frontend. [#63473](https://github.com/getsentry/sentry/pull/63473)
 5. Change the frontend to use the new `token_last_characters` value and show an obfuscated token in the UI. [#63485](https://github.com/getsentry/sentry/pull/63485)
-6. Update the backend serializer for `ApiToken` to accept and return an optional `name` field.
+6. Update the backend serializer for `ApiToken` to accept and return an optional `name` field. [#64493](https://github.com/getsentry/sentry/pull/64493)
 7. Update the frontend to support creation of a token with a `name` and displaying of the `name` when listing tokens.
 
 Second, we will need to secure the tokens. This involves four primary goals.
