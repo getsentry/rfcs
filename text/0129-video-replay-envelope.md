@@ -32,12 +32,12 @@ SDKs which support sending replay playback information as a video will use the n
 
 1. The `replay_event` key. The value of this key is JSON bytes matching the protocol defined in [relay-event-schema](https://github.com/getsentry/relay/blob/master/relay-event-schema/src/protocol/replay.rs).
 2. The `replay_recording` key. The value of this key contains three parts.
-  1. Headers JSON. The headers must contain the `segment_id` value.
-  2. A new-line character.
-  3. RRWeb JSON bytes.
+  - Headers JSON. The headers must contain the `segment_id` value.
+  - A new-line character.
+  - RRWeb JSON bytes.
 3. The `replay_video` key. The value of this key is raw video bytes.
 
-An example payload is provided below (represented in Python syntax):
+An example payload is provided below (represented in Python syntax).
 
     ```python
     {
@@ -47,7 +47,15 @@ An example payload is provided below (represented in Python syntax):
     }
     ```
 
-In other languages (Rust for example) you might represent this as `HashMap<String, Vec<u8>>`.
+In Rust you might represent this as a structure:
+
+    ```rust
+    struct ReplayVideo {
+        replay_event: Vec<u8>,
+        replay_recording: Vec<u8>,
+        replay_video: Vec<u8>,
+    }
+    ```
 
 The `segment_id` header on the `replay_recording` key is redundant as its also specified on the `replay_event` key. This is to preserve compatibility with other platform event types.
 
