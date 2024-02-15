@@ -39,23 +39,23 @@ SDKs which support sending replay playback information as a video will use the n
 
 An example payload is provided below (represented in Python syntax).
 
-```python
-{
-  "replay_event": b"{ ... }",
-  "replay_recording": b'{"segment_id": 0}\n[{ ... }]',
-  "replay_video": b'\x00\x00',
-}
-```
+    ```python
+    {
+      "replay_event": b"{ ... }",
+      "replay_recording": b'{"segment_id": 0}\n[{ ... }]',
+      "replay_video": b'\x00\x00',
+    }
+    ```
 
 In Rust you might represent this as a structure:
 
-```rust
-struct ReplayVideo {
-    replay_event: Vec<u8>,
-    replay_recording: Vec<u8>,
-    replay_video: Vec<u8>,
-}
-```
+    ```rust
+    struct ReplayVideo {
+        replay_event: Vec<u8>,
+        replay_recording: Vec<u8>,
+        replay_video: Vec<u8>,
+    }
+    ```
 
 The `segment_id` header on the `replay_recording` key is redundant as its also specified on the `replay_event` key. This is to preserve compatibility with other platform event types.
 
