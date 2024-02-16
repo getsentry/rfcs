@@ -22,7 +22,7 @@ Furthermore, the hybrid SDKs can then establish a parent-child relationship betw
 example, if there is only one HTTP span on the hybrid layer and one HTTP span on the native layer
 that occurred within the lifetime of the hybrid HTTP span, the hybrid SDK can set the native span as
 a child of the hybrid span. Of course, the hybrid SDK must also compare the URL in that case or
-apply other logic to avoid wrong parent-child relationships.
+apply other logic to avoid wrong parent-child relationships. 
 
 # Background
 
@@ -168,6 +168,24 @@ native-span information.
 
 1. Each span requires two calls across the layers, which could negatively impact performance.
 2. Hybrid SDKs need extra communication for retrieving frame data for the native spans.
+
+## Option 4: Native SDKs Use Single Span Ingestion<a name="option-4"></a>
+
+The native SDKs don't pass the spans up to the hybrid SDKs. Instead, they use single-span ingestion,
+and the backend has to establish parent-child relationships.
+
+### Pros <a name="option-4-pros"></a>
+
+1. No performance overhead of passing spans across layers.
+2. Less work.
+
+### Cons <a name="option-4-cons"></a>
+
+1. Only works with single-span ingestion and not with transactions, which is a weak argument as this
+is the future.
+2. Establishing proper parent-child relationships for the backend might be tricky when the spans
+don't arrive in the same envelope.
+3. Hybrid SDKs can't filter native spans. Users would have to write native code for filtering.
 
 # Drawbacks
 
