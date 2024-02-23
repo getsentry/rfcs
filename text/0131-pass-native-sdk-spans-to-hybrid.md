@@ -155,6 +155,38 @@ keep track of spans. For example, the HTTP request instrumentation offers two ca
 starting the HTTP request and another for finishing the HTTP request. The hybrid SDKs then subscribe
 to these callbacks and create the spans themselves.
 
+### Cross Platform Communication Overhead
+
+This section gives an overview of the different ways platforms handle cross-platform communication:
+
+1. __React Native__: The old architecture of React Native relies on a bridge mechanism that uses a
+queue that uses serialization. The new architecture uses JavaScrip Interface (JSI), eliminating
+serialization overhead.
+
+2. __Flutter__ uses [platform channels](https://docs.flutter.dev/resources/architectural-overview#platform-channels)
+with serialization, but you can also use the foreign function interface
+[FFI](https://docs.flutter.dev/resources/architectural-overview#foreign-function-interface),
+which only works for C-based APIs.
+
+3. __Unity__ uses [P/invoke](https://docs.unity3d.com/Manual/uwp-pinvoke.html), which is similar to
+[type marshaling in .NET](https://learn.microsoft.com/en-us/dotnet/standard/native-interop/type-marshalling).
+
+We didn't look into all cross-platform frameworks because we already see a pattern of using
+serialization, and we don't expect it to be much worse than serialization.
+
+No matter the strategy, every cross-platform call adds some overhead because each call requires some
+overhead, such as copying memory from one runtime to the other or from managed to unmanaged code. On
+some platforms, boxing and unboxing are involved; for others, serialization. The overhead will vary
+depending on many different factors, such as:
+
+- the cross-platform framework
+- the frequency of the cross-platform call
+- the user's device
+- the customer's app
+- and more
+
+All that said reducing the frequency of cross-platform calls should be the better approach.
+
 ### Pros <a name="option-3-pros"></a>
 
 1. This option works well with idle transactions and `waitForChildren` because these concepts need to
