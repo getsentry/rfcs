@@ -1,7 +1,7 @@
 - Start Date: 2022-10-27
 - RFC Type: feature
 - RFC PR: https://github.com/getsentry/rfcs/pull/32
-- RFC Status: draft
+- RFC Status: implementation 
 
 ---
 
