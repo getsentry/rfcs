@@ -3,6 +3,7 @@
 - RFC PR: https://github.com/getsentry/rfcs/pull/131
 - RFC Driver: [Philipp Hofmann](https://github.com/philipphofmann)
 - RFC Status: approved
+- RFC Approver: [Karl Heinz Struggl](https://github.com/kahest)
 
 # Summary
 
