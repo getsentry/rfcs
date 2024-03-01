@@ -1,12 +1,26 @@
 - Start Date: 2024-02-08
-- RFC Type: feature
+- RFC Type: decision
 - RFC PR: https://github.com/getsentry/rfcs/pull/131
 - RFC Driver: [Philipp Hofmann](https://github.com/philipphofmann)
-- RFC Status: draft
+- RFC Status: approved
 
 # Summary
 
 This RFC aims to find a solution for passing auto-instrumented native SDK spans up to the hybrid SDKs.
+
+## Option Chosen
+
+On 2024-02-28, we decided to move forward with [Option 2: Spans Aggregator](#option-2) because of
+its [pros](#option-2-pros). Participants of the decision:
+
+- Philipp Hofmann
+- Karl Heinz Struggl
+- Markus Hintersteiner
+- Stefan Jandl
+- Stefano Siano
+- Kryštof Woldřich
+- Gino Buenaflor
+
 
 # Motivation
 
