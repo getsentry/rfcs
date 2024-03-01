@@ -12,7 +12,17 @@ This RFC aims to find a solution for passing auto-instrumented native SDK spans 
 ## Option Chosen
 
 On 2024-02-28, we decided to move forward with [Option 2: Spans Aggregator](#option-2) because of
-its [pros](#option-2-pros). Participants of the decision:
+its the following reasons:
+
+- Option 4 doesn't allow filtering of native spans on the hybrid layer.
+- Option 3 has a high risk of severe problems because of too frequent cross-platform communication.
+- Option 1 is a duplicate of Option 2, and with single-span ingestion, we no longer want a
+self-clearing cache. Instead, SDKs must send every span to Sentry.
+- Option 2 reuses SpansAggregator, which is a prerequisite for single-span ingestion. Furthermore,
+it reduces the frequency of cross-platform communication and works well with both transactions and
+single-span ingestion.
+
+Participants of the decision:
 
 - Philipp Hofmann
 - Karl Heinz Struggl
