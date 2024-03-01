@@ -12,7 +12,7 @@ This RFC aims to find a solution for passing auto-instrumented native SDK spans 
 ## Option Chosen
 
 On 2024-02-28, we decided to move forward with [Option 2: Spans Aggregator](#option-2) because of
-its the following reasons:
+the following reasons:
 
 - Option 4 doesn't allow filtering of native spans on the hybrid layer.
 - Option 3 has a high risk of severe problems because of too frequent cross-platform communication.
