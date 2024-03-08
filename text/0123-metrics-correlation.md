@@ -25,7 +25,7 @@ These summaries are automatically added when using the basic `metrics` API.
 Whenever a metrics API is used it operates in either span seeking or in span creating mode.  Most
 of the metrics APIs are span seeking which means that they record a measurement in relation
 to that span.  Some APIs (such as `metrics.timing` when used with a code block) will instead
-create a span and bind it.
+create a span with `op="metric.timing", description=metric.key` and bind it.
 
 ```python
 def process_batch(batch):
@@ -48,7 +48,7 @@ where 3 succeed and two fail, the following summaries might be associated:
 ```json
 {
     "span_id": "deadbeef",
-    "op": "metric.timer",
+    "op": "metric.timing",
     "_metrics_summary": {
         "d:processor.process_batch@millisecond": [
             {
