@@ -61,3 +61,5 @@ This repository contains RFCs and DACIs. Lost?
 - [0118-mobile-transactions-and-spans](text/0118-mobile-transactions-and-spans.md): Transactions and Spans for Mobile Platforms
 - [0123-metrics-correlation](text/0123-metrics-correlation.md): This RFC addresses the high level metrics to span correlation system
 - [0126-sdk-spans-aggregator](text/0126-sdk-spans-aggregator.md): SDK Spans Aggregator
+- [0129-video-replay-envelope](text/0129-video-replay-envelope.md): Video-based replay envelope format
+- [0131-pass-native-sdk-spans-to-hybrid](text/0131-pass-native-sdk-spans-to-hybrid.md): rfc(feature): Pass Native SDKs Spans to Hybrid
