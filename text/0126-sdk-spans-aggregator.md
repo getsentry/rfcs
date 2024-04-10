@@ -1,7 +1,7 @@
 - Start Date: 2023-11-28
 - RFC Type: feature
 - RFC PR: https://github.com/getsentry/rfcs/pull/126
-- RFC Status: In Progress
+- RFC Status: approved
 - RFC Driver: [Philipp Hofmann](https://github.com/philipphofmann)
 
 # Summary
@@ -171,14 +171,9 @@ A simple way to calculate the weight of a span is to call serialize and recursiv
 1. Spans are lost in the event of a crash.
 2. Spans are delayed for 10 seconds until the SDK sends them to Sentry. For example, when manually playing around with Sentry while debugging, it takes longer until spans appear in the performance product.
 
-# Drawbacks
-
-Please add any drawbacks you can think of as a comment or just commit directly.
-
 # Unresolved questions
 
 - What values are SDKs going to pick for x and y?
 - Which platforms would need to implement weights? If none, we can drop the concept.
 - Should we add an option to make x and y configurable from the start?
 - Do SDKs have to send span children in the same envelope as their parent?
-- Should we call the solution SpansAggregator to align with metrics?
