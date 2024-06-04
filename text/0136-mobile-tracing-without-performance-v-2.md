@@ -54,7 +54,11 @@ it based on routes, so it should be easy to implement for React-Native.
 
 ### Cons <a name="option-1-cons"></a>
 
-1. It doesn’t work well for declarative UI frameworks as Jetpack Compose and SwiftUI for which the
+1. For single-screen applications such as social networks, the lifetime of a trace could still be
+long, and multiple unrelated events could be mapped to one trace.
+2. For applications running for a long time in the background, such as running apps, the lifetime of
+a trace could still be long, and multiple unrelated events could be mapped to one trace.
+3. It doesn’t work well for declarative UI frameworks as Jetpack Compose and SwiftUI for which the
 SDKs can’t reliably automatically detect when apps load a new screen.
 
 # Drawbacks
