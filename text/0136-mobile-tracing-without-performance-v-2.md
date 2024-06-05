@@ -11,7 +11,7 @@ events.
 # Motivation
 
 On mobile, traces can have hundreds of unrelated events caused by the possibly never-changing
-required for tracing without performance. This occurs mostly when users don’t have performance
+`traceId` required for tracing without performance. This occurs mostly when users don’t have performance
 enabled.
 
 # Background
