@@ -44,7 +44,11 @@ starfish module uses. Whenever the screen name changes automatically or with a y
 [manual API](https://www.notion.so/sentry/Specs-Screens-API-084d773272f24f57aeb622c07619264e),
 mobile SDKs must renew the `traceId` of the `PropagationContext`. The screen load transaction
 and subsequent events on the same screen must use the same `traceId`. When the app moves to the
-background, mobile SDKs also update the `traceId` of the PropagationContext.
+foreground after being in the background for longer than 30 seconds, which is the same approach
+mobile SDKs use for determining the end of a session, mobile SDKs renew the `traceId` of the
+PropagationContext. If the app stays in the background for shorter or equal to 30 seconds,
+mobile SDKs must not renew the `traceId` of the PropagationContext when the app moves again to
+the foreground.
 
 ### Pros <a name="option-1-pros"></a>
 
