@@ -133,9 +133,9 @@ Second, we will need to secure the tokens. This involves four primary goals.
 - Newly created user API application tokens have the `sntrya_` prefix
 - We encourage users in the UI via a notification/banner to recreate their tokens in order to get new ones with a prefix
 
-1. Nullable `hashed_token` and `hashed_refresh_token` fields are added to the `ApiToken` model
-2. The `save()` method on `ApiToken` is updated to calculate and store the token's SHA-256 hash in `hashed_token`.
-3. Update the `UserAuthTokenAuthentication` middleware to:
+1. Nullable `hashed_token` and `hashed_refresh_token` fields are added to the `ApiToken` model [#65300](https://github.com/getsentry/sentry/pull/65300) [#66679](https://github.com/getsentry/sentry/pull/66679)
+2. The `save()` method on `ApiToken` is updated to calculate and store the token's SHA-256 hash in `hashed_token`. [#67969](https://github.com/getsentry/sentry/pull/67969)
+3. Update the `UserAuthTokenAuthentication` middleware to: [#67969](https://github.com/getsentry/sentry/pull/67969)
 
    1. Caculate the SHA-256 hash and use the hash value for the table lookup on the `hashed_token` or `hashed_refresh_token` column.
    2. If the hash is not found, use the plaintext token for the table lookup on the `token` or `refresh_token` column.
@@ -147,16 +147,14 @@ Second, we will need to secure the tokens. This involves four primary goals.
    > _It's important to note that this does not update the token to the new prefixed format._
 
 4. A nullable `token_type` field is added to the `ApiToken` model. It should accept a limited set of choices to indicate whether the token is `sntryu_`, `sntrya_`, etc. A _null_
-   value would indicate a legacy token that is not prefixed regardless of whether it is a user or application token.
-5. A new _class method_ named `create_token(..)` is created on the `ApiToken` model. This method will return the plaintext token, plaintext refresh token, and `ApiToken`
-   instance to the caller. The plaintext token will be needed to display to the user temporarily in the UI.
-6. Calls to `ApiToken.objects.create(..)` should be replaced with the new `ApiToken.create_token(..)` method.
-7. API endpoints that retrieve the full plaintext token value should be updated to no longer do so. This should only be available on creation.
-8. A notification/banner in the UI should be displayed recommending users recreate their tokens, resulting in the new token version.
+   value would indicate a legacy token that is not prefixed regardless of whether it is a user or application token. [#65684](https://github.com/getsentry/sentry/pull/65684)
+5. Adjust `create(...)` method on the `ApiToken` model to hash the plaintext token values and temporary access to the plaintext values. [#68148](https://github.com/getsentry/sentry/pull/68148)
+6. API endpoints that retrieve the full plaintext token value should be updated to no longer do so. This should only be available on creation. [#68148](https://github.com/getsentry/sentry/pull/68148)
+7. A notification/banner in the UI should be displayed recommending users recreate their tokens, resulting in the new token version.
 
 Next, any remaining legacy tokens that do not have hashed values will need to be handled:
 
-1. As a Django migration, a bulk operation is executed to update all remaining legacy tokens in the database.
+1. As a Django migration, a bulk operation is executed to update all remaining legacy tokens in the database. [#71728](https://github.com/getsentry/sentry/pull/71728)
    - This operation will hash the legacy `token` and `refresh_token` values and store them in the database.
    - It does **not** update the tokens to the new format.
 
