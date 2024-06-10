@@ -5,7 +5,7 @@
 
 # Summary
 
-This RFC aims to find a strategy to update the  so traces don’t reference hundreds of unrelated
+This RFC aims to find a strategy to define a better lifetime for traces so they don’t reference hundreds of unrelated
 events.
 
 # Motivation
