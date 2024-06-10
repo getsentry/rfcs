@@ -34,7 +34,7 @@ based on routes, see [Ensure browser traceId lifetime works as expected](https:/
 
 # Options Considered
 
-## Option 1: Update `PropagationContext` based on screens <a name="option-1"></a>
+## Option 1: Update `PropagationContext` based on screens/routes <a name="option-1"></a>
 
 Mobile SDKs base the lifetime of the `traceId` of the `PropagationContext` on screens/routes,
 which is similar to a route on JavaScript. Mobile SDKs already report the screen name automatically
