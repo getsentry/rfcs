@@ -117,7 +117,7 @@ This also allows for a smooth transition of self-hosted instances keeping pace w
 First, we will need to support naming and showing a mostly obfuscated token in the UI to help users identify them.
 
 1. The frontend is updated to no longer display the token value for existing tokens. [#61941](https://github.com/getsentry/sentry/pull/61941)
-2. Nullable `name` and `token_last_characters` fields are added to the `ApiToken` model.
+2. Nullable `name` and `token_last_characters` fields are added to the `ApiToken` model. [#58945](https://github.com/getsentry/sentry/pull/58945)
    - New `ApiToken`s created should automatically have the `token_last_characters` populated based on an option.
      The option is required in order to properly test the upcoming backfill migration. [#62972](https://github.com/getsentry/sentry/pull/62972)
 3. A backfill migration is created and ran to fill in the `token_last_characters` for all `ApiToken` entries. [#63342](https://github.com/getsentry/sentry/pull/63342)
