@@ -27,7 +27,7 @@ On mobile, most users interact purely with the static API, which holds a referen
 Hub and Scope. Therefore, mobile SDKs create a `PropagationContext` with `traceId` and `spanId`
 during initialization, and these usually persist for the entire lifetime of the app. Mobile
 SDKs prefer the `traceID` of transactions bound to the scope over the `PropagationContext`. So
-when performance is disabled, or no transition is bound to the scope, mobile SDKs use the same
+when performance is disabled, or no transaction is bound to the scope, mobile SDKs use the same
 `traceId` and `spanId` for all captured events. This can lead to traces with hundreds of
 unrelated events confusing users. JS addressed this recently by updating the `PropagationContext`
 based on routes, see [Ensure browser traceId lifetime works as expected](https://github.com/getsentry/sentry-javascript/issues/11599).
