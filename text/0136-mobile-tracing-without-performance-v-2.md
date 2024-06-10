@@ -48,7 +48,9 @@ foreground after being in the background for longer than 30 seconds, which is th
 mobile SDKs use for determining the end of a session, mobile SDKs renew the `traceId` of the
 PropagationContext. If the app stays in the background for shorter or equal to 30 seconds,
 mobile SDKs must not renew the `traceId` of the PropagationContext when the app moves again to
-the foreground.
+the foreground. When a span starts, SDKs should use the traceID on the PropagationContext, but
+SDKs make an exception to this rule to map all spans related to a screen/route to the same traceID.
+For example, when a span leads to a new screen, SDKs should use the traceID of the new screen.
 
 ### Pros <a name="option-1-pros"></a>
 
