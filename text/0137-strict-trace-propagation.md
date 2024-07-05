@@ -5,7 +5,9 @@
 
 # Summary
 
-One paragraph explanation of the feature or document purpose.
+Today, Sentry SDKs will continue any trace they get via e.g. a `sentry-trace` header. However, it is possible to receive incoming traces from external organizations, in which case it is incorrect to continue the trace.
+
+We should implement a way to avoid incorrectly continuing such a trace. The easiest way to do this is to restrict trace continuation to happen for the same Organization only.
 
 # Motivation
 
