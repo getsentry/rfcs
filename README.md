@@ -64,3 +64,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0126-sdk-spans-aggregator](text/0126-sdk-spans-aggregator.md): SDK Spans Aggregator
 - [0129-video-replay-envelope](text/0129-video-replay-envelope.md): Video-based replay envelope format
 - [0131-pass-native-sdk-spans-to-hybrid](text/0131-pass-native-sdk-spans-to-hybrid.md): rfc(feature): Pass Native SDKs Spans to Hybrid
+- [0137-strict-trace-propagation](text/0137-strict-trace-propagation.md): Strict Trace Propagation
