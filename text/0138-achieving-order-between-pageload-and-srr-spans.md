@@ -45,20 +45,28 @@ The ID would need to be transferred from the server to the client in some way.
 For this we could hijack the existing `baggage` meta tag implementations.
 
 The drawbacks of flipping the order in the SDK is that we would make the data incorrect:
-By optimistically setting the `parent_span_id` of the SSR Span, we may run into situations where we unintentionally orphan that span. (For example when somebody requests the page with a non-browser client that will never run the Browser SDK)
+By optimistically setting the `parent_span_id` of the SSR Span, we may run into situations where we unintentionally orphan that span, for example when somebody requests the page with a non-browser client that will never run the Browser SDK.
+Span orphaning could however be mitigated, if we let the SDK set an additional attribute that informs Sentry about the fact that the `parent_span_id` on the SSR transaction is optimistic (e.g. `sentry.has_optimistic_parent_span_id`).
 
-An additional drawback is that we would have to implement this functionality in all of Sentry's SDKs.
+An additional drawback is that we would have to implement transmitting the optimistic span ID in all of Sentry's backend SDKs.
 
 ## Flipping the order in Sentry
 
-TODO:
-I would need performance team people to chime in here to outline possibilities and limitations.
-In general I think we should evaluate two approaches: Flipping at ingestion-time, and flipping at read time.
+As it stands, to host this logic in Sentry itself, there are two approaches to consider: Flipping at ingestion-time, and flipping at read time.
 
-Flipping at ingestion time is hard because you basically don't know when your trace is complete enough to make the swapping decision.
+### Flipping at ingestion-time
+
+Flipping at ingestion time is generally hard because you basically don't know when your trace is complete enough to make the swapping decision.
+We would have to buffer transactions/spans until we have both and only then can we start writing, since data in Clickhouse is immutable.
+Since it is non-deterministic whether both transactions will even be sent, there also would need to be some sort of timeout making this approach even flakier.
+The cost of having to buffer in addition to the potential complexity makes "flipping at ingestion-time" probably nonviable.
+
+### Flipping at read-time
 
 Flipping at read time is hard because you would need all the spans of the entire trace to make an informed flipping decision. It is not enough to just look at transaction hierarchy.
 
-Flipping serverside is potentially hard because you don't have any domain specific knowledge of what subtree should end up as child of the "request" span. An idea would be to always use the trace root as subtree.
+Flipping the order when querying (ie. when loading the trace view or even purely having custom logic in the UI) might be another viable option.
+We should have all the information available. We need to know whether a transaction has `op: pageload` and we need the root of the trace.
+Then the order of the two simply needs to be flipped.
 
-A potential downside is that it's not transparent to developers (SDK devs and Sentry users) what the hell is happening and why spans are being flipped.
+The potentially hard part is attaching the trace root to the request span of the pageload transaction.
