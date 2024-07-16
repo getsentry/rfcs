@@ -54,6 +54,8 @@ An additional drawback is that we would have to implement transmitting the optim
 
 As it stands, to host this logic in Sentry itself, there are two approaches to consider: Flipping at ingestion-time, and flipping at read time.
 
+A potential downside to consider in any case is that the order should probably also be flipped in other places than just the trace view, which makes flipping the order in Sentry less attractive in general.
+
 ### Flipping at ingestion-time
 
 Flipping at ingestion time is generally hard because you basically don't know when your trace is complete enough to make the swapping decision.
