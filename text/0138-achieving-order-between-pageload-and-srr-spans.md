@@ -65,10 +65,9 @@ The cost of having to buffer in addition to the potential complexity makes "flip
 
 ### Flipping at read-time
 
-Flipping at read time is hard because you would need all the spans of the entire trace to make an informed flipping decision. It is not enough to just look at transaction hierarchy.
-
 Flipping the order when querying (ie. when loading the trace view or even purely having custom logic in the UI) might be another viable option.
-We should have all the information available. We need to know whether a transaction has `op: pageload` and we need the root of the trace.
-Then the order of the two simply needs to be flipped.
+This would involve visually flipping the transaction with `op: pageload` with its parent transaction in the trace view, iff the parent transaction's op is `http.server`.
+Additionally, when the pageload transaction is expanded, we would need to render the `http.server` transaction as a child of the pageload transaction's child span that has `op: browser` and `description: request`.
 
-The potentially hard part is attaching the trace root to the request span of the pageload transaction.
+The downside of only flipping the topology at read-time is that the flipping would need to happen everywhere we query the trace.
+Subjectively and fortunately, the flipping (as of now) only really seems relevant to the trace view and other aspects of the product don't fully need rely on it.
