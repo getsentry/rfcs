@@ -71,3 +71,14 @@ Additionally, when the pageload transaction is expanded, we would need to render
 
 The downside of only flipping the topology at read-time is that the flipping would need to happen everywhere we query the trace.
 Subjectively and fortunately, the flipping (as of now) only really seems relevant to the trace view and other aspects of the product don't fully need rely on it.
+
+# Option Taken
+
+For now, we decided to experiment with flipping the topology of the transactions at read-time. The outcome seems good enough.
+
+Advantages:
+
+- No SDK-wide changes necessary
+- No SDK hacks
+- No at-ingestion-time complexity added
+- Users on old SDKs will profit immediately
