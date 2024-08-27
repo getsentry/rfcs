@@ -1,6 +1,6 @@
 - Start Date: 2024-08-27
 - RFC Type: feature
-- RFC PR: TODO
+- RFC PR: https://github.com/getsentry/rfcs/pull/139
 - RFC Status: draft
 
 # Summary
