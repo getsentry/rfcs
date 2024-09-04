@@ -15,7 +15,7 @@ This RFC proposes the implementation of versioned documentation for [Sentry Docs
 
 # Options Considered
 
-## 1 (preferred) - Nesting the version by appending the version to the platform path segment
+## 1 Nesting the version by appending the version to the platform path segment
 
 The documentation would include the version number within the URL path (e.g., `docs.sentry.io/platform/javascript/v7/...`, `docs.sentry.io/platform/python/v1/...`). Omitting the version in the path would always point to the latest version. This approach integrates versioning directly into the existing URL structure, allowing users to easily switch between versions while supporting different versions for each SDK. Theoretically this would also allow different folder/file structures under each version. A possible approach would be to have a `versioned_docs` directory under each platform that serves the content for the different versions. This approach potentially introduces content-duplication.
 
