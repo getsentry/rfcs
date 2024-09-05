@@ -40,6 +40,6 @@ We will cap the number of flag evaluations to some fixed capacity (e.g. 100). Du
 
 ## Integrations
 
-Integrations for feature flag SDKs will need to be written. There are many competing offerings and we'll want to provide integrations for. The main providers we want to initially target are: launchdarkly, unleash, split, and OpenFeature. There public SDK interface is available for those wishing to integrate with custom or non-supported vendors.
+Integrations for feature flag SDKs will need to be written. There are many competing offerings and we'll want to provide integrations for. The main providers we want to initially target are: launchdarkly, unleash, split, and OpenFeature. The public SDK interface is available for those wishing to integrate with additional vendors.
 
 The exact structure of an integration is undefined for the purposes of this document but each integration should call the `set_flag` SDK method on successful flag evaluation.
