@@ -36,7 +36,7 @@ The SDK will expose one new public method `set_flag`.  Similar to `set_tag` or `
 
 ## Bounding Memory Usage and Transport Size
 
-We will cap the number of flag evaluations to some fixed capacity (e.g. 100). Duplicate evaluations will update the existing entry rather than insert a new one. New unique evaluations will be appended to the data structure with the least recently accessed evaluation being dropped. This is the same behavior we have for Breadcrumbs today.
+The number of flag evaluations will be capped to some fixed capacity (e.g. 100). Duplicate evaluations will update the existing entry rather than insert a new one. New unique evaluations will be appended to the data structure with the least recently accessed evaluation being dropped. This is the same behavior we have for Breadcrumbs today.
 
 ## Integrations
 
