@@ -32,14 +32,14 @@ The flags will be represented by this data structure during transport. The `flag
 
 ## Public Interface
 
-The SDK will expose one new public method `set_flag`.  Similar to `set_tag` or `set_user`, the `set_flag` method sets a key, value pair (representing the flag's name and its evaluation result) into an internal SDK structure. On error, that structure is serialized and appended to the event body as described in the previous section.
+The SDK will expose one new public method `set_flag/2`. The method accepts the arguments `flag` (of type string) and `result` (of type boolean).  Similar to `set_tag/2` or `set_user/1`, the `set_flag/2` method stores a flag, result pair on the isolation scope. On error, the isolation scope's flags are serialized and appended to the event body as described in the previous section.
+
+Stateless, multi-tenented applications, such as web servers, must isolate flag evaluations per request.
 
 ## Bounding Memory Usage and Transport Size
 
-The number of flag evaluations will be capped to some fixed capacity (e.g. 100). Duplicate evaluations will update the existing entry rather than insert a new one. New unique evaluations will be appended to the data structure with the least recently accessed evaluation being dropped. This is the same behavior we have for Breadcrumbs today.
+The number of flag evaluations must be capped to some fixed capacity (e.g. 100). When the capacity is reached the least recently evaluated flag should be dropped from the set. Duplicate flag evaluations may update their existing entry rather than insert a new one. In most contexts, it will make sense to update the existing entry. An LRU cache is recommended for these cases. If repeat flag evaluations are desired then a ring buffer may be used.
 
 ## Integrations
 
-Integrations for feature flag SDKs will need to be written. There are many competing offerings and we'll want to provide integrations for. The main providers we want to initially target are: launchdarkly, unleash, split, and OpenFeature. The public SDK interface is available for those wishing to integrate with additional vendors.
-
-The exact structure of an integration is undefined for the purposes of this document but each integration should call the `set_flag` SDK method on successful flag evaluation.
+An integration should wrap, provide a hook, or otherwise intercept the calls made to a feature flagging SDK. The flag requested and the result returned must be stored within the Sentry SDK's internal state using the publicly available `set_flag/2` method.
