@@ -34,7 +34,7 @@ The flags will be represented by this data structure during transport. The `flag
 
 The SDK will expose one new public method `set_flag/2`. The method accepts the arguments `flag` (of type string) and `result` (of type boolean).  Similar to `set_tag/2` or `set_user/1`, the `set_flag/2` method stores a flag, result pair on the isolation scope. On error, the isolation scope's flags are serialized and appended to the event body as described in the previous section.
 
-Stateless, multi-tenented applications, such as web servers, must isolate flag evaluations per request.
+Stateless, multi-tenanted applications, such as web servers, must isolate flag evaluations per request.
 
 ## Bounding Memory Usage and Transport Size
 
