@@ -13,7 +13,7 @@ To enable users to debug application errors with a complete picture of their app
 
 # Options Considered
 
-We will collect flag evaluations and hold them in-memory.  On error event the flags will be placed into the `contexts` object on the `event` and sent to Sentry.
+We will collect flag evaluations and hold them in-memory. On error event the flags will be placed into the `contexts` object on the `event` and sent to Sentry.
 
 ## Transport
 
@@ -21,18 +21,20 @@ The flags will be represented by this data structure during transport. The `flag
 
 ```json
 {
-    "contexts": {
-        "flags": [
-            {"flag": "abc", "result": true},
-            {"flag": "def", "result": false}
-        ]
+  "contexts": {
+    "flags": {
+      "values": [
+        { "flag": "abc", "result": true },
+        { "flag": "def", "result": false }
+      ]
     }
+  }
 }
 ```
 
 ## Public Interface
 
-The SDK will expose one new public method `set_flag/2`. The method accepts the arguments `flag` (of type string) and `result` (of type boolean).  Similar to `set_tag/2` or `set_user/1`, the `set_flag/2` method stores a flag, result pair on the isolation scope. On error, the isolation scope's flags are serialized and appended to the event body as described in the previous section.
+The SDK will expose one new public method `set_flag/2`. The method accepts the arguments `flag` (of type string) and `result` (of type boolean). Similar to `set_tag/2` or `set_user/1`, the `set_flag/2` method stores a flag, result pair on the isolation scope. On error, the isolation scope's flags are serialized and appended to the event body as described in the previous section.
 
 Stateless, multi-tenented applications, such as web servers, must isolate flag evaluations per request.
 
