@@ -1,6 +1,6 @@
 - Start Date: 2024-09-04
 - RFC Type: feature
-- RFC PR: https://github.com/getsentry/rfcs/pull/140
+- RFC PR: https://github.com/getsentry/rfcs/pull40
 - RFC Status: draft
 
 # Summary
@@ -34,7 +34,7 @@ The flags will be represented by this data structure during transport. The `flag
 
 ## Public Interface
 
-The SDK will expose one new public method `set_flag/2`. The method accepts the arguments `flag` (of type string) and `result` (of type boolean). Similar to `set_tag/2` or `set_user/1`, the `set_flag/2` method stores a flag, result pair on the isolation scope. On error, the isolation scope's flags are serialized and appended to the event body as described in the previous section.
+The SDK will expose one new public method `set_flag`. The method accepts the arguments `flag` (of type string) and `result` (of type boolean). Similar to `set_tag` or `set_user`, the `set_flag` method stores a flag, result pair on the isolation scope. On error, the isolation scope's flags are serialized and appended to the event body as described in the previous section.
 
 Stateless, multi-tenanted applications, such as web servers, must isolate flag evaluations per request.
 
@@ -44,4 +44,4 @@ The number of flag evaluations must be capped to some fixed capacity (e.g. 100).
 
 ## Integrations
 
-An integration should wrap, provide a hook, or otherwise intercept the calls made to a feature flagging SDK. The flag requested and the result returned must be stored within the Sentry SDK's internal state using the publicly available `set_flag/2` method.
+An integration should wrap, provide a hook, or otherwise intercept the calls made to a feature flagging SDK. The flag requested and the result returned must be stored within the Sentry SDK's internal state using the publicly available `set_flag` method.
