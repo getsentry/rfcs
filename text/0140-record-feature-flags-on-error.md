@@ -1,6 +1,6 @@
 - Start Date: 2024-09-04
 - RFC Type: feature
-- RFC PR: https://github.com/getsentry/rfcs/pull40
+- RFC PR: https://github.com/getsentry/rfcs/pull/140
 - RFC Status: draft
 
 # Summary
