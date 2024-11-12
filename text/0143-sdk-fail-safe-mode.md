@@ -5,24 +5,81 @@
 
 # Summary
 
-One paragraph explanation of the feature or document purpose.
+This RFC aims to minimize the damage of a crashing SDK in production. It’s better to have __no data__ than __crashes and no data__.
 
 # Motivation
 
-Why are we doing this? What use cases does it support? What is the expected outcome?
+Our customers use Sentry to ship confidently. If our SDKs continuously crash our customers' apps
+in production, we fail to deliver on that promise and lose trust. Our QA process should uncover
+such fatal incidents, but you can never reduce that risk to 0%. Sentry notifies our customers
+about crashing other third-party SDKs. If the Sentry SDKs crash in the wrong spot, our customers
+must rely on users or other tools to get notified. Therefore, our SDKs should offer a fail-safe
+mode. If they detect that they’re crashing, they must disable themselves. It’s better to have __no data__ than __crashes and no data__. The fail-safe mode is primarily helpful for applications with a
+long release cycle, such as mobile apps. A hotfix release for these applications can’t be deployed
+to all customers within minutes.
 
 # Background
 
-The reason this decision or document is required. This section might not always exist.
+The Cocoa SDK had an incident in July/August 2024 that crashed our customers' apps in production
+without sending crash reports to Sentry, so our SDK crash detection couldn't detect this problem
+because we had no data. We only knew about the issue when customers reported that they stopped
+receiving data for their newest release and shared crash reports from AppStoreConnect with us. We
+must drastically reduce the chances of this happening again in any SDK, not just Cocoa; otherwise,
+customers will lose trust and move away from Sentry.
 
-# Supporting Data
-
-[Metrics to help support your decision (if applicable).]
 
 # Options Considered
 
-If an RFC does not know yet what the options are, it can propose multiple options. The
-preferred model is to propose one option and to provide alternatives.
+The proposed solutions below don’t exclude each other. We can implement one, some, or all of them. The combination of solutions can differ per SDK as the technical possibilities and requirements might vary.
+
+The solution(s) should handle the following cases:
+
+1. The Sentry SDK continuously crashes asynchronously after its initialization.
+2. The SDK crashes while creating a crash report, so there is no crash report.
+3. The Sentry SDK crashes while sending the crash event.
+4. The Sentry SDK continuously crashes after its initialization for operations such as sendError.
+5. The user’s app crashes after shortly initializing the Sentry SDK, triggering the start-up crash detection logic.
+
+## Option 1: Stacktrace Detection
+
+This approach doesn’t work with static linking, as the Sentry SDKs end up in the same binary as the main app. As we don’t have symbolication in release builds, we can’t reliably detect if the memory address stems from the Sentry SDK or the app. We might be able to compare addresses with known addresses of specific methods or classes, but this won’t work reliably. As with iOS, many apps use static linking, so we must use an alternative approach.
+
+Notes on edge cases above:
+
+1. It would work.
+2. It wouldn’t work with this point, as it only works if there is a crash report.
+3. It would work.
+4. It would work.
+5. It would correctly ignore that scenario.
+
+## Option 2: Marker Files
+
+> __Note:__
+> We use marker files because checking the file's existence is significantly more performant than reading its contents.
+
+The SDK must be launched at least once. When it launches the first time, it writes a marker file to disk using the SDK version and the timestamp as the filename. When the SDK completes the init phase, it writes another marker file to the disk with the SDK version, timestamp, and a success init suffix in the filename.
+
+The first thing the SDK does when initializing is to check if it was launched at least once and if there is a success init marker file. If the SDK was launched at least once, but there is no success init marker file, it knows that it’s broken and must disable itself. If both marker files exist, the SDK deletes the success init marker file and again waits for the SDK to complete the init phase to write a new success init marker file.
+
+Notes on edge cases above:
+
+1. This could trigger the start-up crash detection logic, which should execute sending the crash report on the main thread. So, if something is broken there, the SDK won’t write the success init marker file. If the SDK can send the crash report successfully but still causes the crash, we get crash events, and the SDK crash detection will notify us. In that case a [Remote Kill Switch](https://www.notion.so/Remote-Kill-Switch-12d8b10e4b5d8043b7e0e5f803d97b6b?pvs=21) would allow us to disable the SDK remotely.
+2. If this occurs during the init phase, the SDK will disable itself. If it occurs later, it wouldn’t work.
+3. It would work.
+4. It wouldn’t work, but we would know via the SDK crash detection.
+5. It would correctly ignore that scenario.
+
+## Option 3: Remote Kill Switch
+
+There might be scenarios where the SDK can’t detect it’s crashing. We might be able to detect via the SDK crash detection that the SDK causes many crashes, and we could manually or, based on some criteria, disable the SDK. We could also allow our customers to disable the SDK remotely if they see many crashes in the Google Play Console or App Store Connect.
+
+[Marker Files](https://www.notion.so/Marker-Files-12d8b10e4b5d80929f7de15e5f929683?pvs=21) detect if the SDK continuously crashes early during initialization. Therefore, it’s acceptable if the remote kill switch requires an async HTTP request to determine whether it should be enabled or not.
+
+## Option 4: Failed SDK Endpoint
+
+We could add a unique endpoint for sending a simple HTTP request with only the SDK version and a bit of meta-data, such as the DSN, to notify Sentry about failed SDKs. We must keep this logic as simple as possible, and it should never change to drastically minimize the risk of causing more damage. The HTTP request must not use other parts of the SDK, such as client, hub, or transport. The SDKs must only send this request once. 
+
+As we can’t have any logic running, such as rate-limiting or client reports, it’s good to have a specific endpoint for this to reduce the potential impact on the rest of the infrastructure.
 
 # Drawbacks
 
