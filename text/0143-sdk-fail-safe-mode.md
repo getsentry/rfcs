@@ -5,40 +5,45 @@
 
 # Summary
 
-This RFC aims to minimize the damage of a crashing SDK in production. It’s better to have __no data__ than __crashes and no data__.
+This RFC aims to find strategies to minimize the damage of a crashing SDK in production.
 
 # Motivation
 
-Our customers use Sentry to ship confidently. If our SDKs continuously crash our customers' apps
-in production, we fail to deliver on that promise and lose trust. Our QA process should uncover
-such fatal incidents, but you can never reduce that risk to 0%. Sentry notifies our customers
-about crashing other third-party SDKs. If the Sentry SDKs crash in the wrong spot, our customers
-must rely on users or other tools to get notified. Therefore, our SDKs should offer a fail-safe
-mode. If they detect that they’re crashing, they must disable themselves. It’s better to have __no data__ than __crashes and no data__. The fail-safe mode is primarily helpful for applications with a
-long release cycle, such as mobile apps. A hotfix release for these applications can’t be deployed
-to all customers within minutes.
+Our customers use Sentry to ship confidently. We lose trust if our SDKs continuously crash our customers' apps. Our QA process should prevent fatal incidents, but you can never reduce that risk to 0.00%. If the Sentry SDKs crash in the wrong location, our customers must rely on users or other tools than Sentry to get informed. Such fatal incidents are hazardous, mainly for applications with a long release cycle, such as mobile apps, because customers can't deploy a hotfix within minutes or hours. A repeated Sentry SDK crash will again make it to our customers. The question is not if but when. When it does, we need to have strategies to minimize the damage.
 
 # Background
 
-The Cocoa SDK had an incident in July/August 2024 that crashed our customers' apps in production
-without sending crash reports to Sentry, so our SDK crash detection couldn't detect this problem
-because we had no data. We only knew about the issue when customers reported that they stopped
-receiving data for their newest release and shared crash reports from AppStoreConnect with us. We
-must drastically reduce the chances of this happening again in any SDK, not just Cocoa; otherwise,
-customers will lose trust and move away from Sentry.
-
+The Cocoa SDK had an incident in July/August 2024 that crashed our customers' apps in production without sending crash reports to Sentry. Our SDK crash detection couldn't detect this problem because Sentry received no data. We only knew about the issue when customers reported that they stopped receiving data for their newest release and shared crash reports from AppStoreConnect with us.
 
 # Options Considered
 
-The proposed solutions below don’t exclude each other. We can implement one, some, or all of them. The combination of solutions can differ per SDK as the technical possibilities and requirements might vary.
+The proposed options below don’t exclude each other. We can implement one, some, or all of them. The combination of options can differ per SDK as the technical possibilities and requirements might vary.
 
-The solution(s) should handle the following cases:
+## Edge Cases
 
-1. The Sentry SDK continuously crashes asynchronously after its initialization.
-2. The SDK crashes while creating a crash report, so there is no crash report.
-3. The Sentry SDK crashes while sending the crash event.
-4. The Sentry SDK continuously crashes after its initialization for operations such as sendError.
-5. The user’s app crashes after shortly initializing the Sentry SDK, triggering the start-up crash detection logic.
+The options should address the following edge cases:
+
+| # | Description | Potential Damage |
+| --- | --- | --- |
+| 1. | The Sentry SDK continuously crashes during its initialization _[continue at 1.1, 1.2]_ | |
+| 1.1. | and can't send SDK crash reports to Sentry. | Crashes and no data. |
+| 1.2. | and can send some SDK crash reports to Sentry. | Crashes and some data. |
+| 2. | The Sentry SDK continuously crashes after its initialization _[continue at 2.1, 2.2]_ | |
+| 2.1. | and can't send SDK crash reports to Sentry. | Crashes and no data. |
+| 2.2. | and can send some SDK crash reports to Sentry. | Crashes and some data. |
+| 3. | The SDK continuously crashes when creating most crash reports, so there is no crash report. | No data. |
+
+## Risks
+
+Potential risks of incorrectly disabling the Sentry SDK. The damage would be no data.
+
+| # | Description | Note |  
+| --- | --- | --- |
+| 1. | The user's application crashes shortly after the initialization of the Sentry SDK. | |
+| 2. | The user's application crashes async during the initialization of the Sentry SDK _[continue at 2.1, 2.2, 2.3]_ | |
+| 2.1. | and the Sentry SDK can write a crash report, which it sends on the next launch. | A wrong strategy could easily incorrectly disable the SDK in that scenario. |
+| 2.2. | and the Sentry SDK can write a crash report, which it can't send on the next launch. | There isn't much we can do about this, except educating our customers about the importance of initializing the Sentry SDK as early as possible. Even if we incorrectly disable the SDK, it makes no difference. |
+| 2.3. | and the Sentry SDK can't write a crash report, because it happens before initializing the crash handlers. | Same as note on 2.2. |
 
 ## Option 1: Stacktrace Detection
 
