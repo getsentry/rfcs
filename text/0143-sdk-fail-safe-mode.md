@@ -5,11 +5,11 @@
 
 # Summary
 
-This RFC aims to find strategies to minimize the damage of a crashing SDK in production.
+This RFC aims to find strategies to minimize the damage of crashing SDKs in production.
 
 # Motivation
 
-Our customers use Sentry to ship confidently. We lose trust if our SDKs continuously crash our customers' apps. Our QA process should prevent fatal incidents, but you can never reduce that risk to 0.00%. If the Sentry SDKs crash in the wrong location, our customers must rely on users or other tools than Sentry to get informed. Such fatal incidents are hazardous, mainly for applications with a long release cycle, such as mobile apps, because customers can't deploy a hotfix within minutes or hours. A repeated Sentry SDK crash will again make it to our customers. The question is not if but when. When it does, we need to have strategies to minimize the damage.
+Our customers use Sentry to ship confidently. They lose trust in Sentry if our SDKs continuously crash their apps, which our QA process should prevent, but you can never reduce that risk to 0.00%. Such fatal incidents are hazardous, mainly for applications with a long release cycle, such as mobile apps, because customers can't deploy a hotfix within minutes or hours. A repeated Sentry SDK crash will again make it to our customers. When it does, we need to have strategies to minimize the damage.
 
 # Background
 
@@ -19,72 +19,160 @@ The Cocoa SDK had an incident in July/August 2024 that crashed our customers' ap
 
 The proposed options below don’t exclude each other. We can implement one, some, or all of them. The combination of options can differ per SDK as the technical possibilities and requirements might vary.
 
-## Edge Cases
+## Crashing Scenarios <a name="crashing-scenarios"></a>
 
-The options should address the following edge cases:
+The options should cover the following scenarios:
 
 | # | Description | Potential Damage |
 | --- | --- | --- |
 | 1. | The Sentry SDK continuously crashes during its initialization _[continue at 1.1, 1.2]_ | |
-| 1.1. | and can't send SDK crash reports to Sentry. | Crashes and no data. |
-| 1.2. | and can send some SDK crash reports to Sentry. | Crashes and some data. |
+| 1.1. | _[continued from 1.]_ and can't create and send SDK crash reports to Sentry. | Crashes and no data. |
+| 1.2. | _[continued from 1.]_ and can create and send some SDK crash reports to Sentry. | Crashes and some data. |
 | 2. | The Sentry SDK continuously crashes after its initialization _[continue at 2.1, 2.2]_ | |
-| 2.1. | and can't send SDK crash reports to Sentry. | Crashes and no data. |
-| 2.2. | and can send some SDK crash reports to Sentry. | Crashes and some data. |
+| 2.1. | _[continued from 2.]_ and can't create and send SDK crash reports to Sentry. | Crashes and no data. |
+| 2.2. | _[continued from 2.]_ and can create and send some SDK crash reports to Sentry. | Crashes and some data. |
 | 3. | The SDK continuously crashes when creating most crash reports, so there is no crash report. | No data. |
+| 4. | The user's application crashes shortly after the initialization of the Sentry SDK. | Potentially incorrectly disabling the SDK and no data. |
+| 5. | The user's application crashes async during the initialization of the Sentry SDK _[continue at 5.1, 5.2, 5.3]_ |  |
+| 5.1. | _[continued from 5.]_ and the Sentry SDK can write a crash report, which it creates and sends on the next launch. | Potentially incorrectly disabling the SDK and no data. |
+| 5.2. | _[continued from 5.]_ and the Sentry SDK can write a crash report, which it creates but can't send on the next launch. | There isn't much we can do about this, except educating our customers about the importance of initializing the Sentry SDK as early as possible. Even if we incorrectly disable the SDK, it makes no difference. |
+| 5.3. | _[continued from 5.]_ and the Sentry SDK can't write a crash report, because it happens before initializing the crash handlers. | Same as 5.2. |
 
-## Risks
+## Option 1: Checkpoints <a name="option-1"></a>
 
-Potential risks of incorrectly disabling the Sentry SDK. The damage would be no data.
+The SDK stores checkpoints via marker files to disk to identify if it completes SDK initialization. When it doesn't, the SDK disables itself. The SDKs should use marker files because checking the file's existence is significantly more performant than reading its contents. To be aware of when the SDK disables itself, we could implement this option in combination with the [Option 3:Failing SDK Endpoint](#option-3).
 
-| # | Description | Note |  
+The specification is written in the [Gherkin syntax](https://cucumber.io/docs/gherkin/reference/). The specification might not work for all edge cases yet, as it can be complicated to get it right. We'll figure out the exact details once we decide to implement it, but it should cover the main scenarios.
+
+```Gherkin
+Scenario: SDK version inits the first time
+    Given there is no launch marker file for the SDK version
+    And there is no success init marker file for the SDK version
+    When the SDK inits
+    Then the SDK creates a launch marker file for the SDK version
+
+Scenario: SDK version inits the first time with successful init
+    Given there is no launch marker file for the SDK version
+    And there is no success init marker file for the SDK version
+    When the SDK reaches the successful init checkpoint
+    Then the SDK creates a success init marker file for the SDK version
+
+Scenario: SDK version inits the first time with failed init
+    Given there is no launch marker file for the SDK version
+    And there is no success init marker file for the SDK version
+    When the SDK crashes before reaching the successful init checkpoint
+    Then the SDK can't create a success init marker file for the SDK version
+
+Scenario: SDK version inits successfully second time with previous successful init
+    Given there is a launch marker file for the SDK version
+    And there is a success init marker file for the SDK version
+    When the SDK inits
+    Then it deletes the launch and success init marker files for the SDK version
+    When the SDK reaches the successful init checkpoint
+    Then the SDK creates a success init marker file for the SDK version
+
+Scenario: SDK version inits with failure second time with previous successful init
+    Given there is a launch marker file for the SDK version
+    And there is a success init marker file for the SDK version
+    When the SDK inits
+    Then it deletes the launch and success init marker files for the SDK version
+    When the SDK crashes before reaching the successful init checkpoint
+    Then the SDK can't create a success init marker file for the SDK version
+
+Scenario: SDK version inits with previous failed init
+    Given there is a launch marker file for the SDK version
+    And there is no success init marker file for the SDK version
+    When the SDK inits
+    Then it disables itself
+
+Scenario: New SDK version inits with previous failed init
+    Given there is a launch marker file for a previous SDK version
+    And there is no success init marker file for the previous SDK version
+    And there is no success init marker file for the current SDK version
+    When the new SDK version inits
+    Then the SDK deletes marker files from the previous SDK version
+    And the SDK creates a launch marker file for the current SDK version
+```
+
+### Crashing Scenarios <a name="option-1-crashing-scenarios"></a>
+
+Notes on [crashing scenarios](#crashing-scenarios):
+
+| Scenario | Covered | Notes |
 | --- | --- | --- |
-| 1. | The user's application crashes shortly after the initialization of the Sentry SDK. | |
-| 2. | The user's application crashes async during the initialization of the Sentry SDK _[continue at 2.1, 2.2, 2.3]_ | |
-| 2.1. | and the Sentry SDK can write a crash report, which it sends on the next launch. | A wrong strategy could easily incorrectly disable the SDK in that scenario. |
-| 2.2. | and the Sentry SDK can write a crash report, which it can't send on the next launch. | There isn't much we can do about this, except educating our customers about the importance of initializing the Sentry SDK as early as possible. Even if we incorrectly disable the SDK, it makes no difference. |
-| 2.3. | and the Sentry SDK can't write a crash report, because it happens before initializing the crash handlers. | Same as note on 2.2. |
+| 1.1. | ✅ - yes |  |
+| 1.2. | ✅ - yes |  |
+| 2.1. | ⛔️ - no | |
+| 2.2. | ⛔️ - no | But it could be detected via the SDK crash detection. |
+| 3. | ⛔️ - no |  |
+| 4. | ✅ - yes | The SDK correctly ignores this scenario. |
+| 5.1. | ⛔️ - no | The SDK could incorrectly disable itself. |
+| 5.2. | ⛔️ - no | same as 5.1. |
+| 5.3. | ⛔️ - no | same as 5.1. |
 
-## Option 1: Stacktrace Detection
 
-This approach doesn’t work with static linking, as the Sentry SDKs end up in the same binary as the main app. As we don’t have symbolication in release builds, we can’t reliably detect if the memory address stems from the Sentry SDK or the app. We might be able to compare addresses with known addresses of specific methods or classes, but this won’t work reliably. As with iOS, many apps use static linking, so we must use an alternative approach.
+### Pros <a name="option-1-pros"></a>
 
-Notes on edge cases above:
+1. It can detect if the SDK crashes during its initialization even for any technical setup and when the crash handlers can't capture the crash.
+2. SDKs could use checkpoints to identify the failure of other critical actions, such as writing a crash report.
 
-1. It would work.
-2. It wouldn’t work with this point, as it only works if there is a crash report.
-3. It would work.
-4. It would work.
-5. It would correctly ignore that scenario.
 
-## Option 2: Marker Files
+### Cons <a name="option-1-cons"></a>
 
-> __Note:__
-> We use marker files because checking the file's existence is significantly more performant than reading its contents.
+1. It requires extra disk I/O.
+2. It could incorrectly disable the SDK when the app crashes async during the initialization of the Sentry SDK.
 
-The SDK must be launched at least once. When it launches the first time, it writes a marker file to disk using the SDK version and the timestamp as the filename. When the SDK completes the init phase, it writes another marker file to the disk with the SDK version, timestamp, and a success init suffix in the filename.
-
-The first thing the SDK does when initializing is to check if it was launched at least once and if there is a success init marker file. If the SDK was launched at least once, but there is no success init marker file, it knows that it’s broken and must disable itself. If both marker files exist, the SDK deletes the success init marker file and again waits for the SDK to complete the init phase to write a new success init marker file.
-
-Notes on edge cases above:
-
-1. This could trigger the start-up crash detection logic, which should execute sending the crash report on the main thread. So, if something is broken there, the SDK won’t write the success init marker file. If the SDK can send the crash report successfully but still causes the crash, we get crash events, and the SDK crash detection will notify us. In that case a [Remote Kill Switch](https://www.notion.so/Remote-Kill-Switch-12d8b10e4b5d8043b7e0e5f803d97b6b?pvs=21) would allow us to disable the SDK remotely.
-2. If this occurs during the init phase, the SDK will disable itself. If it occurs later, it wouldn’t work.
-3. It would work.
-4. It wouldn’t work, but we would know via the SDK crash detection.
-5. It would correctly ignore that scenario.
-
-## Option 3: Remote Kill Switch
+## Option 2: Remote Kill Switch <a name="option-2"></a>
 
 There might be scenarios where the SDK can’t detect it’s crashing. We might be able to detect via the SDK crash detection that the SDK causes many crashes, and we could manually or, based on some criteria, disable the SDK. We could also allow our customers to disable the SDK remotely if they see many crashes in the Google Play Console or App Store Connect.
 
-[Marker Files](https://www.notion.so/Marker-Files-12d8b10e4b5d80929f7de15e5f929683?pvs=21) detect if the SDK continuously crashes early during initialization. Therefore, it’s acceptable if the remote kill switch requires an async HTTP request to determine whether it should be enabled or not.
+[Checkpoints](https://www.notion.so/Marker-Files-12d8b10e4b5d80929f7de15e5f929683?pvs=21) detect if the SDK continuously crashes early during initialization. Therefore, it’s acceptable if the remote kill switch requires an async HTTP request to determine whether it should be enabled or not.
 
-## Option 4: Failed SDK Endpoint
+### Pros <a name="option-2-pros"></a>
 
-We could add a unique endpoint for sending a simple HTTP request with only the SDK version and a bit of meta-data, such as the DSN, to notify Sentry about failed SDKs. We must keep this logic as simple as possible, and it should never change to drastically minimize the risk of causing more damage. The HTTP request must not use other parts of the SDK, such as client, hub, or transport. The SDKs must only send this request once. 
+
+### Cons <a name="option-2-cons"></a>
+
+
+## Option 3: Failing SDK Endpoint <a name="option-3"></a>
+
+We could add a unique endpoint for sending a simple HTTP request with only the SDK version and a bit of meta-data, such as the DSN, to notify Sentry about failed SDKs. We must keep this logic as simple as possible, and it should never change to drastically minimize the risk of causing more damage. The HTTP request must not use other parts of the SDK, such as client, hub, or transport. The SDKs must only send this request once.
 
 As we can’t have any logic running, such as rate-limiting or client reports, it’s good to have a specific endpoint for this to reduce the potential impact on the rest of the infrastructure.
+
+## Option 4: Stacktrace Detection <a name="option-4"></a>
+
+Before sending a crash report, the SDK identifies an SDK crash by looking at the topmost frames of the crashing thread. If the topmost frames stem from the SDK itself, it disables itself. The [SDK crash detection](https://github.com/getsentry/sentry/tree/master/src/sentry/utils/sdk_crashes) already uses this approach in the event processing pipeline.
+
+This approach doesn’t work with static linking, as the Sentry SDKs end up in the same binary as the main app. As we don’t have symbolication in release builds, we can’t reliably detect if the memory address stems from the Sentry SDK or the app. We might be able to compare addresses with known addresses of specific methods or classes, but this won’t work reliably. As with iOS, many apps use static linking, so we must use an alternative approach.
+
+### Crashing Scenarios <a name="option-4-crashing-scenarios"></a>
+
+Notes on [crashing scenarios](#crashing-scenarios):
+
+| Scenario | Covered | Notes |
+| --- | --- | --- |
+| 1.1. | ⛔️ - no | It doesn't work when the SDK crashes before parsing and sending the crash report. |
+| 1.2. | ✅ - yes | |
+| 2.1. | ⛔️ - no | same as 1.1. |
+| 2.2. | ✅ - yes | |
+| 3. | ⛔️ - no |  |
+| 4. | ✅ - yes |  |
+| 5.1. | ✅ - yes | It wouldn't disable the SDK. |
+| 5.2. | ✅ - yes | same as 5.1. |
+| 5.3. | ✅ - yes | same as 5.1. |
+
+### Pros <a name="option-4-pros"></a>
+
+1. It requires little to no extra overhead.
+2. It can ignore async app crashes during SDK initialization.
+
+### Cons <a name="option-4-cons"></a>
+
+1. __Doesn't work with static linking:__ This approach doesn’t work with static linking, as the Sentry SDKs end up in the same binary as the main app. As we don’t have symbolication in release builds, we can’t reliably detect if the memory address stems from the Sentry SDK or the app. We might be able to compare addresses with known addresses of specific methods or classes, but this won’t work reliably. As with iOS, many apps use static linking, so we must use an alternative approach.
+2. __Wrongly disabling the SDK:__ We frequently see wrongly reported SDK crashes in the SDK crash detection. As SDKs use bytecode manipulation, swizzling, or monkey patching, the stacktraces sometimes contain Sentry frames in the crashing thread, but the root cause isn't Sentry but the user's code.
+3. It doesn't work when the SDK crashes during or before sending the crash report.
+4. It doesn't work when the SDK crashes before installing the crash handlers.
 
 # Drawbacks
 
@@ -93,5 +181,4 @@ multiple options are presented.
 
 # Unresolved questions
 
-- What parts of the design do you expect to resolve through this RFC?
-- What issues are out of scope for this RFC but are known?
+- How does [checkpoints](#option-1) work with the new start up crash detection logic?
