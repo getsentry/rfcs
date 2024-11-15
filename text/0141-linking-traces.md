@@ -313,7 +313,7 @@ For links stored in child spans, SDKs should serialize them to `spans[i].links`:
 Relay should forward the span links in the format that is required for further processing and storage. 
 Importantly, we must never require span links to be defined. They are completely optional.
 
-TODO: This section lacks a lot of details I still need to clarify with the ingest team
+TODO: This section lacks a lot of details we still need to clarify with the ingest team
 
 ### Storage
 
@@ -324,7 +324,7 @@ TODO: Evaluate if possible:
 The span links need to be stored in a way that they can be queried. For example: Given a transaction `t`, list transactions that have span links to  `t`.
 This would enable use cases where we could show "next" traces, instead of previous traces. 
 
-TODO: This section lacks a lot of details I still need to clarify with the SnS team
+TODO: This section lacks a lot of details we still need to clarify with the SnS team
 
 
 ## [Alternative] Previous Trace Id
@@ -340,9 +340,7 @@ While this might seem simpler at first glance, it has a some drawbacks:
 
 # Drawbacks
 
-TODO:
-- Requires a lot of changes across SDKs, ingest, SnS
-- Sampling implications
+- Implementing span links requires a lot of of changes across SDKs, ingest, SnS. Also there are product changes required to make use of links. 
 
 # Answered Questions
 
