@@ -319,6 +319,11 @@ TODO: This section lacks a lot of details I still need to clarify with the inges
 
 We need to adapt our events table to support storing span links in our current event storage. Furthermore, we need to take span links into account for the EAP storage architecture.
 
+TODO: Evaluate if possible:
+
+The span links need to be stored in a way that they can be queried. For example: Given a transaction `t`, list transactions that have span links to  `t`.
+This would enable use cases where we could show "next" traces, instead of previous traces. 
+
 TODO: This section lacks a lot of details I still need to clarify with the SnS team
 
 
@@ -330,6 +335,7 @@ Setting such a previous trace id could happen on `startSpan()` calls or by calli
 While this might seem simpler at first glance, it has a some drawbacks:
 - Spans can only have a 1:1 relationship, either with a `traceId` or a `traceId-spanId` value. Span links support a 1:* relationship, where one span can link to multiple other spans in- or outside its trace
 - Span links are an established concept in OpenTelemetry. With Sentry increasingly adapting Otel standards, as well as creating an OTLP endpoint in the future, we should embrace Otel-suggested solutions rather than building our own.
+- Attributes are not indexed, meaning queries like getting the "next" instead of previous traces are likely impossible
 
 
 # Drawbacks
