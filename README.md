@@ -65,3 +65,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0129-video-replay-envelope](text/0129-video-replay-envelope.md): Video-based replay envelope format
 - [0131-pass-native-sdk-spans-to-hybrid](text/0131-pass-native-sdk-spans-to-hybrid.md): rfc(feature): Pass Native SDKs Spans to Hybrid
 - [0138-achieving-order-between-pageload-and-srr-spans](text/0138-achieving-order-between-pageload-and-srr-spans.md): Achieving order between Pageload and SRR spans
+- [0139-versioned-docs](text/0139-versioned-docs.md): Versioned documentation for Sentry Docs
