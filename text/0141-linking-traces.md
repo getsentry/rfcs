@@ -19,9 +19,9 @@ This RFC proposes a method of achieving linkage between (and within) traces in t
 
 ## Frontend Traces and User Journeys
 
-The most important application of linking traces are frontend applications are frontend applications. We would like to display a user journey (session) which should make debugging of issues much easier as developers have more context on what happened before a specific issue. 
+The most important application of linking traces are frontend applications. We would like to display a user journey (session) to make debugging of issues easier as developers get more context on what happened before a specific issue. 
 Today, we are limited to the duration of one trace (id), which is handled differently and kept alive for different times across our various SDKs. A concrete example are our [JavaScript Browser SDKs](https://develop.sentry.dev/sdk/platform-specifics/javascript-sdks/browser-tracing/#tracing-model) which by default keep a trace alive as long as users
-are on the same page our (URL) route. This was a compromise in which we accepted that a trace would consist of multiple trace root spans (transactions), which is generally discouraged by tracing models like OpenTelemetry.
+are on the same page or (URL) route. This was a compromise in which we accepted that a trace would consist of multiple trace root spans (transactions), which is generally discouraged by tracing models like OpenTelemetry.
 Another example of a suboptimal trace model is the one used in most mobile SDKs. In these SDKs we 
 
 ## Queues and Async Operations
@@ -54,7 +54,7 @@ TODO: List concrete product/UI goals
 ## Out of scope/Non-Goals
 
 - Querying across linked traces: Given the "linked list" nature of one root span linking back to its previous root span, we accept that obtaining a complete list is an expensive query operation. Therefore, we consider use cases that require a complete list of all linked traces out of scope. We can address this as a follow-up if technically possible but we're aware that this is likely a sub-optimal data structure for such queries. 
-- Linking transactions started during the rendering of statically generated HTML pages and pageload transactions. A span link is ideal here because we don't want the hard link of a trace id. However, a casual link would still increase context and completeness. Wwe might do it but not at this point as it's a follow-up item.
+- Linking transactions started during the rendering of statically generated HTML pages and pageload transactions. A span link is ideal here because we don't want the hard link of a trace id. However, a casual link would still increase context and completeness. We might do it but not at this point as it's a follow-up item.
 - Unsampled traces are not linked. Errors across unsampled traces are not linked. For example, if the first trace was sampled negatively, the next trace will not link to it as this would result in a link to a non-existing trace.
 
 # Background
@@ -127,9 +127,9 @@ In an OTLP span export, span links are serialized as follows:
 Sentry SDKs do actually send session data, in fact even two types of sessions. However, neither of the two sessions are used and associated with a trace. 
 
 - SDK error sessions: SDKs currently send a session that counts and describes the error status of such a session. Depending on the error, the session is marked as crashed, abnormal or healthy, which is information that powers our Release (Health) product. These sessions are fundamentally flawed though because (at least in Browser JS) they only last as long as the currently loaded page. Every soft or hard navigation causes the session to be ended and a new one to be started. 
-- Replay Session: Frontend SDKs persist a replayId in the browser's `sessionStorage` which (even though the name does not suggest it) more accurately models a session that the SDKs' error sessions. We cannot have a hard dependency on this session as Replay is an extra product from Sentry, meaning this replay id is not always reliably set. However, the model of persisting the replay id can use as a blueprint on how we'd persist the last traceId. 
+- Replay Session: Frontend SDKs persist a replayId in the browser's `sessionStorage` which (even though the name does not suggest it) more accurately models a session than the SDKs' error sessions. We cannot have a hard dependency on this session as Replay is an extra product by Sentry, meaning this replayId is not always reliably set. However, the model of persisting the replay id can be used as a blueprint for how we could persist the last traceId. 
 
-Upon decision from Leadership as well as from it being noted in Sentry's Goal Hierarchy, will not associate spans or traces via any of these sessions. Instead, the sessions will stay as-is and we will link traces in a "linked list"-style approach as described in this RFC. 
+Upon decision from Leadership as well as from it being noted in Sentry's Goal Hierarchy, we will not associate spans or traces via any of these sessions. Instead, the sessions will stay as-is and we will link traces in a "linked list"-style approach as described in this RFC. 
 
 # Supporting Data
 
@@ -137,7 +137,7 @@ Sentry users would like to get as much insight as possible when inspecting (erro
 
 Given that 32% of ARR can be attributed alone to events sent from Sentry frontend JavaScript SDKs and a further 15% from mobile SDK, a significant portion of sent events would directly benefit from better linkage between events. Considering that frontend applications almost always have a backend counter part, another 44% of ARR can be attributed to backend SDKs that would implicitly also benefit from a better tracing models. Wins all around!
 
-While linked traces themselves is not identical to user sessions, we're aware that users have been asking fo some kind of connectedness in various forms on GitHub as well as Sales/Solution Engineers. Typically, in a frontend application context, users would expect Sentry to show them a user _session_. In such cases we typically explain that Sentry [does track sessions](#current-session-models-in-sentry-sdks), albeit in a flawed way. Right now, we cannot answer questions like, what happened in a previous trace that might have had an impact on the trace with an error. With linked traces, we can.
+While linked traces themselves are not identical to user sessions, we're aware that users have been asking for some kind of connectedness in various forms on GitHub as well as via Sales/Solution Engineers. Typically, in a frontend application context, users would expect Sentry to show them a user _session_. In such cases we explain that Sentry [does track sessions](#current-session-models-in-sentry-sdks), albeit in a flawed way. Right now, we cannot answer questions like, what happened in a previous trace that might have had an impact on the trace with an error. With linked traces, we can.
 
 Looking at other observability providers, they have support for user sessions
 
@@ -151,7 +151,7 @@ Again, linked traces are not identical to sessions but they can also help answer
 
 As mentioned [above](#frontend-traces-and-user-journeys), our current long-lived traces in Browser JS have some negative implications on the Sentry UX:
 
-- Multiple root spans (transactions): Our product can (and should) handle multiple root spans. However, there are some rough edges which are hard to solve from a UI/UX perspective. Our Trace explorer gives traces a name, for instance. If multiple root spans exist, we can only use a heuristic which span name to use for the "trace name". Furthermore, multiple root spans contradict the conventional concept of a trace, where a trace should only consist of one root span.
+- Multiple root spans (transactions): Our product can (and should) handle multiple root spans. However, there are some rough edges which are hard to solve from a UI/UX perspective. Our Trace explorer gives traces a name, for instance. If multiple root spans exist, we can only use a heuristic for which span name to use for the "trace name". Furthermore, multiple root spans contradict the conventional concept of a trace, where a trace should only consist of one root span.
 - Trace Duration: As soon as a trace spans more than one root span or multiple events, the duration of the trace itself becomes meaningless. While we strongly recommend to generally avoid deducing information from the trace duration, we could improve the current situation by sending less long-lived traces
 - Context: While long lived traces do potentially provide more context, given they could include spans or events that happened before an error, they can sometimes contain "too much" context. For instance, very long-running traces in web applications without navigations would contain close to the entire user journey. This makes it harder to understand cause-effect relationships within a trace.
 - UI/UX of the trace view: Long running traces are not ideally displayed in the trace view, given the x-axis would span a large time frame. This makes it necessary for users to zoom in and pan around much more than for single-root span traces.
@@ -213,7 +213,7 @@ type Attributes = Record<string, AttributeValues>
 type AttributeValues = string | boolean | number | Array<string> | Array<boolean> | Array<number>
 ```
 
-Note: In some platforms, the Otel `Link` interface exposes another optional property: `droppedAttributesCount`. POtel SDKs should support passing in this property as defined by the API but can further ignore it when serializing the span link to Sentry envelopes.  In [JS for example](https://github.com/open-telemetry/opentelemetry-js/blob/main/api/src/trace/link.ts), the `droppedAttributeCount` can be passed, while [Python](https://github.com/open-telemetry/opentelemetry-python/blob/main/opentelemetry-api/src/opentelemetry/trace/span.py#L120) does not permit it. 
+Note: On some platforms, the Otel `Link` interface exposes another optional property: `droppedAttributesCount`. POtel SDKs should support passing in this property as defined by the API but can further ignore it when serializing the span link to Sentry envelopes.  In [JS for example](https://github.com/open-telemetry/opentelemetry-js/blob/main/api/src/trace/link.ts), the `droppedAttributeCount` can be passed, while [Python](https://github.com/open-telemetry/opentelemetry-python/blob/main/opentelemetry-api/src/opentelemetry/trace/span.py#L120) does not permit it. 
 Non-Otel SDKs are free to ignore this property.
 
 #### Usage Example
