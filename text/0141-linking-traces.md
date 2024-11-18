@@ -81,7 +81,7 @@ Span links are supported by all OpenTelemetry platforms we currently use (or pla
 In an OTLP span export, span links are serialized as follows:
 
 ```json
-// output was shortend to important fields
+// output was shortened to important fields
 {
   "resourceSpans": [
     {
@@ -136,7 +136,7 @@ Upon decision from Leadership as well as from it being noted in Sentry's Goal Hi
 
 # Supporting Data
 
-Sentry users would like to get as much insight as possible when inspecting (errors or performance) issues. Right now, with the notable exception of Session Replay, we can only provide answers as to what happened before an error occured up to the point when a trace was started. If we can link from the current to the previous trace, we can significantly widen the insight into the entire user journey, which is often crucial to understand why and how a specific issue occured. 
+Sentry users would like to get as much insight as possible when inspecting (errors or performance) issues. Right now, with the notable exception of Session Replay, we can only provide answers as to what happened before an error occurred up to the point when a trace was started. If we can link from the current to the previous trace, we can significantly widen the insight into the entire user journey, which is often crucial to understand why and how a specific issue occurred. 
 
 Given that almost half of events sent to Sentry can be attributed alone to events sent from Sentry frontend JavaScript or mobile SDKs, a significant portion of sent events would directly benefit from better linkage between events. Considering that frontend applications almost always have a backend counter events sent from backend SDKs would implicitly also benefit from a better tracing model. Wins all around!
 
@@ -218,6 +218,8 @@ type AttributeValues = string | boolean | number | Array<string> | Array<boolean
 
 Note: On some platforms, the Otel `Link` interface exposes another optional property: `droppedAttributesCount`. POtel SDKs should support passing in this property as defined by the API but can further ignore it when serializing the span link to Sentry envelopes.  In [JS for example](https://github.com/open-telemetry/opentelemetry-js/blob/main/api/src/trace/link.ts), the `droppedAttributeCount` can be passed, while [Python](https://github.com/open-telemetry/opentelemetry-python/blob/main/opentelemetry-api/src/opentelemetry/trace/span.py#L120) does not permit it. 
 Non-Otel SDKs are free to ignore this property.
+
+Note II: POtel SDKs today already have to expose `addLink(s)` APIs, however we simply disregard the added links when serializing Otel spans to transaction event envelopes. Furthermore, for platform agnostic APIs, the non-POtel browser SDKs today also expose these methods. They simply no-op at the moment.
 
 #### Usage Example
 
@@ -339,6 +341,7 @@ While this might seem simpler at first glance, it has a some drawbacks:
 - Spans can only have a 1:1 relationship, either with a `traceId` or a `traceId-spanId` value. Span links support a 1:* relationship, where one span can link to multiple other spans in- or outside its trace
 - Span links are an established concept in OpenTelemetry. With Sentry increasingly adapting Otel standards, as well as creating an OTLP endpoint in the future, we should embrace Otel-suggested solutions rather than building our own.
 - Attributes are not indexed, meaning queries like getting the "next" instead of previous traces are likely impossible
+- POtel SDKs, as well as the browser JS SDKs, already expose span link APIs but they currently no-op and are not sent to Sentry. This is currently very opaque behavior and potentially confusing to users familiar with Otel APIs concepts.
 
 
 # Drawbacks
