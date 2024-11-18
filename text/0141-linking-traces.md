@@ -20,9 +20,12 @@ This RFC proposes a method of achieving linkage between (and within) traces in t
 ## Frontend Traces and User Journeys
 
 The most important application of linking traces are frontend applications. We would like to display a user journey (session) to make debugging of issues easier as developers get more context on what happened before a specific issue. 
-Today, we are limited to the duration of one trace (id), which is handled differently and kept alive for different times across our various SDKs. A concrete example are our [JavaScript Browser SDKs](https://develop.sentry.dev/sdk/platform-specifics/javascript-sdks/browser-tracing/#tracing-model) which by default keep a trace alive as long as users
+Today, we are limited to the duration of one trace (id), which is handled differently and kept alive for different times across our various SDKs. 
+
+A concrete example are our [JavaScript Browser SDKs](https://develop.sentry.dev/sdk/platform-specifics/javascript-sdks/browser-tracing/#tracing-model) which by default keep a trace alive as long as users
 are on the same page or (URL) route. This was a compromise in which we accepted that a trace would consist of multiple trace root spans (transactions), which is generally discouraged by tracing models like OpenTelemetry.
-Another example of a suboptimal trace model is the one used in most mobile SDKs. In these SDKs we 
+
+Another example of a suboptimal trace model is the one used in most mobile SDKs. In these SDKs, traces are mostly started via idle transactions, meaning transactions start a fixed point but end automatically after a specific period of inactivity (i.e. no child spans being added). Errors occurring while no transaction is active are associated with a "fallback" `traceId` stored on the SDK hub. The consequence is that potentially hundreds of unrelated events are associated with the same fallback trace as [outlined](https://github.com/getsentry/rfcs/blob/rfc/mobile-tracing-without-performance-v-2/text/0136-mobile-tracing-without-performance-v-2.md) in a previous attempt to improve this behavior.
 
 ## Queues and Async Operations
 
