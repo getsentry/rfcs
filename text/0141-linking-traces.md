@@ -66,7 +66,7 @@ This section provides background information of important concepts for this RFC
 
 ## OpenTelemetry Span Links
 
-OpenTelemetry introduced the concept of span links to establish casual relationships between individual spans. Such links can be established by
+OpenTelemetry introduced the concept of span links to establish causal relationships between individual spans. Such links can be established by
 
 - passing a `links` property to the Otel `startSpan` methods 
 - calling `span.addLink(s)` on the span that should link to another span
