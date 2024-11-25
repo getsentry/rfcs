@@ -25,7 +25,7 @@ Today, we are limited to the duration of one trace (id), which is handled differ
 A concrete example are our [JavaScript Browser SDKs](https://develop.sentry.dev/sdk/platform-specifics/javascript-sdks/browser-tracing/#tracing-model) which by default keep a trace alive as long as users
 are on the same page or (URL) route. This was a compromise in which we accepted that a trace would consist of multiple trace root spans (transactions), which is generally discouraged by tracing models like OpenTelemetry.
 
-Another example of a suboptimal trace model is the one used in most mobile SDKs. In these SDKs, traces are mostly started via idle transactions, meaning transactions start a fixed point but end automatically after a specific period of inactivity (i.e. no child spans being added). Errors occurring while no transaction is active are associated with a "fallback" `traceId` stored on the SDK hub. The consequence is that potentially hundreds of unrelated events are associated with the same fallback trace as [outlined](https://github.com/getsentry/rfcs/blob/rfc/mobile-tracing-without-performance-v-2/text/0136-mobile-tracing-without-performance-v-2.md) in a previous attempt to improve this behavior.
+Another example of a suboptimal trace model is the one used in most mobile SDKs. In these SDKs, traces are mostly started via idle transactions, meaning transactions start a fixed point but end automatically after a specific period of inactivity (i.e. no child spans being added). Errors occurring while no transaction is active are associated with a "fallback" `traceId` stored on the global SDK scope that stays the same until the SDK is again initialized. The consequence is that potentially hundreds of unrelated events are associated with the same fallback trace as [outlined](https://github.com/getsentry/rfcs/blob/rfc/mobile-tracing-without-performance-v-2/text/0136-mobile-tracing-without-performance-v-2.md) in a previous attempt to improve this behavior.
 
 ## Queues and Async Operations
 
@@ -36,6 +36,7 @@ Somewhat related, we also face situations in which child spans are not started a
 In addition, besides inter-trace links, we might also be interested in linking spans within one trace, for example to link spans that are related to each other but not in a direct (parent-child or linear) hierarchy. While this is not the main objective of the RFC, our proposed solution would also facilitate this linkage. Some concrete examples (but out of scope):
 - (Async) data flow operations (e.g. RxJS pipes) where we would be able to link individual operations.
 - Websocket spans where we could link individual web socket messages
+- Background data syncs on mobile that you can't directly link to a specific transaction, but it's useful to know that they happened during a transaction. Now, the mobile SDKs put these spans on the transaction bound to the scope.
 - More generally, whenever we want to "casually" establish a relationship between spans that cannot or should not be achieved via a hard relationship (traceId or parent spanId)
 
 # Concrete Goals of achieving linked traces
