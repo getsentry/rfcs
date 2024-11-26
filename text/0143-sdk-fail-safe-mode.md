@@ -52,6 +52,8 @@ The options should cover the following scenarios:
 
 The SDK stores checkpoints via marker files to disk to identify if it completes SDK initialization. When it doesn't, the SDK disables itself. The SDKs should use marker files because checking the file's existence is significantly more performant than reading its contents. To be aware of when the SDK disables itself, we could implement this option in combination with the [Option 3:Failing SDK Endpoint](#option-3).
 
+The SDK should implement a retry logic to minimize the risk of wrongly disabling itself. When the app launched x times, the SDK retries if it can launch successfully. If it does, it goes back to normal. If it doesn't, it exponentially increases the number of app launches until it retries.
+
 The specification is written in the [Gherkin syntax](https://cucumber.io/docs/gherkin/reference/). The specification might not work for all edge cases yet, as it can be complicated to get it right. We'll figure out the exact details once we decide to implement it, but it should cover the main scenarios.
 
 ```Gherkin
@@ -130,21 +132,28 @@ Notes on [crashing scenarios](#crashing-scenarios):
 
 1. It can detect if the SDK crashes during its initialization even for any technical setup and when the crash handlers can't capture the crash.
 2. SDKs could use checkpoints to identify the failure of other critical actions, such as writing a crash report.
+3. It works when the SDK is offline.
+4. It can be implemented solely in the SDKs, and doesn't require any changes on the backend.
 
 
 ### Cons <a name="option-1-cons"></a>
 
-1. It requires extra disk I/O.
+1. It requires extra disk I/O and negatively impacts the SDK startup time.
 2. It could incorrectly disable the SDK when the app crashes async during the initialization of the Sentry SDK.
-3. Once the SDK is disabled, it stays disabled until the next SDK version.
+3. Once the SDK is disabled, the SDK stays disabled until it retries.
+4. It could incorrectly disable the SDK when the user's app manipulates the SDK's marker files.
+5. It won't work when there is no disk space left.
+6. The logic could get complex for hybrid SDKs.
 
 ## Option 2: Remote Kill Switch <a name="option-2"></a>
 
 There might be scenarios where the SDK can’t detect it’s crashing. We might be able to detect via the SDK crash detection that the SDK causes many crashes, and we could manually or, based on some criteria, disable the SDK. We could also allow our customers to disable the SDK remotely if they see many crashes in the Google Play Console or App Store Connect.
 
-[Checkpoints](https://www.notion.so/Marker-Files-12d8b10e4b5d80929f7de15e5f929683?pvs=21) detect if the SDK continuously crashes early during initialization. Therefore, it’s acceptable if the remote kill switch requires an async HTTP request to determine whether it should be enabled or not.
+The remote kill switch has to be strictly tied to SDK versions. When the SDK gets an update, it ignores the killswitch from the previous SDK version.
 
 ### Crashing Scenarios <a name="option-2-crashing-scenarios"></a>
+
+Notes on [crashing scenarios](#crashing-scenarios):
 
 | Scenario | Covered | Notes |
 | --- | --- | --- |
@@ -169,10 +178,15 @@ There might be scenarios where the SDK can’t detect it’s crashing. We might 
 2. We could reenable the SDK if we disable it by mistake.
 3. We can disable the SDKs only for specific customers.
 4. We could allow customers to disable the SDK themselves.
+5. We could extend the logic to only disable specific integrations of the SDK.
+6. We can use this logic to disable the SDK if it causes other severe issues, such as breaking the UI in the app.
 
 ### Cons <a name="option-2-cons"></a>
 
 1. It doesn't work for continuous SDK crashes during SDK init.
+2. It doesn't work offline.
+3. It requires manual action. We need to monitor our SDK crashes and input from customers continuously.
+4. It requires infrastructure changes.
 
 ## Option 3: Failing SDK Endpoint <a name="option-3"></a>
 
@@ -182,7 +196,7 @@ As we can’t have any logic running, such as rate-limiting or client reports, i
 
 ### Crashing Scenarios <a name="option-3-crashing-scenarios"></a>
 
-This option doesn't contain the scenarios table because they aren't applicable.
+This option doesn't contain the [crashing scenarios](#crashing-scenarios) table because they aren't applicable.
 
 ### Pros <a name="option-3-pros"></a>
 
@@ -191,6 +205,8 @@ This option doesn't contain the scenarios table because they aren't applicable.
 ### Cons <a name="option-3-cons"></a>
 
 1. Potential risk of crashing while performing this action.
+2. It requires extra infrastructure.
+3. We don't know why the SDK disabled itself.
 
 ## Option 4: Stacktrace Detection <a name="option-4"></a>
 
@@ -223,10 +239,12 @@ Notes on [crashing scenarios](#crashing-scenarios):
 
 1. It requires little to no extra overhead.
 2. It can ignore async app crashes during SDK initialization.
+3. It is the most reliable option to detect if the SDK crashes.
 
 ### Cons <a name="option-4-cons"></a>
 
 1. __Doesn't work with static linking:__ This approach doesn’t work with static linking, as the Sentry SDKs end up in the same binary as the main app. As we don’t have symbolication in release builds, we can’t reliably detect if the memory address stems from the Sentry SDK or the app. We might be able to compare addresses with known addresses of specific methods or classes, but this won’t work reliably. As with iOS, many apps use static linking, so we must use an alternative approach.
+2. __Doesn't work for obfuscated code:__ For obfuscated code, detecting if a frame in the stacktrace stems from the Sentry SDK or the app can be difficult or even impossible.
 2. __Wrongly disabling the SDK:__ We frequently see wrongly reported SDK crashes in the SDK crash detection. As SDKs use bytecode manipulation, swizzling, or monkey patching, the stacktraces sometimes contain Sentry frames in the crashing thread, but the root cause isn't Sentry but the user's code.
 3. It doesn't work when the SDK crashes during or before sending the crash report.
 4. It doesn't work when the SDK crashes before installing the crash handlers.
@@ -234,7 +252,10 @@ Notes on [crashing scenarios](#crashing-scenarios):
 # Drawbacks
 
 Why should we not do this? What are the drawbacks of this RFC or a particular option if
-multiple options are presented.
+multiple options are presented:
+
+1. False positives: Potentially wrongly disabling the SDK.
+2. Introducing new crashes with the new logic.
 
 # Unresolved questions
 
