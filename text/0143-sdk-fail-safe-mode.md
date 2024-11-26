@@ -24,19 +24,29 @@ The proposed options below don’t exclude each other. We can implement one, som
 The options should cover the following scenarios:
 
 | # | Description | Potential Damage |
-| --- | --- | --- |
+| ---: | --- | --- |
+| | __Sentry SDK__  | |
 | 1. | The Sentry SDK continuously crashes during its initialization _[continue at 1.1, 1.2]_ | |
-| 1.1. | _[continued from 1.]_ and can't create and send SDK crash reports to Sentry. | Crashes and no data. |
-| 1.2. | _[continued from 1.]_ and can create and send some SDK crash reports to Sentry. | Crashes and some data. |
+| 1.1. | _[continued from 1.]_ and __can't__ create SDK crash reports. | Crashes and no data. |
+| 1.2. | _[continued from 1.]_ and __can__ create and send some SDK crash reports. | Crashes and some data. |
 | 2. | The Sentry SDK continuously crashes after its initialization _[continue at 2.1, 2.2]_ | |
-| 2.1. | _[continued from 2.]_ and can't create and send SDK crash reports to Sentry. | Crashes and no data. |
-| 2.2. | _[continued from 2.]_ and can create and send some SDK crash reports to Sentry. | Crashes and some data. |
-| 3. | The SDK continuously crashes when creating most crash reports, so there is no crash report. | No data. |
-| 4. | The user's application crashes shortly after the initialization of the Sentry SDK. | Potentially incorrectly disabling the SDK and no data. |
-| 5. | The user's application crashes async during the initialization of the Sentry SDK _[continue at 5.1, 5.2, 5.3]_ |  |
-| 5.1. | _[continued from 5.]_ and the Sentry SDK can write a crash report, which it creates and sends on the next launch. | Potentially incorrectly disabling the SDK and no data. |
-| 5.2. | _[continued from 5.]_ and the Sentry SDK can write a crash report, which it creates but can't send on the next launch. | There isn't much we can do about this, except educating our customers about the importance of initializing the Sentry SDK as early as possible. Even if we incorrectly disable the SDK, it makes no difference. |
-| 5.3. | _[continued from 5.]_ and the Sentry SDK can't write a crash report, because it happens before initializing the crash handlers. | Same as 5.2. |
+| 2.1. | _[continued from 2.]_ and __can't__ create SDK crash reports. | Crashes and no data. |
+| 2.2. | _[continued from 2.]_ and __can__ create and send some SDK crash reports. | Crashes and some data. |
+| 3. | The SDK continuously crashes while it's being initialized async, _[continue at 3.1, 3.2]_ |  |
+| 3.1. | _[continued from 3.]_ and __can't__ create SDK crash reports. | Crashes and no data. |
+| 3.2. | _[continued from 3.]_ and __can__ create and send some SDK crash reports. | Crashes and some data. |
+| 4. | The SDK continuously crashes when creating most crash reports, so there is no crash report. | No data. |
+| | __User's Application__ | |
+| 5. | The user's application crashes shortly after the initialization of the Sentry SDK. | Potentially incorrectly disabling the SDK and no data. |
+| 6. | The user's application crashes async during the initialization of the Sentry SDK _[continue at 6.1, 6.2, 6.3]_ |  |
+| 6.1. | _[continued from 6.]_ and the Sentry SDK can write a crash report, which it creates and sends on the next launch. | Potentially incorrectly disabling the SDK and no data. |
+| 6.2. | _[continued from 6.]_ and the Sentry SDK can write a crash report, which it creates but can't send on the next launch. | There isn't much we can do about this, except educating our customers about the importance of initializing the Sentry SDK as early as possible. Even if we incorrectly disable the SDK, it makes no difference. |
+| 6.3. | _[continued from 6.]_ and the Sentry SDK can't write a crash report, because it happens before initializing the crash handlers. | Same as 6.2. |
+| 7. | The user's application crashes before the initialization of the Sentry SDK. | Same as 6.2. |
+| | __Hybrid SDKs__ | |
+| 8. | The hybrid SDK crashes during its initialization, _[continue at 8.1, 8.2]_ |  |
+| 8.1. | _[continued from 8.]_ and the underlying native SDK __can__ initialize. |  |
+| 8.2. | _[continued from 7.]_ and the underlying native SDK __can't__ initialize. |  |
 
 ## Option 1: Checkpoints <a name="option-1"></a>
 
@@ -105,11 +115,16 @@ Notes on [crashing scenarios](#crashing-scenarios):
 | 1.2. | ✅ - yes |  |
 | 2.1. | ⛔️ - no | |
 | 2.2. | ⛔️ - no | But it could be detected via the SDK crash detection. |
-| 3. | ⛔️ - no |  |
+| 3.1. | ✅ - yes | But it could be that it disables itself incorrectly, as the app is actually crashing. |
+| 3.2. | ✅ - yes | same as 3.1. |
 | 4. | ✅ - yes | The SDK correctly ignores this scenario. |
-| 5.1. | ⛔️ - no | The SDK could incorrectly disable itself. |
-| 5.2. | ⛔️ - no | same as 5.1. |
-| 5.3. | ⛔️ - no | same as 5.1. |
+| 6.1. | ⛔️ - no | The SDK could incorrectly disable itself. |
+| 6.2. | ⛔️ - no | same as 6.1. |
+| 6.3. | ⛔️ - no | same as 6.1. |
+| 7. | ✅ - yes | The SDK correctly ignores this scenario. |
+| 8.1. | ✅ - yes | The native SDKs could implement the checkpoints for the initializing the hybrid SDKs. |
+| 8.2. | ⛔️ - no | When the checkpoint logic of the hybrid and the native SDKs is flawed it won't work. |
+
 
 ### Pros <a name="option-1-pros"></a>
 
@@ -137,11 +152,16 @@ There might be scenarios where the SDK can’t detect it’s crashing. We might 
 | 1.2. | ⛔️ - no |  |
 | 2.1. | ✅ - yes | |
 | 2.2. | ✅ - yes|  |
-| 3. | ⛔️ - no |  |
-| 4. | ✅ - yes | The SDK correctly ignores this scenario. |
-| 5.1. | ✅ - yes | same as 4. |
-| 5.2. | ✅ - yes | same as 4. |
-| 5.3. | ✅ - yes | same as 4. |
+| 3.1. | ⛔️ - no | |
+| 3.2. | ⛔️ - no |  |
+| 4. | ⛔️ - no |  |
+| 5. | ✅ - yes | The SDK correctly ignores this scenario. |
+| 6.1. | ✅ - yes | same as 5. |
+| 6.2. | ✅ - yes | same as 5. |
+| 6.3. | ✅ - yes | same as 5. |
+| 7. | ✅ - yes |  |
+| 8.1. | ✅ - yes | The native SDKs can send a crash report of the hybrid SDKs. |
+| 8.2. | ⛔️ - no |  |
 
 ### Pros <a name="option-2-pros"></a>
 
@@ -188,11 +208,16 @@ Notes on [crashing scenarios](#crashing-scenarios):
 | 1.2. | ✅ - yes | |
 | 2.1. | ⛔️ - no | same as 1.1. |
 | 2.2. | ✅ - yes | |
-| 3. | ⛔️ - no |  |
-| 4. | ✅ - yes |  |
-| 5.1. | ✅ - yes | It wouldn't disable the SDK. |
-| 5.2. | ✅ - yes | same as 5.1. |
-| 5.3. | ✅ - yes | same as 5.1. |
+| 3.1. | ⛔️ - no | same as 1.1. |
+| 3.2. | ✅ - yes | |
+| 4. | ⛔️ - no |  |
+| 5. | ✅ - yes |  |
+| 6.1. | ✅ - yes | It wouldn't disable the SDK. |
+| 6.2. | ✅ - yes | same as 5.1. |
+| 6.3. | ✅ - yes | same as 5.1. |
+| 7. | ✅ - yes | The SDK correctly ignores this scenario. |
+| 8.1. | ✅ - yes | The native SDKs can send a crash report of the hybrid SDKs. |
+| 8.2. | ⛔️ - no |  |
 
 ### Pros <a name="option-4-pros"></a>
 
