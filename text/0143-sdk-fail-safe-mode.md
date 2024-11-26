@@ -245,9 +245,53 @@ Notes on [crashing scenarios](#crashing-scenarios):
 
 1. __Doesn't work with static linking:__ This approach doesn’t work with static linking, as the Sentry SDKs end up in the same binary as the main app. As we don’t have symbolication in release builds, we can’t reliably detect if the memory address stems from the Sentry SDK or the app. We might be able to compare addresses with known addresses of specific methods or classes, but this won’t work reliably. As with iOS, many apps use static linking, so we must use an alternative approach.
 2. __Doesn't work for obfuscated code:__ For obfuscated code, detecting if a frame in the stacktrace stems from the Sentry SDK or the app can be difficult or even impossible.
-2. __Wrongly disabling the SDK:__ We frequently see wrongly reported SDK crashes in the SDK crash detection. As SDKs use bytecode manipulation, swizzling, or monkey patching, the stacktraces sometimes contain Sentry frames in the crashing thread, but the root cause isn't Sentry but the user's code.
-3. It doesn't work when the SDK crashes during or before sending the crash report.
-4. It doesn't work when the SDK crashes before installing the crash handlers.
+3. __Wrongly disabling the SDK:__ We frequently see wrongly reported SDK crashes in the SDK crash detection. As SDKs use bytecode manipulation, swizzling, or monkey patching, the stacktraces sometimes contain Sentry frames in the crashing thread, but the root cause isn't Sentry but the user's code.
+4. It doesn't work when the SDK crashes during or before sending the crash report.
+5. It doesn't work when the SDK crashes before installing the crash handlers.
+
+## Option 5: [Most likely discarded] Anomaly Detection <a name="option-5"></a>
+
+The backend detects anomalies in our customers' session data. If there is a significant drop, we can assume that the SDK crashes and disable it with a remote killswitch. The logic has to correctly detect debug and staging releases and take sampling into account.
+
+### Pros <a name="option-5-pros"></a>
+
+1. No SDK changes are needed, so it works even for old SDK versions.
+2. This would be a useful feature for our customers even if we don’t link it to a remote killswitch.
+
+### Cons <a name="option-5-cons"></a>
+
+1. Requires backend changes.
+2. It only works in combination with a remote killswitch.
+3. This doesn’t work for SDK init crashes.
+
+## Option 6: [Discarded] Out of process crash detection <a name="option-6"></a>
+
+### Pros <a name="option-6-pros"></a>
+
+The SDK launches an extra process to monitor and detect a crash in the user’s application. The main advantage is that when the SDK running in the extra process crashes, it doesn’t impact the user’s application process. While this seems appealing, it’s not possible on iOS and Android when writing this, and therefore, we can discard this option.
+
+### Cons <a name="option-6-cons"></a>
+
+
+## Option 7: [Discarded] SDK Safe Mode  <a name="option-7"></a>
+
+Similar to “Windows Safe Mode,” we could have a “bare minimum” SDK, and if an SDK failure is detected, we launch the SDK with the bare minimum feature set. This option complicates things, and we still require a reliable way to identify SDK crashes. We can implement this as an extra feature later.
+
+## Option 8: [Discarded] Bundling SDK versions at the same time  <a name="option-8"></a>
+
+The SDK ships with two different SDK versions. It has a wrapper for the user and then delegates the actual method calls to the duplicated SDK code. If the SDK detects it’s crashing often, it uses the fallback SDK version.
+
+No notes on [crashing scenarios](#crashing-scenarios), because we can discard this option as it has two many significant cons.
+
+### Pros <a name="option-8-pros"></a>
+
+1. When the SDK crashes, it can still function with the fallback SDK version.
+
+### Cons <a name="option-8-cons"></a>
+
+1. Roughly doubles the size of the SDK.
+2. It requires an extra package.
+3. Only a subset of customers might use this, and only high-quality aware customers might accept the tradeoff of a double-sized SDK. In fact, most high-quality aware customers most likely care about app size and will use the stable release channel.
 
 # Drawbacks
 
