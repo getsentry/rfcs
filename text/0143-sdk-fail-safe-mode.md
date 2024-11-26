@@ -50,9 +50,9 @@ The options should cover the following scenarios:
 
 ## Option 1: Checkpoints <a name="option-1"></a>
 
-The SDK stores checkpoints via marker files to disk to identify if it completes SDK initialization. When it doesn't, the SDK disables itself. The SDKs should use marker files because checking the file's existence is significantly more performant than reading its contents. To be aware of when the SDK disables itself, we could implement this option in combination with the [Option 3:Failing SDK Endpoint](#option-3).
+The SDK stores checkpoints via marker files to disk to identify if it completes SDK initialization. When it doesn't, the SDK disables itself. The SDKs should use marker files because checking the file's existence is significantly more performant than reading its contents. To be aware of when the SDK disables itself, we could implement this option in combination with the [Option 3: Failing SDK Endpoint](#option-3).
 
-The SDK should implement a retry logic to minimize the risk of wrongly disabling itself. When the app launched x times, the SDK retries if it can launch successfully. If it does, it goes back to normal. If it doesn't, it exponentially increases the number of app launches until it retries.
+The SDK implements a retry logic to minimize the risk of wrongly disabling itself. When the app launched x times, the SDK retries if it can launch successfully. If it does, it goes back to normal. If it doesn't, it exponentially increases the number of app launches until it retries.
 
 The specification is written in the [Gherkin syntax](https://cucumber.io/docs/gherkin/reference/). The specification might not work for all edge cases yet, as it can be complicated to get it right. We'll figure out the exact details once we decide to implement it, but it should cover the main scenarios.
 
@@ -130,7 +130,7 @@ Notes on [crashing scenarios](#crashing-scenarios):
 
 ### Pros <a name="option-1-pros"></a>
 
-1. It can detect if the SDK crashes during its initialization even for any technical setup and when the crash handlers can't capture the crash.
+1. It can detect if the SDK crashes during its initialization for any technical setup and when the crash handlers can't capture the crash.
 2. SDKs could use checkpoints to identify the failure of other critical actions, such as writing a crash report.
 3. It works when the SDK is offline.
 4. It can be implemented solely in the SDKs, and doesn't require any changes on the backend.
@@ -190,9 +190,7 @@ Notes on [crashing scenarios](#crashing-scenarios):
 
 ## Option 3: Failing SDK Endpoint <a name="option-3"></a>
 
-We could add a unique endpoint for sending a simple HTTP request with only the SDK version and a bit of meta-data, such as the DSN, to notify Sentry about failed SDKs. We must keep this logic as simple as possible, and it should never change to drastically minimize the risk of causing more damage. The HTTP request must not use other parts of the SDK, such as client, hub, or transport. The SDKs must only send this request once.
-
-As we can’t have any logic running, such as rate-limiting or client reports, it’s good to have a specific endpoint for this to reduce the potential impact on the rest of the infrastructure.
+Add a unique endpoint for sending a simple HTTP request with only the SDK version and a bit of meta-data, such as the DSN, to notify Sentry about failed SDKs. We must keep this logic as simple as possible, and it should hardly ever change to drastically minimize the risk of causing more damage. The HTTP request must not use other parts of the SDK, such as client, hub, or transport. The SDKs must only send this request once. As we can’t have any logic running, such as rate-limiting or client reports, it’s good to have a specific endpoint for this to reduce the potential impact on the rest of the infrastructure.
 
 ### Crashing Scenarios <a name="option-3-crashing-scenarios"></a>
 
@@ -211,8 +209,6 @@ This option doesn't contain the [crashing scenarios](#crashing-scenarios) table 
 ## Option 4: Stacktrace Detection <a name="option-4"></a>
 
 Before sending a crash report, the SDK identifies an SDK crash by looking at the topmost frames of the crashing thread. If the topmost frames stem from the SDK itself, it disables itself. The [SDK crash detection](https://github.com/getsentry/sentry/tree/master/src/sentry/utils/sdk_crashes) already uses this approach in the event processing pipeline.
-
-This approach doesn’t work with static linking, as the Sentry SDKs end up in the same binary as the main app. As we don’t have symbolication in release builds, we can’t reliably detect if the memory address stems from the Sentry SDK or the app. We might be able to compare addresses with known addresses of specific methods or classes, but this won’t work reliably. As with iOS, many apps use static linking, so we must use an alternative approach.
 
 ### Crashing Scenarios <a name="option-4-crashing-scenarios"></a>
 
