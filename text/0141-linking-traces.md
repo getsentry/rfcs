@@ -321,6 +321,20 @@ For links stored in child spans, SDKs should serialize them to `spans[i].links`:
 }
 ```
 
+### Setting `previous_trace` span links
+
+We can link traces by definint span links on the root spans of respective frontend traces. The general idea is to store the span context of the previous root span in a a storage mechanism of choice (e.g. `sessionStorage` in the browser) and read/write to it when necessary:
+
+Therefore, on root span start:
+  * Check if there is a previous span context stored
+    * If yes, add the span link with the `'sentry.link.type': 'previous_trace'` attribute
+  * Store the root span context as the previous root span in a storage mechanism of choice (e.g. `sessionStorage` in the browser)
+
+SDKs are free to implement heuristics around how long a previous trace span context should be considered (max time) and store additional necessary data.
+
+This means that the last-started root span will be denote the previous trace. In situations, where multiple root spans are started in parallel, the last started span "wins". However, the multiple root spans aspect of this should play a negligible role in Sentry SDKs, given our SDKs don't allow for this by default and it would require significant manual user setup. We acknowledge though that this could lead to potentially confusing relationships. 
+  
+
 ### Ingest / Relay
 
 Relay should forward the span links in the format that is required for further processing and storage. 
