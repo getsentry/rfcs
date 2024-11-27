@@ -382,3 +382,5 @@ While this might seem simpler at first glance, it has a some drawbacks:
   Furthermore, things get much more complicated if we take into account that users don’t only sample uniformly via a `tracesSampleRate` but also arbitrarily via `tracesSampler` APIs. In the latter case, by enforcing a consistent sampling decision on the first trace, we could end up with significantly more or less traces (potentially none) than with today’s trace-based sampling strategy. 
 
   Even if we were to sample consistently, for example across frontend transaction, we could never (due to technical/browser limitations) sample all transactions/traces perfectly. Concretely, we cannot propagate a sampling decision in multi-page applications across individual page requests. We can still partially connect the frontend transactions, and establish the trace relationship, but consistent sampling is impossible. 
+
+- [Further internal concerns and answers](https://www.notion.so/sentry/Addressing-Concerns-RE-linked-traces-14b8b10e4b5d80b68a4cc9352c8a3d00)
