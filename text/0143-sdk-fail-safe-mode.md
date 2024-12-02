@@ -7,46 +7,70 @@
 
 This RFC aims to find strategies to minimize the damage of crashing SDKs in production.
 
+This RFC is currently heavily under construction. Please don't review it yet.
+
 # Motivation
 
 Our customers use Sentry to ship confidently. They lose trust in Sentry if our SDKs continuously crash their apps, which our QA process should prevent, but you can never reduce that risk to 0.00%. Such fatal incidents are hazardous, mainly for applications with a slow release cycle, such as mobile apps, because customers can't deploy a hotfix within minutes or hours. A repeated Sentry SDK crash will again make it to our customers. When it does, we need to have strategies to minimize the damage.
 
 # Background
 
-The Cocoa SDK had an incident in July/August 2024 that crashed our customers' apps in production without sending crash reports to Sentry. Our SDK crash detection couldn't detect this problem because Sentry received no data. We only knew about the issue when customers reported that they stopped receiving data for their newest release and shared crash reports from AppStoreConnect with us.
+The [SDK crash detection](https://github.com/getsentry/sentry/tree/master/src/sentry/utils/sdk_crashes) allows us to view SDK crashes in Sentry. It checks every ingested event in the processing pipeline for a potential SDK crash. When detecting one, it only keeps the most essential data due to PII and copies the crash event to dedicated Sentry projects. The SDK crash detection helps fix crashing SDK bugs. Still, it only works when the SDK crash events make it to Sentry. The Cocoa SDK had an incident in July/August 2024 that crashed our customers' apps in production without sending crash reports to Sentry. Our SDK crash detection couldn't detect this problem because Sentry received no data. We only knew about the issue when customers reported that they stopped receiving data for their newest release and shared crash reports from AppStoreConnect with us.
+
+## Continuous Crashing Scenarios
+
+There are different scenarios for a continuously crashing SDK with different severities. Potential solutions must cover the first two scenarios. Covering scenario 3 is still important, but we can implement options later.:
+
+### Scenario 1: Worst Case - SDK Crashing During App Start No Crash Reports
+
+The worst case scenario is a continuously crashing SDK during app start that cannot send crash events to Sentry. The reason for this could be a crash in the SDK initialization code or while sending a crash report or other data. The app is in a death spiral, meaning it continuously crashes during the app start and is unusable. Finding a strategy to escape the death spiral is vital because not only does it crash our users, but we stay in the dark and must rely on them to report the problem. This scenario is painful for our users because it takes time to realize what is crashing their app, as they must use other tools such as App Store Connect or the Google Play Store to identify the root cause. Once they identify the root cause, they must publish a new release, which can take several hours or even days. Finally, they must rely on their users to update their apps to fix the issue. Some users might lose trust in Sentry if this only happens once.
+
+### Scenario 2: Almost Worst Case - SDK Crashing During App Start Can Send Crash Reports
+
+Almost as bad as scenario 1, the SDK crashes continuously during app start but can still send crashes to Sentry. Now, the SDK crash detection can identify this and alarm us, and our users see in Sentry that the Sentry SDK is crashing their app. Our users rely on Sentry to notify them but must immediately release a hotfix. There is still damage, but they most likely still trust Sentry because we informed them about the problem. Some users might again lose trust in Sentry.
+
+### Scenario 3: SDK Crashing Shortly SDK Init
+
+Finally, a bad-case scenario is our SDK crashing continuously at some point after the app start. The app might be unusable as it constantly crashes at a specific area, or only certain features stop working. The Sentry SDK should still be able to send a crash report, so the SDK crash detection should surface this, and our users can see the crashes in their data. If the SDK can't send a crash report, this scenario can either turn into scenario 1, where sending a crash report continuously crashes, or the SDK can't send crash reports, which is also bad but out of the scope of this RFC.  Similar to scenario 2, our users must release a hotfix, and they could lose trust, but it is better than scenario 1.
+
+## Potential False Positives
+
+There are crashing scenarios that could look like the Sentry SDK is causing the crash, but it's the user's application code. We need to keep these scenarios in mind, but we can only ignore some of these and inform our users via documentation how to prevent them:
+
+### Scenario 1: User's Application Crashes Before SDK Initialization
+
+The user's application crashes before the initialization of the Sentry SDK. We can only educate our users about the importance of initializing the Sentry SDK as early as possible. We can't disable the SDK, as it never initializes.
+
+### Scenario 2: User's Application Crashes Async During SDK Initialization
+
+The user's application crashes async during the initialization of the Sentry SDK. It could be that the Sentry SDK can send a crash report to Sentry or not. When the SDK detects a crash during its initialization, it switches to the SDK Safe Mode, which runs the SDK with the essential SDK features. If the SDK fails to finish its initialization and can't send a crash report to Sentry, it doesn't make a difference if the SDK is enabled or disabled.
+
+### Scenario 3: User's Application Crashes Shortly After SDK Initialization
+
+The most likely scenario is the user's application crashes shortly after the SDK initialization. We have to ensure that we're not wrongly disabling the Sentry SDK. Still, suppose we detect that the app continuously crashes after x seconds of the Sentry SDK initialization. In that case, switching to the SDK Safe Mode might be acceptable to minimize the risk of the Sentry SDK being the root cause. Furthermore, our users will mainly be interested in the crash events, not other data such as performance or session replay.
+
+## App Start Crash Detection
+
+
+## Hybrid SDKs
+
+| # | Description | Potential Damage |
+| ---: | --- | --- |
+| 8. | The hybrid SDK crashes during its initialization, _[continue at 8.1, 8.2]_ |  |
+| 8.1. | _[continued from 8.]_ and the underlying native SDK __can__ initialize. |  |
+| 8.2. | _[continued from 7.]_ and the underlying native SDK __can't__ initialize. |  |
+
+## Crashing While Writing a Crash Report
+
+Crashing while writing a crash report is terrible but not as fatal as continuously an application. As the SDKs should only write crash reports when the application is already crashing, the damage is missing data.
+
+We could detect crashing while writing a crash report by writing a minimal crash report with only bare-bone information and then a full crash report with more details. If the bare-bone crash report misses its counterpart, the complete crash report, we know something is broken. 
+This would help improve the watchdog termination detection algorithm of the Cocoa SDK. The watchdog.
 
 # Options Considered
 
 The proposed options below don’t exclude each other. We can implement one, some, or all of them. The combination of options can differ per SDK as the technical possibilities and requirements might vary.
 
-## Crashing Scenarios <a name="crashing-scenarios"></a>
-
-The options should cover the following scenarios:
-
-| # | Description | Potential Damage |
-| ---: | --- | --- |
-| | __Sentry SDK__  | |
-| 1. | The Sentry SDK continuously crashes during its initialization _[continue at 1.1, 1.2]_ | |
-| 1.1. | _[continued from 1.]_ and __can't__ create SDK crash reports. | Crashes and no data. |
-| 1.2. | _[continued from 1.]_ and __can__ create and send some SDK crash reports. | Crashes and some data. |
-| 2. | The Sentry SDK continuously crashes after its initialization _[continue at 2.1, 2.2]_ | |
-| 2.1. | _[continued from 2.]_ and __can't__ create SDK crash reports. | Crashes and no data. |
-| 2.2. | _[continued from 2.]_ and __can__ create and send some SDK crash reports. | Crashes and some data. |
-| 3. | The SDK continuously crashes while it's being initialized async, _[continue at 3.1, 3.2]_ |  |
-| 3.1. | _[continued from 3.]_ and __can't__ create SDK crash reports. | Crashes and no data. |
-| 3.2. | _[continued from 3.]_ and __can__ create and send some SDK crash reports. | Crashes and some data. |
-| 4. | The SDK continuously crashes when creating most crash reports, so there is no crash report. | No data. |
-| | __User's Application__ | |
-| 5. | The user's application crashes shortly after the initialization of the Sentry SDK. | Potentially incorrectly disabling the SDK and no data. |
-| 6. | The user's application crashes async during the initialization of the Sentry SDK _[continue at 6.1, 6.2, 6.3]_ |  |
-| 6.1. | _[continued from 6.]_ and the Sentry SDK can write a crash report, which it creates and sends on the next launch. | Potentially incorrectly disabling the SDK and no data. |
-| 6.2. | _[continued from 6.]_ and the Sentry SDK can write a crash report, which it creates but can't send on the next launch. | There isn't much we can do about this, except educating our customers about the importance of initializing the Sentry SDK as early as possible. Even if we incorrectly disable the SDK, it makes no difference. |
-| 6.3. | _[continued from 6.]_ and the Sentry SDK can't write a crash report, because it happens before initializing the crash handlers. | Same as 6.2. |
-| 7. | The user's application crashes before the initialization of the Sentry SDK. | Same as 6.2. |
-| | __Hybrid SDKs__ | |
-| 8. | The hybrid SDK crashes during its initialization, _[continue at 8.1, 8.2]_ |  |
-| 8.1. | _[continued from 8.]_ and the underlying native SDK __can__ initialize. |  |
-| 8.2. | _[continued from 7.]_ and the underlying native SDK __can't__ initialize. |  |
 
 ## Option 1: Checkpoints <a name="option-1"></a>
 
@@ -107,7 +131,7 @@ Scenario: New SDK version inits with previous failed init
     And the SDK creates a launch marker file for the current SDK version
 ```
 
-### Crashing Scenarios <a name="option-1-crashing-scenarios"></a>
+### Crashing Scenarios [WIP: Outdated] <a name="option-1-crashing-scenarios"></a>
 
 Notes on [crashing scenarios](#crashing-scenarios):
 
@@ -151,7 +175,7 @@ There might be scenarios where the SDK can’t detect it’s crashing. We might 
 
 The remote kill switch has to be strictly tied to SDK versions. When the SDK gets an update, it ignores the killswitch from the previous SDK version.
 
-### Crashing Scenarios <a name="option-2-crashing-scenarios"></a>
+### Crashing Scenarios [WIP: Outdated] <a name="option-2-crashing-scenarios"></a>
 
 Notes on [crashing scenarios](#crashing-scenarios):
 
@@ -210,7 +234,7 @@ This option doesn't contain the [crashing scenarios](#crashing-scenarios) table 
 
 Before sending a crash report, the SDK identifies an SDK crash by looking at the topmost frames of the crashing thread. If the topmost frames stem from the SDK itself, it disables itself. The [SDK crash detection](https://github.com/getsentry/sentry/tree/master/src/sentry/utils/sdk_crashes) already uses this approach in the event processing pipeline.
 
-### Crashing Scenarios <a name="option-4-crashing-scenarios"></a>
+### Crashing Scenarios [WIP: Outdated] <a name="option-4-crashing-scenarios"></a>
 
 Notes on [crashing scenarios](#crashing-scenarios):
 
