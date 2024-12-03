@@ -118,6 +118,8 @@ flowchart LR
 
 On platforms where we can check the stacktrace to find out if the crash is caused by the SDK, we use the stacktrace detection in addition to the checkpoints. Furthermore, we should switch to out of process crash detection when it's available.
 
+TODO: Define a rollout strategy, maybe behind a feature flag.
+
 # A: Detecting Continuous SDK Crashes
 
 First, we need to know when our SDKS continuously crash our customers. Only then can we act accordingly. Let's have a look at the different scenarios for a continuously crashing SDK with different severities before we look at the potential solutions.
