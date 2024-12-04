@@ -60,46 +60,44 @@ config:
   theme: neutral
 ---
 flowchart LR
-    sdk-init-start[Init Start]
-    sdk-init-normal[Normal
+    sdk-init-start[Start SDK
         Init]
-    sdk-init-safe-mode[Safe Init]
+    sdk-init-normal[Init SDK
+        Normally]
+    sdk-init-safe-mode[Init SDK
+        in Safe Mode]
     sdk-init-stop[Stop SDK
         Init]
     sdk-fail-endpoint[Inform
         Failing SDK
         Endpoint]
+
     
-    
-    decision-sdk-disabled@{ shape: diamond, label: "was SDK
-        disabled" }
-    decision-sdk-initialized-x-times@{ shape: diamond, label: "initialized
-        x times" }
+    decision-init-start-x-times@{ shape: diamond, label: "init start called
+        more than x times" }
 
     decision-sdk-mode@{ shape: diamond, label: "previous
         SDK Init" }
-    decision-sdk-init-x-times-safe-mode@{ shape: diamond, label: "initialized
-        x times" }
+    decision-sdk-init-x-times-safe-mode@{ shape: diamond, label: "more than x
+        successful safe inits" }
     
-    sdk-init-start --> decision-sdk-disabled
-    decision-sdk-disabled-- yes --> decision-sdk-initialized-x-times
-    decision-sdk-disabled-- no --> decision-sdk-mode
+    sdk-init-start --> decision-sdk-mode
     
-    decision-sdk-initialized-x-times-- no --> sdk-init-stop
-    decision-sdk-initialized-x-times-- yes --> sdk-init-safe-mode
+    decision-sdk-mode-- stopped init --> decision-init-start-x-times
+    decision-init-start-x-times-- no --> sdk-init-stop
+    decision-init-start-x-times-- yes --> sdk-init-safe-mode
     
     decision-sdk-mode-- successful normal init --> sdk-init-normal
     decision-sdk-mode-- successful safe init --> decision-sdk-init-x-times-safe-mode
     decision-sdk-mode-- failed normal init --> sdk-init-safe-mode
     decision-sdk-mode-- failed safe init --> sdk-init-stop
 
+
     decision-sdk-init-x-times-safe-mode-- yes --> sdk-init-normal
     decision-sdk-init-x-times-safe-mode-- no --> sdk-init-safe-mode 
 
     sdk-init-stop --> sdk-fail-endpoint
-
 ```
-
 
 On platforms where we can check the stacktrace to find out if the crash is caused by the SDK, we use the stacktrace detection in addition to the checkpoints. Furthermore, we should switch to out of process crash detection when it's available.
 
