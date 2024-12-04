@@ -48,7 +48,9 @@ TODO: Explain that this is out of scope for this RFC.
 
 # Recommended Approach
 
-TODO: We use a combination of the following options. We use the SDK crash detection for detecting if a SDK continuously crashes after its initialization. We implement the checkpoints to detect if the SDK crashes during its initialization. When it does the SDK switches to the SDK safe mode. If the SDK continuous to crash it disables itself. If not, it stays in the SDK safe mode. For both the SDK uses the failing SDK endpoint to send information. When the SDK is disabled, it keeps track of how often the SDK was started. If it was started x times, it retries to initialize again. If it does, it goes back to normal. The same applies for the SDK safe mode.
+After detecting a potential SDK crash via [checkpoints](#option-a1), the SDK switches to a [safe SDK mode](#option-b1), a bare minimum SDK with only essential features. When the SDK initialization fails in the safe mode, the SDK makes the initialization a [NoOp (no operation)](#option-b2), communicating this to a [failing SDK endpoint](#option-c1). To minimize the risk of staying incorrectly in the NoOp mode, the SDK implements a retry logic, which switches to the safe mode after being initialized x times in the NoOp mode. The same applies to the safe mode. The SDK switches back to a normal initialization after being initalized x times in the safe mode. While the retry mode will yield further crashes in the worst-case scenario, it ensures our users still receive some SDK crashes in the App Store Connect and the Google Play Console, which is essential for fixing the root cause. We accept this tradeoff over completely flying blind.
+
+TODO: Include start up crash detection. If we crash shortly after the SDK init, the startup-crash detection will make the next SDK init blocking until flushing out the crash report. So we're still crashing our users, but we're at least aware of it.
 
 ```mermaid
 ---
@@ -66,7 +68,7 @@ flowchart LR
         Normally]
     sdk-init-safe-mode[Init SDK
         in Safe Mode]
-    sdk-init-stop[Stop SDK
+    sdk-init-no-op[NoOp SDK
         Init]
     sdk-fail-endpoint[Inform
         Failing SDK
@@ -83,45 +85,64 @@ flowchart LR
     
     sdk-init-start --> decision-sdk-mode
     
-    decision-sdk-mode-- stopped init --> decision-init-start-x-times
-    decision-init-start-x-times-- no --> sdk-init-stop
+    decision-sdk-mode-- no-op init --> decision-init-start-x-times
+    decision-init-start-x-times-- no --> sdk-init-no-op
     decision-init-start-x-times-- yes --> sdk-init-safe-mode
     
     decision-sdk-mode-- successful normal init --> sdk-init-normal
     decision-sdk-mode-- successful safe init --> decision-sdk-init-x-times-safe-mode
     decision-sdk-mode-- failed normal init --> sdk-init-safe-mode
-    decision-sdk-mode-- failed safe init --> sdk-init-stop
+    decision-sdk-mode-- failed safe init --> sdk-init-no-op
 
 
     decision-sdk-init-x-times-safe-mode-- yes --> sdk-init-normal
     decision-sdk-init-x-times-safe-mode-- no --> sdk-init-safe-mode 
 
-    sdk-init-stop --> sdk-fail-endpoint
+    sdk-init-no-op --> sdk-fail-endpoint
 ```
 
 On platforms where we can check the stacktrace to find out if the crash is caused by the SDK, we use the stacktrace detection in addition to the checkpoints. Furthermore, we should switch to out of process crash detection when it's available.
-
-TODO: Define a rollout strategy, maybe behind a feature flag.
 
 # A: Detecting Continuous SDK Crashes
 
 First, we need to know when our SDKS continuously crash our customers. Only then can we act accordingly. Let's have a look at the different scenarios for a continuously crashing SDK with different severities before we look at the potential solutions.
 
+TODO: Explain diagram
+```mermaid
+---
+config:
+  theme: neutral
+---
+flowchart LR
+    before-sdk-init[Before SDK Init]
+    during-sdk-init[During SDK Init]
+    shortly-after-sdk-init[Shortly After SDK Init]
+    after-sdk-init[After SDK Init]
+    
+    before-sdk-init --> during-sdk-init
+    during-sdk-init --> shortly-after-sdk-init
+    shortly-after-sdk-init --> after-sdk-init
+```
+
 ## Continuous Crash Scenarios
 
 There are different scenarios for a continuously crashing SDK with different severities. Potential solutions must cover the first two scenarios. Covering scenario 3 is still important, but we can delay it a bit:
 
-### Scenario 1: Worst Case - SDK Crashing During App Start No Crash Reports
+### Scenario 1: Worst Case - SDK Continuously Crashing During App Start No Crash Reports
 
 The worst case scenario is a continuously crashing SDK during app start that cannot send crash events to Sentry. The reason for this could be a crash in the SDK initialization code or while sending a crash report or other data. The app is in a death spiral, meaning it continuously crashes during the app start and is unusable. Finding a strategy to escape the death spiral is vital because not only does it crash our users, but we stay in the dark and must rely on them to report the problem. This scenario is painful for our users because it takes time to realize what is crashing their app, as they must use other tools such as App Store Connect or the Google Play Store to identify the root cause. Once they identify the root cause, they must publish a new release, which can take several hours or even days. Finally, they must rely on their users to update their apps to fix the issue. Some users might lose trust in Sentry if this only happens once.
 
-### Scenario 2: Almost Worst Case - SDK Crashing During App Start Can Send Crash Reports
+### Scenario 2: Almost Worst Case - SDK Continuously Crashing During App Start Can Send Crash Reports
 
 Almost as bad as scenario 1, the SDK crashes continuously during app start but can still send crashes to Sentry. Now, the SDK crash detection can identify this and alarm us, and our users see in Sentry that the Sentry SDK is crashing their app. Our users rely on Sentry to notify them but must immediately release a hotfix. There is still damage, but they most likely still trust Sentry because we informed them about the problem. Some users might again lose trust in Sentry.
 
-### Scenario 3: SDK Crashing Shortly SDK Init
+### Scenario 3: SDK Continuously Crashing Shortly After SDK Init
 
 Finally, a bad-case scenario is our SDK crashing continuously at some point after the app start. The app might be unusable as it constantly crashes at a specific area, or only certain features stop working. The Sentry SDK should still be able to send a crash report, so the SDK crash detection should surface this, and our users can see the crashes in their data. If the SDK can't send a crash report, this scenario can either turn into scenario 1, where sending a crash report continuously crashes, or the SDK can't send crash reports, which is also bad but out of the scope of this RFC.  Similar to scenario 2, our users must release a hotfix, and they could lose trust, but it is better than scenario 1.
+
+### Scenario 4: SDK Continuously Crashing After SDK Init
+
+TODO: If we can send the crash report, we are aware and can fix it. The damage is still big, but we are aware and can fix it. We can't disable the SDK in this scenario with checkpoints, as the user's app might be crashing.
 
 ## Potential False Positives
 
@@ -139,17 +160,13 @@ The user's application crashes async during the initialization of the Sentry SDK
 
 The most likely scenario is the user's application crashes shortly after the SDK initialization. We have to ensure that we're not wrongly disabling the Sentry SDK. Still, suppose we detect that the app continuously crashes after x seconds of the Sentry SDK initialization. In that case, switching to the SDK Safe Mode might be acceptable to minimize the risk of the Sentry SDK being the root cause. Furthermore, our users will mainly be interested in the crash events, not other data such as performance or session replay.
 
+### Scenario 4: User's Application Crashes After SDK Initialization
+
 ## Option A1: [Preferred] Checkpoints <a name="option-a1"></a>
 
-TODO: Identify if info.plist and such is better than marker files.
+As we must access checkpoint information during the application launch, we must choose an efficient way to read and write this information to not slow down our users' apps. Depending on the platform, we can use marker files or key-value stores such as [UserDefaults](https://developer.apple.com/documentation/foundation/userdefaults) on Apple or [SharedPreferences](https://developer.android.com/reference/android/content/SharedPreferences) on Android. Marker files are more efficient than reading file contents because, for these, the OS only needs to check the file's existence, which is usually a system metadata look-up. We still need to determine which approach is the most efficient.
 
-The SDK stores checkpoints via marker files to disk to identify if it completes SDK initialization. When it doesn't, the SDK knows it most likely causes problems. The SDKs should use marker files because checking the file's existence is significantly more performant than reading its contents.
-
-The SDK implements a retry logic to minimize the risk of wrongly disabling itself. When the app launched x times, the SDK retries if it can launch successfully. If it does, it goes back to normal. If it doesn't, it exponentially increases the number of app launches until it retries.
-
-The specification is written in the [Gherkin syntax](https://cucumber.io/docs/gherkin/reference/). The specification might not work for all edge cases yet, as it can be complicated to get it right. We'll figure out the exact details once we decide to implement it, but it should cover the main scenarios.
-
-TODO: Update the scenarios.
+The specification is written in the [Gherkin syntax](https://cucumber.io/docs/gherkin/reference/). The specification might not work for all edge cases yet, as it can be complicated to get it right. We'll figure out the exact details once we decide to implement it, but it should cover the main scenarios. The spec uses marker files, which might be replaced by key-value storage depending on the platform.
 
 ```Gherkin
 Scenario: SDK version inits the first time
@@ -169,7 +186,7 @@ Scenario: SDK version inits the first time with failed init
     And there is no success init marker file for the SDK version
     When the SDK crashes before reaching the successful init checkpoint
     Then the SDK can't create a success init marker file for the SDK version
-    And the SDK doesn't disable itself
+    And the SDK can't determine a failed init
 
 Scenario: SDK version inits successfully second time with previous successful init
     Given there is a launch marker file for the SDK version
@@ -191,7 +208,7 @@ Scenario: SDK version inits with previous failed init
     Given there is a launch marker file for the SDK version
     And there is no success init marker file for the SDK version
     When the SDK inits
-    Then it disables itself
+    Then it determines a failed init
 
 Scenario: New SDK version inits with previous failed init
     Given there is a launch marker file for a previous SDK version
@@ -202,25 +219,26 @@ Scenario: New SDK version inits with previous failed init
     And the SDK creates a launch marker file for the current SDK version
 ```
 
-### Crashing Scenarios [WIP: Outdated] <a name="option-a1-crashing-scenarios"></a>
+### Continuous Crashing Scenarios <a name="option-a1-scenarios"></a>
 
-Notes on [crashing scenarios](#crashing-scenarios):
+Notes on [continuous crashing scenarios](#continuous-crash-scenarios):
 
 | Scenario | Covered | Notes |
 | --- | --- | --- |
-| 1.1. | ✅ - yes |  |
-| 1.2. | ✅ - yes |  |
-| 2.1. | ⛔️ - no | |
-| 2.2. | ⛔️ - no | But it could be detected via the SDK crash detection. |
-| 3.1. | ✅ - yes | But it could be that it disables itself incorrectly, as the app is actually crashing. |
-| 3.2. | ✅ - yes | same as 3.1. |
-| 4. | ✅ - yes | The SDK correctly ignores this scenario. |
-| 6.1. | ⛔️ - no | The SDK could incorrectly disable itself. |
-| 6.2. | ⛔️ - no | same as 6.1. |
-| 6.3. | ⛔️ - no | same as 6.1. |
-| 7. | ✅ - yes | The SDK correctly ignores this scenario. |
-| 8.1. | ✅ - yes | The native SDKs could implement the checkpoints for the initializing the hybrid SDKs. |
-| 8.2. | ⛔️ - no | When the checkpoint logic of the hybrid and the native SDKs is flawed it won't work. |
+| 1. Worst Case - SDK Continuously Crashing During App Start No Crash Reports | ✅ - yes |  |
+| 2. Almost Worst Case - SDK Continuously Crashing During App Start Can Send Crash Reports | ✅ - yes |  |
+| 3. SDK Continuously Crashing Shortly After SDK Init | ⛔️ - no | But the startup crash detection will try to flush out the crash report. We're still crashing our users, but we're at least aware. |
+| 4. SDK Continuously Crashing After SDK Init | ⛔️ - no | No, but the SDK can send the crash report and we can fix the problem. |
+
+Notes on [potential false positives](#potential-false-positives):
+
+| Scenario | Covered | Notes |
+| --- | --- | --- |
+| 1. User's Application Crashes Before SDK Initialization | ⛔️ - no | No option can cover this. |
+| 2. User's Application Crashes Async During SDK Initialization | ⛔️ - no | The SDK would incorrectly detect a failed init. |
+| 3. User's Application Crashes Shortly After SDK Initialization | ✅ - yes | The SDK correctly ignores this scenario. |
+| 4. User's Application Crashes After SDK Initialization | ✅ - yes | The SDK correctly ignores this scenario. |
+
 
 ### Pros <a name="option-a1-pros"></a>
 
@@ -248,24 +266,14 @@ Before sending a crash report, the SDK identifies an SDK crash by looking at the
 
 ### Crashing Scenarios [WIP: Outdated] <a name="option-a3-crashing-scenarios"></a>
 
+TODO: Update scenarios
+
 Notes on [crashing scenarios](#crashing-scenarios):
 
 | Scenario | Covered | Notes |
 | --- | --- | --- |
 | 1.1. | ⛔️ - no | It doesn't work when the SDK crashes before parsing and sending the crash report. |
-| 1.2. | ✅ - yes | |
-| 2.1. | ⛔️ - no | same as 1.1. |
-| 2.2. | ✅ - yes | |
-| 3.1. | ⛔️ - no | same as 1.1. |
-| 3.2. | ✅ - yes | |
-| 4. | ⛔️ - no |  |
-| 5. | ✅ - yes |  |
-| 6.1. | ✅ - yes | It wouldn't disable the SDK. |
-| 6.2. | ✅ - yes | same as 5.1. |
-| 6.3. | ✅ - yes | same as 5.1. |
-| 7. | ✅ - yes | The SDK correctly ignores this scenario. |
-| 8.1. | ✅ - yes | The native SDKs can send a crash report of the hybrid SDKs. |
-| 8.2. | ⛔️ - no |  |
+
 
 ### Pros <a name="option-a3-pros"></a>
 
@@ -297,7 +305,7 @@ To avoid being stuck in the Safe Mode, the SDK always switches back to normal mo
 
 1. If the crash occurs in the safe mode, the SDK causes an extra crash before disabling itself.
 
-## Option B2: Disabling the SDK <a name="option-b2"></a>
+## Option B2: NoOp SDK Init <a name="option-b2"></a>
 
 The SDK disables itself when it detects a continuous crash with one of the options of [A](#options-for-detecting-sdk-crashes). It keeps track of how often the SDK was started and after x times it retries to initialize again.
 
@@ -392,3 +400,4 @@ multiple options are presented:
 # Unresolved questions
 
 - How does [checkpoints](#option-a1) work with the new start up crash detection logic?
+- How do we test and rollout the new logic?
