@@ -65,32 +65,27 @@ flowchart LR
         Init]
     sdk-init-safe-mode[Init in
         Safe Mode]
-    sdk-init-stop[Init
-        Stop]
-    sdk-fail-endpoint[Send Info
-        to Failing
-        SDK Endpoint]
+    sdk-init-stop[Stop SDK
+        Init]
+    sdk-fail-endpoint[Inform
+        Failing SDK
+        Endpoint]
     
     
-    decision-sdk-disabled@{ shape: diamond, label: "was
+    decision-sdk-disabled@{ shape: diamond, label: "was SDK
         disabled" }
     decision-sdk-initialized-x-times@{ shape: diamond, label: "initialized
         x times" }
-    decision-init-success@{ shape: diamond, label: "previous
+    decision-init-success@{ shape: diamond, label: "was SDK
         Init success" }
 
-    decision-init-success-safe-mode@{ shape: diamond, label: "previous
+    decision-init-success-safe-mode@{ shape: diamond, label: "was SDK
         Init success" }
 
-    decision-safe-mode@{ shape: diamond, label: "previous
+    decision-safe-mode@{ shape: diamond, label: "was SDK in
         Safe Mode" }
     decision-sdk-init-x-times-safe-mode@{ shape: diamond, label: "initialized
         x times" }
-
-    decision-did-send-fail-endpoint@{ shape: diamond, label: "did send
-        fail endpoint
-        info" }
-
     
     sdk-init-start --> decision-sdk-disabled
     decision-sdk-disabled-- yes --> decision-sdk-initialized-x-times
@@ -111,8 +106,7 @@ flowchart LR
 
     decision-safe-mode-- no --> decision-init-success
 
-    sdk-init-stop --> decision-did-send-fail-endpoint
-    decision-did-send-fail-endpoint -- no --> sdk-fail-endpoint
+    sdk-init-stop --> sdk-fail-endpoint
 
 ```
 
