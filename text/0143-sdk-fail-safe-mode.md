@@ -9,7 +9,7 @@ This RFC aims to find strategies to minimize the damage of crashing SDKs in prod
 
 # Motivation
 
-Our customers use Sentry to ship confidently. They lose trust in Sentry if our SDKs continuously crash their apps, which our QA process should prevent, but you can never reduce that risk to 0.00%. Such fatal incidents are hazardous, mainly for applications with a slow release cycle, such as mobile apps, because customers can't deploy a hotfix within minutes or hours. A repeated Sentry SDK crash will again make it to our customers. When it does, we need to have strategies to minimize the damage.
+Our customers use Sentry to ship confidently. They lose trust in Sentry if our SDKs continuously crash their apps, which our QA process should prevent, but you can never reduce that risk to 0.00%. Such fatal incidents are hazardous, mainly for applications with a slow release cycle, such as mobile apps, because customers can't deploy a hotfix within hours. A continuous Sentry SDK crash will again make it to our customers. When it does, we must have strategies to minimize the damage.
 
 # Background
 
@@ -17,25 +17,24 @@ The Cocoa SDK had an incident in July/August 2024 that continuously crashed our 
 
 Why didn't the [SDK crash detection](https://github.com/getsentry/sentry/tree/master/src/sentry/utils/sdk_crashes) help us to identify the issue? For those who do not know, the SDK crash detection allows us to view SDK crashes in Sentry. It checks every ingested event in the processing pipeline for a potential SDK crash. When detecting one, it only keeps the most essential data due to PII and copies the crash event to dedicated Sentry projects. The SDK crash detection helps fix crashing SDK bugs. Still, it only works when the SDK crash events make it to Sentry, which wasn't the case in the abovementioned incident.
 
-Therefore, we need extra strategies to identify such incidents without help from our customers, and we need to minimize the damage. Actually, we need to solve three different problems:
+To identify and minimize the damage of such incidents, we need to develop extra strategies. To get there, we have to solve three different problems:
 
-1. **Detecting a continuously crashing SDK:** First, we need to know when our SDKS continuously crash our customers. Only then can we act accordingly.
-2. **Minimizing the damage of a continuously crashing SDK:** Once we know an SDK is constantly crashing, we must do something to reduce the damage. It's better to have no data than crashes and no data.
-3. **Knowing when the SDK is continuously crashing:** When we know our SDK crashes continuously and we minimize the damage, we still need to fix the root cause. We can only do that if we're aware, so we can't simply skip initializing a continuously crashing SDK and do nothing. We need some data to find out how we can fix the problem.
+1. [**A: Detecting a continuously crashing SDK**](#a-detecting-continuous-sdk-crashes): First, we need to know when our SDKS continuously crash our customers.
+2. [**B: Minimizing the damage of a continuously crashing SDK**](b-minimizing-the-damage): It's better to have no data than crashes and no data.
+3. [**C: Knowing when and why the SDK is continuously crashing**](#c-knowing-when-the-sdk-is-disabled): After minimizing the damage, we still need to fix the root cause. We can only do that if we're aware and have some data to fix the problem.
 
-We're going to look at each one of the problems in an extra section below. But before we do, we still need to look at related topics impacting the ideal solution.
+
+We're going to look at each one of the problems in an extra section below. But before we do, we must look at related topics impacting the ideal solution.
 
 ## Other topics
 
-We must keep the following topics in mind when designing the optimal solution.
-
 ### App Start Crash Detection <a name="app-start-crash-detection"></a>
 
-The native SDKs, Cocoa and Android, have an app start crash detection logic: The SDK init waits synchronously for up to 5 seconds to flush out events if the app crashes within 2 seconds after the SDK init. We can combine it with the proposed solution to identify if the SDK is potentially crashing shortly after its initialization.
+The native SDKs, Cocoa and Android, have an app start crash detection logic: The SDK init waits synchronously for up to 5 seconds to flush out events if the app crashes within 2 seconds after the SDK init.
 
 ### Hybrid SDKs
 
-Hybrid SDKs, such as React-Native and Flutter, make things more complicated, because we have different SDKs running in parallel in the same app. It can happen that the hybrid SDK crashes during its initialization but the native SDK doesn't. We must keep this in mind when designing the solution.
+Hybrid SDKs, such as React-Native and Flutter, make things more complicated, because we have different SDKs running in parallel in the same app. It can happen that the hybrid SDK crashes during its initialization but the native SDK doesn't.
 
 ### Crashing While Writing a Crash Report
 
@@ -94,9 +93,9 @@ flowchart LR
     sdk-init-no-op --> sdk-fail-endpoint
 ```
 
-On platforms where we can check the stacktrace to find out if the crash is caused by the SDK, we use the stacktrace detection in addition to the checkpoints. Furthermore, we should switch to out of process crash detection when it's available.
+On platforms where we can check the stacktrace to find out if the crash is caused by the SDK, we use the stacktrace detection in addition to the checkpoints.
 
-# A: Detecting Continuous SDK Crashes
+# A: Detecting Continuous SDK Crashes <a name="a-detecting-continuous-sdk-crashes"></a>
 
 First, we need to know when our SDKS continuously crash our customers. Only then can we act accordingly. We can categorize crashes into four different time categories:
 
@@ -335,7 +334,7 @@ Notes on [potential false positives](#potential-false-positives):
 4. It doesn't work when the SDK crashes during or before sending the crash report.
 5. It doesn't work when the SDK crashes before installing the crash handlers.
 
-# B: Minimizing the Damage
+# B: Minimizing the Damage <a name="b-minimizing-the-damage"></a>
 
 ## Option B1: SDK Safe Mode  <a name="option-b1"></a>
 
@@ -404,7 +403,7 @@ No notes on [crashing scenarios](#crashing-scenarios), because we can discard th
 2. It requires an extra package.
 3. Only a subset of customers might use this, and only high-quality aware customers might accept the tradeoff of a double-sized SDK. In fact, most high-quality aware customers most likely care about app size and will use the stable release channel.
 
-# C: Knowing When the SDK is Disabled
+# C: Knowing When the SDK is Disabled <a name="c-knowing-when-the-sdk-is-disabled"></a>
 
 ## Option C1: Failing SDK Endpoint <a name="option-c1"></a>
 
