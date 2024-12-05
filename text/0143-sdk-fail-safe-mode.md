@@ -98,7 +98,7 @@ On platforms where we can check the stacktrace to find out if the crash is cause
 
 # A: Detecting Continuous SDK Crashes
 
-First, we need to know when our SDKS continuously crash our customers. Only then can we act accordingly. Based on time, we can categorize crashes into four different categories:
+First, we need to know when our SDKS continuously crash our customers. Only then can we act accordingly. We can categorize crashes into four different time categories:
 
 ```mermaid
 ---
