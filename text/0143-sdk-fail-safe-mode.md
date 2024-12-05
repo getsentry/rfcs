@@ -7,8 +7,6 @@
 
 This RFC aims to find strategies to minimize the damage of crashing SDKs in production.
 
-This RFC is currently heavily under construction. Please don't review it yet.
-
 # Motivation
 
 Our customers use Sentry to ship confidently. They lose trust in Sentry if our SDKs continuously crash their apps, which our QA process should prevent, but you can never reduce that risk to 0.00%. Such fatal incidents are hazardous, mainly for applications with a slow release cycle, such as mobile apps, because customers can't deploy a hotfix within minutes or hours. A repeated Sentry SDK crash will again make it to our customers. When it does, we need to have strategies to minimize the damage.
