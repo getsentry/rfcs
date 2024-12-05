@@ -460,5 +460,4 @@ multiple options are presented:
 
 # Unresolved questions
 
-- How does [checkpoints](#option-a1) work with the new start up crash detection logic?
 - How do we test and rollout the new logic?
