@@ -41,10 +41,7 @@ Hybrid SDKs, such as React-Native and Flutter, make things more complicated, bec
 
 ### Crashing While Writing a Crash Report
 
-Crashing while writing a crash report is terrible but not as fatal as continuously crashing an application. As the SDKs should only write crash reports when the application is already crashing, the damage is missing data. We could detect crashing while writing a crash report by writing a minimal crash report with only bare-bone information and then a full crash report with more details. If the bare-bone crash report misses its counterpart, the complete crash report, we know something is broken.
-This would help improve the watchdog termination detection algorithm of the Cocoa SDK.
-
-TODO: Explain that this is out of scope for this RFC.
+Crashing while writing a crash report is terrible but not as fatal as continuously crashing an application. As the SDKs should only write crash reports when the application is already crashing, the damage is missing data, which doesn't impact the stability of the SDK. As the main focus of this RFC is to find strategies to minimize the damage of a continuous crashing SDK, this scenario is out of the scope of this RFC. Still, an [idea](#idea-2) exists to address this problem at the bottom of the RFC.
 
 # Recommended Approach
 
@@ -105,9 +102,8 @@ On platforms where we can check the stacktrace to find out if the crash is cause
 
 # A: Detecting Continuous SDK Crashes
 
-First, we need to know when our SDKS continuously crash our customers. Only then can we act accordingly. Let's have a look at the different scenarios for a continuously crashing SDK with different severities before we look at the potential solutions.
+First, we need to know when our SDKS continuously crash our customers. Only then can we act accordingly. Based on time, we can categorize crashes into four different categories:
 
-TODO: Explain diagram
 ```mermaid
 ---
 config:
@@ -124,25 +120,32 @@ flowchart LR
     shortly-after-sdk-init --> after-sdk-init
 ```
 
+1. **Before SDK Init:** When a crash occurs before the user calls the SDK init method.
+2. **During SDK Init:** When a crash occurs during the SDK initialization, which can either be caused by the SDK or async by user code. 
+3. **Shortly After SDK Init:** When a crash occurs shortly after the SDK initialization, which again can be caused either by the SDK or by user code. These crashes require an extra category because they can become a continuous start-up crash loop.
+4. **After SDK Init:** When a crash occurs some time after the SDK init.
+
+Now, let's have a look at the different scenarios for a continuously crashing SDK with different severities before we look at the potential solutions.
+
 ## Continuous Crash Scenarios
 
 There are different scenarios for a continuously crashing SDK with different severities. Potential solutions must cover the first two scenarios. Covering scenario 3 is still important, but we can delay it a bit:
 
-### Scenario 1: Worst Case - SDK Continuously Crashing During App Start No Crash Reports
+### Scenario 1: Worst Case - SDK Continuously Crashing During App Start No Crash Reports <a name="continuous-crash-scenario-1"></a>
 
 The worst case scenario is a continuously crashing SDK during app start that cannot send crash events to Sentry. The reason for this could be a crash in the SDK initialization code or while sending a crash report or other data. The app is in a death spiral, meaning it continuously crashes during the app start and is unusable. Finding a strategy to escape the death spiral is vital because not only does it crash our users, but we stay in the dark and must rely on them to report the problem. This scenario is painful for our users because it takes time to realize what is crashing their app, as they must use other tools such as App Store Connect or the Google Play Store to identify the root cause. Once they identify the root cause, they must publish a new release, which can take several hours or even days. Finally, they must rely on their users to update their apps to fix the issue. Some users might lose trust in Sentry if this only happens once.
 
-### Scenario 2: Almost Worst Case - SDK Continuously Crashing During App Start Can Send Crash Reports
+### Scenario 2: Almost Worst Case - SDK Continuously Crashing During App Start Can Send Crash Reports <a name="continuous-crash-scenario-2"></a>
 
 Almost as bad as scenario 1, the SDK crashes continuously during app start but can still send crashes to Sentry. Now, the SDK crash detection can identify this and alarm us, and our users see in Sentry that the Sentry SDK is crashing their app. Our users rely on Sentry to notify them but must immediately release a hotfix. There is still damage, but they most likely still trust Sentry because we informed them about the problem. Some users might again lose trust in Sentry.
 
-### Scenario 3: SDK Continuously Crashing Shortly After SDK Init
+### Scenario 3: SDK Continuously Crashing Shortly After SDK Init <a name="continuous-crash-scenario-3"></a>
 
-Finally, a bad-case scenario is our SDK crashing continuously at some point after the app start. The app might be unusable as it constantly crashes at a specific area, or only certain features stop working. The Sentry SDK should still be able to send a crash report, so the SDK crash detection should surface this, and our users can see the crashes in their data. If the SDK can't send a crash report, this scenario can either turn into scenario 1, where sending a crash report continuously crashes, or the SDK can't send crash reports, which is also bad but out of the scope of this RFC.  Similar to scenario 2, our users must release a hotfix, and they could lose trust, but it is better than scenario 1.
+Finally, a bad-case scenario is our SDK crashing continuously shortly after the app start. The app might be unusable as it constantly crashes at a specific area, or only certain features stop working. The Sentry SDK should still be able to send a crash report, so the SDK crash detection should surface this, and our users can see the crashes in their data. If the SDK can't send a crash report, this scenario can either turn into scenario 1, where sending a crash report continuously crashes, or the SDK can't send crash reports, which is also bad but out of the scope of this RFC. Similar to scenario 2, our users must release a hotfix, and they could lose trust, but it is better than [scenario 1](#continuous-crash-scenario-1).
 
 ### Scenario 4: SDK Continuously Crashing After SDK Init
 
-TODO: If we can send the crash report, we are aware and can fix it. The damage is still big, but we are aware and can fix it. We can't disable the SDK in this scenario with checkpoints, as the user's app might be crashing.
+Similar to [scenario 3](#continuous-crash-scenario-3), but the SDK crash happens after the SDK init.
 
 ## Potential False Positives
 
@@ -158,9 +161,11 @@ The user's application crashes async during the initialization of the Sentry SDK
 
 ### Scenario 3: User's Application Crashes Shortly After SDK Initialization
 
-The most likely scenario is the user's application crashes shortly after the SDK initialization. We have to ensure that we're not wrongly disabling the Sentry SDK. Still, suppose we detect that the app continuously crashes after x seconds of the Sentry SDK initialization. In that case, switching to the SDK Safe Mode might be acceptable to minimize the risk of the Sentry SDK being the root cause. Furthermore, our users will mainly be interested in the crash events, not other data such as performance or session replay.
+The user's application crashes shortly after the SDK initialization. We have to ensure that we're not wrongly disabling the Sentry SDK. Still, suppose we detect that the app continuously crashes after x seconds of the Sentry SDK initialization. In that case, switching to the SDK Safe Mode might be acceptable to minimize the risk of the Sentry SDK being the root cause. Furthermore, our users will mainly be interested in the crash events, not other data such as performance or session replay.
 
 ### Scenario 4: User's Application Crashes After SDK Initialization
+
+This happens frequently, and we must ensure that the SDK correctly ignores this scenario.
 
 ## Option A1: [Preferred] Checkpoints <a name="option-a1"></a>
 
@@ -239,7 +244,6 @@ Notes on [potential false positives](#potential-false-positives):
 | 3. User's Application Crashes Shortly After SDK Initialization | ✅ - yes | The SDK correctly ignores this scenario. |
 | 4. User's Application Crashes After SDK Initialization | ✅ - yes | The SDK correctly ignores this scenario. |
 
-
 ### Pros <a name="option-a1-pros"></a>
 
 1. It can detect if the SDK crashes during its initialization for any technical setup and when the crash handlers can't capture the crash.
@@ -258,21 +262,65 @@ Notes on [potential false positives](#potential-false-positives):
 
 ## Option A2: SDK Crash Detection <a name="option-a2"></a>
 
-TODO: Explain that we already use the SDK crash detection to detect if a SDK continuously crashes after its initialization. This only works when the SDK can send a crash report to Sentry. Still, we have to manually check the data. We could use alerts on new releases to know when we have to check the data.
+We have already used the SDK crash detection to surface continuous SDK crashes after its initialization. This only works when the SDK can send a crash report, which happens on the server.
+
+### Continuous Crashing Scenarios <a name="option-a1-scenarios"></a>
+
+Notes on [continuous crashing scenarios](#continuous-crash-scenarios):
+
+| Scenario | Covered | Notes |
+| --- | --- | --- |
+| 1. Worst Case - SDK Continuously Crashing During App Start No Crash Reports | ⛔️ - no | The SDK crash detection needs crash reports to work. |
+| 2. Almost Worst Case - SDK Continuously Crashing During App Start Can Send Crash Reports | ✅ - yes |  |
+| 3. SDK Continuously Crashing Shortly After SDK Init | ✅ - yes |  |
+| 4. SDK Continuously Crashing After SDK Init | ✅ - yes |  |
+
+Notes on [potential false positives](#potential-false-positives):
+
+| Scenario | Covered | Notes |
+| --- | --- | --- |
+| 1. User's Application Crashes Before SDK Initialization | ⛔️ - no | No option can cover this. |
+| 2. User's Application Crashes Async During SDK Initialization | ✅ - yes | The SDK crash detection correctly ignores this scenario. |
+| 3. User's Application Crashes Shortly After SDK Initialization | ✅ - yes | The SDK correctly ignores this scenario. |
+| 4. User's Application Crashes After SDK Initialization | ✅ - yes | The SDK correctly ignores this scenario. |
+
+### Pros <a name="option-a2-pros"></a>
+
+1. It already exists.
+2. It correctly ignores all potential false positives.
+3. It works for all SDK crash scenarios when the SDK can send a crash report.
+
+### Cons <a name="option-a2-cons"></a>
+
+1. It doesn't work for SDK init crashes.
+2. It only works for single tenants or self-hosted.
+3. It runs on the server, so it's delayed, and we need extra functionality to communicate the failing SDK info to the SDKs.
+4. It doesn't work offline.
 
 ## Option A3: Stacktrace Detection <a name="option-a3"></a>
 
 Before sending a crash report, the SDK identifies an SDK crash by looking at the topmost frames of the crashing thread. If the topmost frames stem from the SDK itself, it disables itself. The [SDK crash detection](https://github.com/getsentry/sentry/tree/master/src/sentry/utils/sdk_crashes) already uses this approach in the event processing pipeline.
 
-### Crashing Scenarios [WIP: Outdated] <a name="option-a3-crashing-scenarios"></a>
 
-TODO: Update scenarios
+### Continuous Crashing Scenarios <a name="option-a3-continuous-crashing-scenarios"></a>
 
-Notes on [crashing scenarios](#crashing-scenarios):
+Notes on [continuous crashing scenarios](#continuous-crash-scenarios):
 
 | Scenario | Covered | Notes |
 | --- | --- | --- |
-| 1.1. | ⛔️ - no | It doesn't work when the SDK crashes before parsing and sending the crash report. |
+| 1. Worst Case - SDK Continuously Crashing During App Start No Crash Reports | ⛔️ - no | The stacktrace detection needs crash reports to work. |
+| 2. Almost Worst Case - SDK Continuously Crashing During App Start Can Send Crash Reports | ✅ - yes |  |
+| 3. SDK Continuously Crashing Shortly After SDK Init | ✅ - yes |  |
+| 4. SDK Continuously Crashing After SDK Init | ✅ - yes |  |
+
+Notes on [potential false positives](#potential-false-positives):
+
+| Scenario | Covered | Notes |
+| --- | --- | --- |
+| 1. User's Application Crashes Before SDK Initialization | ⛔️ - no | No option can cover this. |
+| 2. User's Application Crashes Async During SDK Initialization | ✅ - yes | The stacktrace detection correctly ignores this scenario. |
+| 3. User's Application Crashes Shortly After SDK Initialization | ✅ - yes | The stacktrace detection correctly ignores this scenario. |
+| 4. User's Application Crashes After SDK Initialization | ✅ - yes | The stacktrace detection correctly ignores this scenario. |
 
 
 ### Pros <a name="option-a3-pros"></a>
@@ -378,16 +426,20 @@ The backend detects anomalies in our customers' session data. If there is a sign
 ### Cons <a name="option-c2-cons"></a>
 
 1. Requires backend changes.
-2. It only works in combination with a remote killswitch.
-3. This doesn’t work for SDK init crashes.
 
-## Option C3: Out of process crash detection <a name="option-c3"></a>
+# Other Ideas to Increase Reliability
 
-### Pros <a name="option-c3-pros"></a>
+This section contains other valuable ideas for increasing SDK reliability that came up during discussions but are out of the scope of this RFC.
+
+## Idea 1: Out of process crash detection <a name="idea-1"></a>
 
 The SDK launches an extra process to monitor and detect a crash in the user’s application. The main advantage is that when the SDK running in the extra process crashes, it doesn’t impact the user’s application process. While this seems appealing, it’s not possible on iOS and Android when writing this, and therefore, we can discard this option.
 
-### Cons <a name="option-c3-cons"></a>
+## Idea 2: Detecting Crashing While Writing a Crash Report <a name="idea-2"></a>
+
+We could detect crashing while writing a crash report by writing a minimal crash report with only bare-bone information and then a full crash report with more details. If the bare-bone crash report misses its counterpart, the complete crash report, we know something is broken.
+
+This has other benefits, too. For example, it would help improve the watchdog termination detection algorithm of the Cocoa SDK.
 
 # Drawbacks
 
