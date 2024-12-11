@@ -192,7 +192,7 @@ The specification is written in the [Gherkin syntax](https://cucumber.io/docs/g
 
 ```Gherkin
 Scenario: App version inits the first time
-    Given there is no start init marker file for the pp version
+    Given there is no start init marker file for the app version
     And there is no success init marker file for the app version
     When the SDK inits
     Then the SDK creates a start init marker file for the app version
