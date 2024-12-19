@@ -5,29 +5,30 @@
 
 # Summary
 
-This RFC introduces the ability to link or connect traces in Sentry. The required changes involve SDKs, Ingest, Search and Storage, Backend as well as product teams.
+This RFC introduces the ability to link and connect traces in Sentry. The required changes involve SDKs, Ingest, Search and Storage, Backend as well as product teams.
 The goal of this initiative is to be able to link multiple traces together so that the Sentry product can show what happened before a specific trace while preserving the integrity of individual traces.
-This RFC proposes to use "Span Links" as a vehicle for specifying relationships between spans in multiple traces. It also discusses other options considered, as well as concrete use cases for this feature.
+This RFC proposes to use [Span Links](#preferred-span-links) as a vehicle for specifying relationships between spans across multiple traces. It also discusses other options considered, as well as concrete use cases for this feature.
 
 # Motivation
 
 At the time of writing this RFC, Sentry (the product as well as SDKs) cannot connect multiple traces to deliver a "bigger picture" of what happened before (or after) a specific trace. 
 A trace is therefore the highest level of connecting signals (errors, traces, profiles, etc.).
 The notable exception is Session Replay, where we are indeed able to provide this bigger picture.
+Replay is an opt-in, additional product.
 
 This RFC proposes a method of achieving linkage between (and within) traces in the entire Sentry product, to satisfy a number of currently sub-optimally solved use cases.
 
 ## Frontend Traces and User Journeys
 
-The most important application of linking traces are frontend applications. We would like to display a user journey (session) to make debugging of issues easier as developers get more context on what happened before a specific issue. 
+The most important application of linking traces are frontend applications. We would like to better display a user journey (session) to make debugging of issues easier as developers get more context on what happened before a specific issue. 
 Today, we are limited to the duration of one trace (id), which is handled differently and kept alive for different times across our various SDKs. 
 
 A concrete example are our [JavaScript Browser SDKs](https://develop.sentry.dev/sdk/platform-specifics/javascript-sdks/browser-tracing/#tracing-model) which by default keep a trace alive as long as users
-are on the same page or (URL) route. This trace model was a compromise in which we accepted that a trace would consist of multiple trace root spans (transactions) but provides more context. Long-lived traces are generally discouraged by tracing models like OpenTelemetry.
+are on the same page or (URL) route. This trace model was a compromise in which we accepted that a trace would consist of multiple trace root spans (transactions) but provides more context. Long-lived traces, with multiple trace root spans, are generally discouraged by tracing models like OpenTelemetry.
 
 Another example of a suboptimal trace model is the one used in most mobile SDKs. In these SDKs, traces are mostly started via idle transactions, meaning transactions start a fixed point but end automatically after a specific period of inactivity (i.e. no child spans being added). Errors occurring while no transaction is active are associated with a "fallback" `traceId` stored on the global SDK scope that stays the same until the SDK is again initialized. The consequence is that potentially hundreds of unrelated events are associated with the same fallback trace as [outlined](https://github.com/getsentry/rfcs/blob/rfc/mobile-tracing-without-performance-v-2/text/0136-mobile-tracing-without-performance-v-2.md) in a previous attempt to improve this behavior.
 
-## Queues, Async and Batch Operations
+## Related: Queues, Async and Batch Operations
 
 Somewhat related, we also face situations in which child spans are not started and finished within the time span of their parent span. While generally supported by OpenTelemetry, such traces pose the question of  A concrete example for this is that we [currently recommend](https://docs.sentry.io/platforms/javascript/guides/node/tracing/instrumentation/custom-instrumentation/queues-module/) users to create one trace for a producer-consumer (Queue) cycle, where the spans from the consumer likely start after the producer spans finished. OpenTelemetry in fact [recommends](https://opentelemetry.io/docs/concepts/signals/traces/#span-links) to start separate traces for the consumer, producer or more generally async operations and to link these traces via a span link. Other related use cases are batch processes where one initiator trace triggers a large number of batch processes. Otel also recommends to link these spans instead in favour of grouping them under one trace.
 
@@ -37,22 +38,23 @@ In addition, besides inter-trace links, we might also be interested in linking s
 - (Async) data flow operations (e.g. RxJS pipes) where we would be able to link individual operations.
 - Websocket spans where we could link individual web socket messages
 - Background data syncs on mobile that you can't directly link to a specific transaction, but it's useful to know that they happened during a transaction. Now, the mobile SDKs put these spans on the transaction bound to the scope.
-- More generally, whenever we want to establish a causal relationship between spans that cannot or should not be achieved via a hard relationship (traceId or parent spanId)
+- More generally, whenever we want to establish a causal relationship between spans that cannot or should not be achieved via a hard hierarchical relationship (traceId or parent spanId)
 
-# Concrete Goals of achieving linked traces
+# Primary, Concrete Goals of achieving linked traces
 
 Once this RFC is accepted, we have settled on all important details needed to implement linked traces.
 This means, we have all the necessary information to support the following concrete goals
 
 Product:
 - The product is able to handle span links; in a first step at least span links linking to a previous trace (identified by the `'sentry.link.type': 'previous_trace'` [attribute](#preferred-span-links)). It's important to note though that span links are more universal and can define inter- and intra-trace span relationships. We should support links more generally eventually.
-- Concrete UI suggestion: Users can navigate between previous/next traces via backwards/forwards buttons in the trace view whenever a span link is identified in the current trace
+- Concrete UI suggestion: Users can navigate between previous/next traces via backwards/forwards buttons in the trace view whenever a next or previous trace is found for the current trace
 - Additional UX and UI adjustments are welcomed and up for discussion and decision by product teams
-- Given that breadcrumbs will be likely phased out for tracing, trace links are a replacement to show any kind of "previous trace or transaction" information.
+- Given that breadcrumbs will likely be phased out for tracing, trace links are a replacement to show any kind of "previous trace or transaction" information.
 
 Client Infra/Storage:
-- SDKs can add support for adding links to spans
+- SDKs add support for adding links to spans
 - We can ingest and store span links
+- We can query previous and next traces for a given root span in a given trace.
 - Frontend SDKs can automatically add span links so that the current trace root span links back to the previous trace root span
 
 
@@ -62,9 +64,8 @@ Client Infra/Storage:
 
 ## Out of scope/Non-Goals
 
-- Querying across linked traces: Given the "linked list" nature of one root span linking back to its previous root span, we accept that obtaining a complete list is an expensive query operation. Therefore, we consider use cases that require a complete list of all linked traces out of scope. We can address this as a follow-up if technically possible but we're aware that this is likely a sub-optimal data structure for such queries. Any storage or ingest decisions to make establishing the complete picture easier (doubly-linked lists, indexes, etc) are encouraged but up to individual teams to decide upon.
-- Linking transactions started during the rendering of statically generated HTML pages and pageload transactions. A span link is ideal here because we don't want the hard link of a trace id. However, a casual link would still increase context and completeness. We might do it but not at this point as it's a follow-up item where span links are a prerequisite.
-- Unsampled or negatively sampled traces are not linked by SDKs. For example, if the first trace was sampled negatively, the next trace will not link to it as this would result in a link to a non-existing trace. To be clear: Server-side sampling (DS) might still drop spans other spans link towards. Meaning, we cannot make assumptions that a span link guarantees the existence of the span it links to.
+- Querying across linked traces: Given the "linked list" nature of one root span linking back to its previous root span, we accept that obtaining a complete list is an expensive query operation. Therefore, we consider use cases that require a complete list of all linked traces out of scope to start with. We can address this as a follow-up if technically possible but we're aware that this is likely a sub-optimal data structure for such queries. Any storage or ingest decisions to make establishing the complete picture easier (doubly-linked lists, indexes, etc) are encouraged but up to individual teams to decide upon.
+- Linking traces started during the rendering of statically generated HTML pages and specific pageload transactions. A span link is ideal here because we don't want the hard link of a trace id. However, a casual link would still increase context and completeness. We might do it but not at this point as it's a follow-up item where span links are a prerequisite.
 
 # Background
 
@@ -109,7 +110,11 @@ In an OTLP span export, span links are serialized as follows:
                   ],
                   // span and trace linked to (from span.spanContext()): 
                   "spanId": "6c71fc6b09b8b716", 
-                  "traceId": "627a2885119dcc8184fae7eef09438cb", 
+                  "traceId": "627a2885119dcc8184fae7eef09438cb",
+                  "traceFlags": 1, // 1: positively sampled; 0: negatively sampled
+                  // additional data
+                  "traceState": {"foo": "bar"},
+                  "droppedAttributesCount": 1
                 }
               ],
               "droppedLinksCount": 0
@@ -144,9 +149,9 @@ Upon decision from Leadership as well as from it being noted in Sentry's Goal Hi
 
 Sentry users would like to get as much insight as possible when inspecting (errors or performance) issues. Right now, with the notable exception of Session Replay, we can only provide answers as to what happened before an error occurred up to the point when a trace was started. If we can link from the current to the previous trace, we can significantly widen the insight into the entire user journey, which is often crucial to understand why and how a specific issue occurred. 
 
-Given that almost half of the events sent to Sentry can be attributed solely to events sent from Sentry's frontend JavaScript or mobile SDKs, a significant portion of sent events would directly benefit from better linkage between events. Considering that frontend applications almost always have a backend, counter events sent from backend SDKs would implicitly also benefit from a better tracing model. Wins all around!
+Given that almost half of the events sent to Sentry can be attributed solely to events sent from Sentry's frontend JavaScript or mobile SDKs, a significant portion of sent events would directly benefit from better linkage between events. Considering that frontend applications almost always have a backend, events sent from backend SDKs would implicitly also benefit from a better tracing model. Wins all around!
 
-While linked traces themselves are not identical to user sessions, we're aware that users have been asking for some kind of connectedness in various forms on GitHub as well as via Sales/Solution Engineers. Typically, in a frontend application context, users would expect Sentry to show them a user _session_. In such cases we explain that Sentry [does track sessions](#current-session-models-in-sentry-sdks), albeit in a flawed way. Right now, we cannot answer questions like, what happened in a previous trace that might have had an impact on the trace with an error. With linked traces, we can.
+While linked traces themselves are not identical to user sessions, we're aware that users have been asking for some kind of connectedness in various forms on GitHub ([example 1](https://github.com/getsentry/sentry/issues/82325), [example 2](https://github.com/getsentry/sentry/issues/72929)) as well as via Sales/Solution Engineers. Typically, in a frontend application context, users would expect Sentry to show them a user _session_. In such cases we explain that Sentry [does track sessions](#current-session-models-in-sentry-sdks), albeit in a flawed way. Right now, we cannot answer questions like, what happened in a previous trace that might have had an impact on the trace with an error. With linked traces, we can.
 
 Looking at other observability providers, they have support for user sessions
 
@@ -217,15 +222,15 @@ interface Link {
 interface SpanContext {
   traceId: string,
   spanId: string,
-  traceFlags: string,
+  traceFlags: number,
 }
 
 type Attributes = Record<string, AttributeValues>
 type AttributeValues = string | boolean | number | Array<string> | Array<boolean> | Array<number>
 ```
 
-Note: On some platforms, the Otel `Link` interface exposes another optional property: `droppedAttributesCount`. POtel SDKs should support passing in this property as defined by the API but can further ignore it when serializing the span link to Sentry envelopes.  In [JS for example](https://github.com/open-telemetry/opentelemetry-js/blob/main/api/src/trace/link.ts), the `droppedAttributeCount` can be passed, while [Python](https://github.com/open-telemetry/opentelemetry-python/blob/main/opentelemetry-api/src/opentelemetry/trace/span.py#L120) does not permit it. 
-Non-Otel SDKs are free to ignore this property.
+Note: On some platforms, the Otel `Link` interface exposes other optional properties, for example `droppedAttributesCount` and `traceState`. POtel SDKs should support passing in this property as defined by the API but can choose to ignore it when serializing the span link to Sentry envelopes, or simply serialize it, too.  In [JS for example](https://github.com/open-telemetry/opentelemetry-js/blob/main/api/src/trace/link.ts), the `droppedAttributeCount` can be passed, while [Python](https://github.com/open-telemetry/opentelemetry-python/blob/main/opentelemetry-api/src/opentelemetry/trace/span.py#L120) does not permit it. 
+Non-Otel SDKs are free to ignore these properties.
 
 Note II: POtel SDKs today already have to expose `addLink(s)` APIs, however we simply disregard the added links when serializing Otel spans to transaction event envelopes. Furthermore, for platform agnostic APIs, the non-POtel browser SDKs today also expose these methods. They simply no-op at the moment.
 
@@ -289,7 +294,9 @@ We propose to store span links in the `trace` context if the root span has links
       links?: Array<{
         "span_id": string,
         "trace_id": string, 
-        attributes: Record<string, AttributeValue>,
+        sampled?: boolean, // traceFlags from Otel converted to boolean
+        attributes?: Record<string, AttributeValue>,
+        // + potentially more fields 1:1 from Otel. e.g. (traceState, droppedAttributesCount)
       }>
       // ...
     }
@@ -312,8 +319,9 @@ For links stored in child spans, SDKs should serialize them to `spans[i].links`:
     // new field for links:
     links?: Array<{
       "span_id": string,
-      "trace_id": string, 
-      attributes: Record<string, AttributeValue>,
+      "trace_id": string,
+      sampled?: boolean,
+      attributes?: Record<string, AttributeValue>,
     }>
     // ...
   }>
@@ -321,9 +329,18 @@ For links stored in child spans, SDKs should serialize them to `spans[i].links`:
 }
 ```
 
+This means that the serialized links objects should always contain:
+
+- `span_id: string` - id of the span to link to
+- `trace_id: string` - trace id of the span to link to
+- `sampled: boolean` - required if sampling decision of the span to link to (corresponds to `traceFlags` in Otel span context converted to `boolean`) is available
+- `attributes:` - required if attributes were added to the link
+
+Optionally, they can contain further fields like `traceState` or `droppedAttributesCount` which will be largely ignored unless we find a use case for them.
+
 ### Setting `previous_trace` span links
 
-We can link traces by definint span links on the root spans of respective frontend traces. The general idea is to store the span context of the previous root span in a a storage mechanism of choice (e.g. `sessionStorage` in the browser) and read/write to it when necessary:
+We can link traces by defining span links on the root spans of respective frontend traces. The general idea is to store the span context of the previous root span in a a storage mechanism of choice (e.g. `sessionStorage` in the browser) and read/write to it when necessary:
 
 Therefore, on root span start:
   * Check if there is a previous span context stored
@@ -333,25 +350,40 @@ Therefore, on root span start:
 SDKs are free to implement heuristics around how long a previous trace span context should be considered (max time) and store additional necessary data.
 
 This means that the last-started root span will be denote the previous trace. In situations, where multiple root spans are started in parallel, the last started span "wins". However, the multiple root spans aspect of this should play a negligible role in Sentry SDKs, given our SDKs don't allow for this by default and it would require significant manual user setup. We acknowledge though that this could lead to potentially confusing relationships. 
-  
+
+The following diagram shows optimal examples with a `tracesSampleRate` of `1.0`, meaning every span tree is positively sampled, sent to Sentry and therefore connected via a span link: 
+
+![](./0141-previous-trace-links-full-sampling.png)
+
+As one can see from the diagram, `previous_trace` span links are only necessary on frontend SDKs today. For traces started on the backend (like in Case 2), the trace links are on `pageload` transactions which are **not** the head-of-trace transactions. Our product should still be able to link the traces correctly in the trace view.
+
+### Dealing with negatively sampled traces
+
+In many cases, with lower sample rates, we will not be able to provide a full trace link chain, due to some or many traces being negatively sampled. However, sampled root spans should still include a link to the previous, negatively sampled root span. The `traceFlags` on the `spanContext()` will carry the information that the previous trace root span was negatively sampled. This helps our product to hint that there _would have been_ a previous trace but it was negatively sampled. 
+
+![](./0141-previous-trace-partial-sampling.png)
+
+It's worth noting that we will not link to the previous positively sampled trace if a negatively sampled trace is in-between (see Traces 2-4 in the diagram). Furthermore, we will not show _how many_ traces were negatively sampled in between two trace chains; only that there was at least one trace in between (see Trace 5-8). 
+
+There are some ideas how we could show multiple negatively sampled spans as well as how we could connect traces with gaps due to sampling. For now, we'll disregard this because there's no concrete use case, yet. However, given spans can have multiple links and links can have attributes, we could add this information later on, if we deem it necessary.
 
 ### Ingest / Relay
 
 Relay should forward the span links in the format that is required for further processing and storage. 
-Importantly, we must never require span links to be defined. They are completely optional.
+Importantly, we must not require span links to be defined. They are completely optional.
 
-TODO: This section lacks a lot of details we still need to clarify with the ingest team
+As a further requirement, Relay needs to handle passing along span links in the root span as well as in any child span (see [envelope payload](#envelope-item-payload-changes)).
+
+We will specify the expected type and structure of the `links` array and its contents in Relay, so that we can discard malformed payloads. 
+This further includes specifying the type of the `sentry.link.type` attribute value to be a string.
 
 ### Storage
 
 We need to adapt our events table to support storing span links in our current event storage. Furthermore, we need to take span links into account for the EAP storage architecture.
 
-TODO: Evaluate if possible:
+Our storage system needs to handle storing span links on root spans (i.e. today's `transaction` event) as well as on child spans or EAP spans in the future. 
 
-The span links need to be stored in a way that they can be queried. For example: Given a transaction `t`, list transactions that have span links to  `t`.
-This would enable use cases where we could show "next" traces, instead of previous traces. 
-
-TODO: This section lacks a lot of details we still need to clarify with the SnS team
+Furthermore, for `previous_trace` span links, we need to set up an index or a lookup table that enables us to query the **next trace**. More specifically, we need to be able to support a query like:Given a transaction (span) `t`, list transactions (spans) that have span links with the attribute `sentry.link.type === "previous_trace"` to  `t`.
 
 ### Advantages
 
@@ -364,6 +396,20 @@ TODO: This section lacks a lot of details we still need to clarify with the SnS 
 
 - Implementing span links requires a lot of of changes across SDKs, ingest, SnS. Also there are product changes required to make use of links. 
 
+### Implementation plan: 
+
+For an MVP and to validate that trace links work, we'll introduce span links on today's transaction events. In a future step, we'll ensure that this also works on our EAP storage system.
+
+The rough MVP implementation order:
+
+1. Ensure Storage can store along span links in `transaction` events today. If not, make necessary changes. Create index/lookup table so that we can query the "next" trace of a given root span/transaction.
+2. Ensure Relay can forward `transaction` events with span links. If not, make necessary changes. Specify types, expected payload structure and discard malformed links.
+3. Implement PoC in SDK, most probably the JS SDK, to send `transaction` envelopes with span links for previous traces
+4. Add previous and next trace buttons to trace view.
+
+In this order, 1 and 2 have potential overlap. 3 and 4 can happen in parallel, depending on prioritization, available data and capacity.  
+
+Once trace chains consisting of previous and next traces can be shown in the UI based on `transaction` event envelopes, we'll move forward with adding general span link and `previous_trace` span link support to EAP.
 
 ## [Alternative] Previous Trace Id
 
@@ -373,14 +419,14 @@ Setting such a previous trace id could happen on `startSpan()` calls or by calli
 While this might seem simpler at first glance, it has a some drawbacks:
 - Spans can only have a 1:1 relationship, either with a `traceId` or a `traceId-spanId` value. Span links support a 1:N relationship, where one span can link to multiple other spans in- or outside its trace
 - Span links are an established concept in OpenTelemetry. With Sentry increasingly adapting Otel standards, as well as creating an OTLP endpoint in the future, we should embrace Otel-suggested solutions rather than building our own.
-- Attributes are not indexed in our current data storage solution, meaning queries like getting the "next" instead of previous traces are likely impossible
+- Attributes are not indexed in our current data storage solution, meaning queries like getting the "next" instead of previous traces are likely impossible or (best case) require the same level of indexing as span links require to show next traces.
 - POtel SDKs, as well as the browser JS SDKs, already expose span link APIs but they currently no-op and are not sent to Sentry. This is currently very opaque behavior and potentially confusing to users familiar with Otel APIs concepts.
 
 # Answered Questions
 
 - **Can we do this with our current event storage? Are we blocked on EAP?**
 
-  We will certainly need to adapt our current event storage but it is possible to do this without being blocked on EAP. We'll separately also need to adjust the planned span schema for EAP but this is not a blocker.
+  We will certainly need to adapt our current event storage but it is possible to do this without being blocked on EAP. We'll separately also need to adjust the planned span schema for EAP but this is not a blocker but a follow-up task after the MVP implementation.
 
 
 - **How would we handle errors outside of an active span?**
