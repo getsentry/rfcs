@@ -112,9 +112,10 @@ In an OTLP span export, span links are serialized as follows:
                   "spanId": "6c71fc6b09b8b716", 
                   "traceId": "627a2885119dcc8184fae7eef09438cb",
                   "traceFlags": 1, // 1: positively sampled; 0: negatively sampled
-                  // additional data
+                  // potential additional data
                   "traceState": {"foo": "bar"},
-                  "droppedAttributesCount": 1
+                  "droppedAttributesCount": 1,
+                  "isRemote": true
                 }
               ],
               "droppedLinksCount": 0
@@ -229,7 +230,7 @@ type Attributes = Record<string, AttributeValues>
 type AttributeValues = string | boolean | number | Array<string> | Array<boolean> | Array<number>
 ```
 
-Note: On some platforms, the Otel `Link` interface exposes other optional properties, for example `droppedAttributesCount` and `traceState`. POtel SDKs should support passing in this property as defined by the API but can choose to ignore it when serializing the span link to Sentry envelopes, or simply serialize it, too.  In [JS for example](https://github.com/open-telemetry/opentelemetry-js/blob/main/api/src/trace/link.ts), the `droppedAttributeCount` can be passed, while [Python](https://github.com/open-telemetry/opentelemetry-python/blob/main/opentelemetry-api/src/opentelemetry/trace/span.py#L120) does not permit it. 
+Note: On some platforms, the Otel `Link` interface exposes other optional properties, for example `droppedAttributesCount`, `isRemote` and `traceState`. POtel SDKs should support passing in this property as defined by the API but can choose to ignore it when serializing the span link to Sentry envelopes, or simply serialize it, too.  In [JS for example](https://github.com/open-telemetry/opentelemetry-js/blob/main/api/src/trace/link.ts), the `droppedAttributeCount` can be passed, while [Python](https://github.com/open-telemetry/opentelemetry-python/blob/main/opentelemetry-api/src/opentelemetry/trace/span.py#L120) does not permit it. 
 Non-Otel SDKs are free to ignore these properties.
 
 Note II: POtel SDKs today already have to expose `addLink(s)` APIs, however we simply disregard the added links when serializing Otel spans to transaction event envelopes. Furthermore, for platform agnostic APIs, the non-POtel browser SDKs today also expose these methods. They simply no-op at the moment.
@@ -296,7 +297,7 @@ We propose to store span links in the `trace` context if the root span has links
         "trace_id": string, 
         sampled?: boolean, // traceFlags from Otel converted to boolean
         attributes?: Record<string, AttributeValue>,
-        // + potentially more fields 1:1 from Otel. e.g. (traceState, droppedAttributesCount)
+        // + potentially more fields 1:1 from Otel. e.g. (traceState, droppedAttributesCount, isRemote)
       }>
       // ...
     }
@@ -329,14 +330,14 @@ For links stored in child spans, SDKs should serialize them to `spans[i].links`:
 }
 ```
 
-This means that the serialized links objects should always contain:
+This means that the serialized `links` objects should always contain:
 
 - `span_id: string` - id of the span to link to
 - `trace_id: string` - trace id of the span to link to
 - `sampled: boolean` - required if sampling decision of the span to link to (corresponds to `traceFlags` in Otel span context converted to `boolean`) is available
 - `attributes:` - required if attributes were added to the link
 
-Optionally, they can contain further fields like `traceState` or `droppedAttributesCount` which will be largely ignored unless we find a use case for them.
+Optionally, they can contain further fields like `traceState`, `isRemote` or `droppedAttributesCount` which will be just forwarded unless we find a use case for them.
 
 ### Setting `previous_trace` span links
 
