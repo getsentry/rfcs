@@ -20,17 +20,17 @@ This RFC proposes a method of achieving linkage between (and within) traces in t
 
 ## Frontend Traces and User Journeys
 
-The most important application of linking traces are frontend applications. We would like to better display a user journey (session) to make debugging of issues easier as developers get more context on what happened before a specific issue. 
+The most important application of linking traces are frontend applications. We would like to better display a user journey in our tracing views to make debugging of issues easier as developers get more context on what happened before a specific issue. 
 Today, we are limited to the duration of one trace (id), which is handled differently and kept alive for different times across our various SDKs. 
 
 A concrete example are our [JavaScript Browser SDKs](https://develop.sentry.dev/sdk/platform-specifics/javascript-sdks/browser-tracing/#tracing-model) which by default keep a trace alive as long as users
-are on the same page or (URL) route. This trace model was a compromise in which we accepted that a trace would consist of multiple trace root spans (transactions) but provides more context. Long-lived traces, with multiple trace root spans, are generally discouraged by tracing models like OpenTelemetry.
+are on the same page or (URL) route. This trace model was a [compromise](#implications-of-long-lived-traces) in which we accepted that a trace would consist of multiple trace root spans (transactions) but provides more context. Long-lived traces, with multiple trace root spans, are generally discouraged by tracing models like OpenTelemetry.
 
 Another example of a suboptimal trace model is the one used in most mobile SDKs. In these SDKs, traces are mostly started via idle transactions, meaning transactions start a fixed point but end automatically after a specific period of inactivity (i.e. no child spans being added). Errors occurring while no transaction is active are associated with a "fallback" `traceId` stored on the global SDK scope that stays the same until the SDK is again initialized. The consequence is that potentially hundreds of unrelated events are associated with the same fallback trace as [outlined](https://github.com/getsentry/rfcs/blob/rfc/mobile-tracing-without-performance-v-2/text/0136-mobile-tracing-without-performance-v-2.md) in a previous attempt to improve this behavior.
 
 ## Related: Queues, Async and Batch Operations
 
-Somewhat related, we also face situations in which child spans are not started and finished within the time span of their parent span. While generally supported by OpenTelemetry, such traces pose the question of  A concrete example for this is that we [currently recommend](https://docs.sentry.io/platforms/javascript/guides/node/tracing/instrumentation/custom-instrumentation/queues-module/) users to create one trace for a producer-consumer (Queue) cycle, where the spans from the consumer likely start after the producer spans finished. OpenTelemetry in fact [recommends](https://opentelemetry.io/docs/concepts/signals/traces/#span-links) to start separate traces for the consumer, producer or more generally async operations and to link these traces via a span link. Other related use cases are batch processes where one initiator trace triggers a large number of batch processes. Otel also recommends to link these spans instead in favour of grouping them under one trace.
+Somewhat related, we also face situations in which child spans are not started and finished within the time span of their parent span. While supported by OpenTelemetry, such traces deviate from the generally perceived trace model in that their child spans may outlive (or only start after) their parent/root spans. This potentially significantly increases trace duration with a lot of "empty time" between spans. A concrete example for this is that we [currently recommend](https://docs.sentry.io/platforms/javascript/guides/node/tracing/instrumentation/custom-instrumentation/queues-module/) users to create one trace for a producer-consumer (Queue) cycle, where the spans from the consumer likely start after the producer spans finished. OpenTelemetry in fact [recommends](https://opentelemetry.io/docs/concepts/signals/traces/#span-links) to start separate traces for the consumer, producer or more generally async operations and to link these traces via a span link. Other related use cases are batch processes where one initiator trace triggers a large number of batch processes. Otel also recommends to link these spans instead in favour of grouping them under one trace.
 
 ## Additional Use Cases
 
@@ -60,7 +60,7 @@ Client Infra/Storage:
 
 ## Secondary goals
 
-- We will shorten the lifetime of frontend traces because we're now able to link to the previous trace instead. This is something we'll do but it's a follow-up and can only be addressed once the primary goals are achieved. 
+- We will shorten the lifetime of frontend traces once we're able to link to the previous trace instead. This is something we'll do but it's a follow-up and can only be addressed once the primary goals are achieved. 
 
 ## Out of scope/Non-Goals
 
@@ -141,7 +141,7 @@ In an OTLP span export, span links are serialized as follows:
 
 Sentry SDKs do actually send session data, in fact even two types of sessions. However, neither of the two sessions are used and associated with a trace. 
 
-- SDK error sessions: SDKs currently send a session that counts and describes the error status of such a session. Depending on the error, the session is marked as crashed, abnormal or healthy, which is information that powers our Release (Health) product. These sessions are fundamentally flawed though because (at least in Browser JS) they only last as long as the currently loaded page. Every soft or hard navigation causes the session to be ended and a new one to be started. 
+- SDK release health sessions: SDKs currently send a session that counts and describes the error status of such a session. Depending on the error, the session is marked as crashed, abnormal or healthy, which is information that powers our Release (Health) product. These sessions are currently not linked to any event, but only count the number of captured errors (if any). The sole purpose of these sessions is to power our release health product and related metrics (e.g. crash-free session rate).
 - Replay Session: Frontend SDKs persist a replayId in the browser's `sessionStorage` which (even though the name does not suggest it) more accurately models a session than the SDKs' error sessions. We cannot have a hard dependency on this session as Replay is an extra product by Sentry, meaning this replayId is not always reliably set. However, the model of persisting the replay id can be used as a blueprint for how we could persist the last traceId. 
 
 Upon decision from Leadership as well as from it being noted in Sentry's Goal Hierarchy, we will not associate spans or traces via any of these sessions. Instead, the sessions will stay as-is and we will link traces in a "linked list"-style approach as described in this RFC. Still, at some point in the future, we might do so, and the solution in this RFC shouldn't block linking traces and spans to sessions.
