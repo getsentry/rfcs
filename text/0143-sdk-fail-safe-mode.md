@@ -481,6 +481,11 @@ This has other benefits, too. For example, it would help improve the watchdog te
 
 Our users could have avoided the [incident mentioned above](#background) by using a staged rollout. While we can't expect all users to use a staged rollout, we could explain actions to increase stability in a section in our docs, helping our users to ship more confidently. We can explain how they can use Sentry in a staged rollout to identify other severe problems, including continuous crashes of any type.
 
+## Idea 4: Query Play Store or App Store Connect for SDK crashes <a name="idea-4"></a>
+
+Our backend could query the Google Play Console or the App Store Connect APIs for Sentry SDK crashes. We need to find a use case for our users to link those APIs to Sentry. The major downside of these crashes is that they lack all scope information, such as breadcrumbs, tags, user info, device info, etc.,  and we can't connect them to other Sentry data, such as traces, replays, etc. 
+The Google Play Console provides the required API, but the App Store Connect API doesn't. The closest Apple offers Power and Performance Metric Logs, but you can't get crash reports via that API. We might be able to use spaceship.get_beta_feedback, though.
+
 # FAQ
 
 **1. Why do we make the SDK init a NoOp instead of trying to detect which integration is causing the crash?**
