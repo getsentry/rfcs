@@ -311,7 +311,7 @@ Notes on [potential false positives](#potential-false-positives):
 
 ### Option A3: Stacktrace Detection <a name="option-a3"></a>
 
-Before sending a crash report, the SDK identifies an SDK crash by looking at the topmost frames of the crashing thread. If the topmost frames stem from the SDK itself, it disables itself. The [SDK crash detection](https://github.com/getsentry/sentry/tree/master/src/sentry/utils/sdk_crashes) already uses this approach in the event processing pipeline.
+Before sending a crash report, the SDK identifies an SDK crash by looking at the topmost frames of the crashing thread. The SDK must install the crash handlers as soon as possible to minimize the risk of missing early SDK crashes. If the topmost frames stem from the SDK itself, it disables itself. The [SDK crash detection](https://github.com/getsentry/sentry/tree/master/src/sentry/utils/sdk_crashes) already uses this approach in the event processing pipeline.
 
 #### Continuous Crashing Scenarios <a name="option-a3-continuous-crashing-scenarios"></a>
 
@@ -345,8 +345,7 @@ Notes on [potential false positives](#potential-false-positives):
 1. __Doesn't work with static linking:__ This approach doesn’t work with static linking, as the Sentry SDKs end up in the same binary as the main app. As we don’t have symbolication in release builds, we can’t reliably detect if the memory address stems from the Sentry SDK or the app. We might be able to compare addresses with known addresses of specific methods or classes, but this won’t work reliably. As with iOS, many apps use static linking, so we must use an alternative approach.
 2. __Doesn't work for obfuscated code:__ For obfuscated code, detecting if a frame in the stacktrace stems from the Sentry SDK or the app can be difficult or even impossible.
 3. __Wrongly disabling the SDK:__ We frequently see wrongly reported SDK crashes in the SDK crash detection. As SDKs use bytecode manipulation, swizzling, or monkey patching, the stacktraces sometimes contain Sentry frames in the crashing thread, but the root cause isn't Sentry but the user's code.
-4. It doesn't work when the SDK crashes during or before sending the crash report.
-5. It doesn't work when the SDK crashes before installing the crash handlers.
+4. It doesn't work when the SDK crashes during or before writing the crash report.
 
 ## B: Minimizing the Damage <a name="b-minimizing-the-damage"></a>
 
