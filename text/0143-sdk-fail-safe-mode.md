@@ -387,7 +387,7 @@ The SDK makes the SDK init a NoOp (no operation) when it detects a continuous cr
 
 > 🚫 **Discard reason:** It makes sense to consider this option once we implement a remote config for all SDKs, but it's too much effort as a standalone feature. 🚫
 
-There might be scenarios where the SDK can’t detect it’s crashing. We might be able to detect via the SDK crash detection that the SDK causes many crashes, and we could manually or, based on some criteria, disable the SDK. We could also allow our customers to disable the SDK remotely if they see many crashes in the Google Play Console or App Store Connect. It
+There might be scenarios where the SDK can’t detect it’s crashing. We might be able to detect via the SDK crash detection that the SDK causes many crashes, and we could manually or, based on some criteria, disable the SDK. We could also allow our customers to disable the SDK remotely if they see many crashes in the Google Play Console or App Store Connect.
 
 The remote kill switch has to be strictly tied to SDK versions. When the SDK gets an update, it ignores the killswitch from the previous SDK version.
 
