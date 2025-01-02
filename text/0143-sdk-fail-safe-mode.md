@@ -5,7 +5,7 @@
 
 # Summary
 
-This RFC aims to find strategies to minimize the damage of a crashing Sentry SDK in production, especially during the application start and when the Sentry SDK fails to send crash reports.
+This RFC aims to find strategies to minimize the damage of a continuous crashing Sentry SDK in production for applications with a slow release cycle, such as mobile or desktop. While we don't exclude web or backend SDKs from implementing such strategies, the severity of such an incident on these SDKs is lower, as users can usually deploy hotfixes within minutes or hours, which isn't possible for mobile and desktop applications.
 
 # Motivation
 
@@ -162,7 +162,7 @@ Finally, a bad-case scenario is our SDK crashing continuously shortly after the 
 
 #### Scenario 4: SDK Continuously Crashing After SDK Init
 
-Similar to [scenario 3](#continuous-crash-scenario-3), but the SDK crash happens after the SDK init. 
+The SDK crash happens not shortly after the SDK init but some time after it, similar to [scenario 3](#continuous-crash-scenario-3), but the severity is lower as the SDK crash isn't continuous during the app launch. The app is still usable, and it launches. The SDK can still send a crash report, so we and the users are aware. For example, the SDK crashes every time users call captureMessage. This SDK crash is terrible, but the crash reporting still works. So, the SDK sends a crash report, and the SDK crash detection will surface this problem.
 
 ### Potential False Positives
 
