@@ -491,7 +491,7 @@ Our users could have avoided the [incident mentioned above](#background) by usin
 
 # FAQ
 
-**1. Why do we make the SDK init a NoOp and don't we try to detect which integration is causing the crash?**
+**1. Why do we make the SDK init a NoOp instead of trying to detect which integration is causing the crash?**
 
 We want to keep the logic as simple as possible to reduce the risk of bugs, and it could be that we disable the wrong integration, which would cause more unnecessary crashes.
 
