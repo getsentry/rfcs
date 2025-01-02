@@ -5,7 +5,7 @@
 
 # Summary
 
-This RFC aims to find strategies to minimize the damage of a crashing Sentry SDK in production, especially during the application start and the Sentry SDK fails to send crash reports.
+This RFC aims to find strategies to minimize the damage of a crashing Sentry SDK in production, especially during the application start and when the Sentry SDK fails to send crash reports.
 
 # Motivation
 
