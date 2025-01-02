@@ -203,13 +203,6 @@ Scenario: App version inits the first time with successful init
     When the SDK reaches the successful init checkpoint
     Then the SDK creates a success init marker file for the app version
 
-Scenario: App version inits the first time with failed init
-    Given there is no start init marker file for the app version
-    And there is no success init marker file for the app version
-    When the SDK crashes before reaching the successful init checkpoint
-    Then the SDK can't create a success init marker file for the app version
-    And the SDK can't determine a failed init
-
 Scenario: SDK version inits successfully second time with previous successful init
     Given there is a start init marker file for the app version
     And there is a success init marker file for the app version
