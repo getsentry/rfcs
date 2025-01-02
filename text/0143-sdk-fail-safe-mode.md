@@ -499,6 +499,14 @@ We want to keep the logic as simple as possible to reduce the risk of bugs, and 
 
 As described in the [motivation](#motivation), continuous SDK crashes during the app start are more critical because they cause the most friction by making the application unusable.
 
+**3. Do we allow users to opt-out of this feature?**
+
+Yes, we can add a flag to the SDK to opt-out of this feature.
+
+**4. Do we allow a configuration for number of retries for our users?**
+
+No, a configuration adds complexity and we must avoid it. We only allow to enable or disable the feature.
+
 # Drawbacks
 
 Why should we not do this? What are the drawbacks of this RFC or a particular option if
@@ -507,15 +515,6 @@ multiple options are presented:
 1. False positives: Potentially wrongly disabling the SDK.
 2. Introducing new crashes with the new logic.
 
-# FAQ
-
-**Q1: Do we allow users to opt-out of this feature?**
-
-Yes, we can add a flag to the SDK to opt-out of this feature.
-
-**Q2: Do we allow a configuration for number of retries for our users?**
-
-No, a configuration adds complexity and we must avoid it. We only allow to enable or disable the feature.
 
 # Unresolved questions
 
