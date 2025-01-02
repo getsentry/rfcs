@@ -361,7 +361,7 @@ Notes on [potential false positives](#potential-false-positives):
 
 Similar to Windows Safe Mode, our SDKs use a special safe mode that only runs the bare minimum SDK features; if the SDK detects it continuously crashes, it initializes in the safe mode. The SDK only enables crash handlers, session tracking, and functionality that enriches the scope, but it doesn't enable tracing, profiling, session replay, and automatic breadcrumbs. We still need to define the exact feature set, which can vary per SDK. SDKs must clearly mark that data stems from the safe mode so that users and we are aware.
 
-To avoid being stuck in the Safe Mode, the SDK always switches back to normal mode for an app update and when the SDK initializes successfully x times.
+To avoid being stuck in the Safe Mode, the SDK always switches back to normal mode after an app update, or after the SDK initializes successfully in safe mode for x times.
 
 #### Pros <a name="option-b1-pros"></a>
 
