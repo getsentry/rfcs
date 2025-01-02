@@ -117,7 +117,7 @@ This section looks at the three different problems we need to solve:
 
 ## A: Detecting Continuous SDK Crashes <a name="a-detecting-continuous-sdk-crashes"></a>
 
-First, we need to know when our SDKS continuously crash our customers. Only then can we act accordingly. We categorize crashes into four different time categories:
+First, we need to know when our SDKs continuously crash our customers. Only then can we act accordingly. We categorize crashes into four different time categories:
 
 ```mermaid
 ---
