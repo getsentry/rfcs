@@ -52,9 +52,9 @@ The recommended approach solves the three problems mentioned [above](#background
 
 1. [A: Detecting a continuously crashing SDK](#a-detecting-continuous-sdk-crashes) with [Checkpoints](#option-a1).
 2. [B: Minimizing the damage of a continuously crashing SDK](b-minimizing-the-damage) with [Safe Mode](#option-b1) and [NoOp Init](#option-b2).
-3. [C: Knowing when and why the SDK is continuously crashing](#c-knowing-when-the-sdk-is-disabled) with [Failing SDK Endpoint](#option-c1) and [Retry Logic](#option-c2).
+3. [C: Knowing when and why the SDK is continuously crashing](#c-knowing-when-the-sdk-is-disabled) with [Failing SDK Envelope](#option-c1) and [Retry Logic](#option-c2).
 
-After detecting a potential SDK crash via [checkpoints](#option-a1), the SDK switches to a [safe SDK mode](#option-b1), a bare minimum SDK with only essential features. When the SDK initialization fails in the safe mode, the SDK makes the initialization a [NoOp (no operation)](#option-b2), communicating this to a [failing SDK endpoint](#option-c1). When in fail-safe mode, the SDK adds a yet-to-be-defined field in the SDK context so that we and our users know when it is active. To minimize the risk of staying incorrectly in the NoOp mode, the SDK implements a [retry logic](#option-c2), which switches to the safe mode after being initialized x times in the NoOp mode. The same applies to the safe mode. The SDK switches back to a normal initialization after being initalized x times in the safe mode. While the retry mode will yield further crashes in the worst-case scenario, it ensures our users still receive some SDK crashes in the App Store Connect and the Google Play Console, which is essential for fixing the root cause. We accept this tradeoff over completely flying blind. We might use the [stacktrace detection](#option-a3) in addition to the checkpoints on platforms that allow it.
+After detecting a potential SDK crash via [checkpoints](#option-a1), the SDK switches to a [safe SDK mode](#option-b1), a bare minimum SDK with only essential features. When the SDK initialization fails in the safe mode, the SDK makes the initialization a [NoOp (no operation)](#option-b2), communicating this to a [failing SDK envelope](#option-c1). When in fail-safe mode, the SDK adds a yet-to-be-defined field in the SDK context so that we and our users know when it is active. To minimize the risk of staying incorrectly in the NoOp mode, the SDK implements a [retry logic](#option-c2), which switches to the safe mode after being initialized x times in the NoOp mode. The same applies to the safe mode. The SDK switches back to a normal initialization after being initalized x times in the safe mode. While the retry mode will yield further crashes in the worst-case scenario, it ensures our users still receive some SDK crashes in the App Store Connect and the Google Play Console, which is essential for fixing the root cause. We accept this tradeoff over completely flying blind. We might use the [stacktrace detection](#option-a3) in addition to the checkpoints on platforms that allow it.
 
 ```mermaid
 ---
@@ -74,9 +74,9 @@ flowchart LR
         in Safe Mode]
     sdk-init-no-op[NoOp SDK
         Init]
-    sdk-fail-endpoint[Inform
+    sdk-fail-envelope[Inform
         Failing SDK
-        Endpoint]
+        Envelope]
 
     
     decision-init-start-x-times@{ shape: diamond, label: "init start called
@@ -104,7 +104,7 @@ flowchart LR
     decision-sdk-init-x-times-safe-mode-- yes --> sdk-init-normal
     decision-sdk-init-x-times-safe-mode-- no --> sdk-init-safe-mode 
 
-    sdk-init-no-op --> sdk-fail-endpoint
+    sdk-init-no-op --> sdk-fail-envelope
 ```
 
 # Problems to Solve
@@ -373,7 +373,7 @@ To avoid being stuck in the Safe Mode, the SDK always switches back to normal mo
 
 ### Option B2: NoOp SDK Init <a name="option-b2"></a>
 
-The SDK makes the SDK init a NoOp (no operation) when it detects a continuous crash with one of the options of [A](#options-for-detecting-sdk-crashes). This is the last resort and we should try to avoid this as much as we can, but it's better to have no data than crashes and no data. To minimize the risk of staying wrongly in NoOp mode and to avoid flying completely blind on the root cause, the SDK keeps track of how often the SDK was started in NoOp mode and after x times it retries to initialize.
+The SDK makes the SDK init a NoOp (no operation) when it detects a continuous crash with one of the options of [A](#options-for-detecting-sdk-crashes), which most likely is going to be  [Option A1](#option-a1), as [Option A2](#option-a2) runs on the server and [Option A3](#option-a3) doesn't work with static linking. This is the last resort and we should try to avoid this as much as we can, but it's better to have no data than crashes and no data. To minimize the risk of staying wrongly in NoOp mode and to avoid flying completely blind on the root cause, the SDK keeps track of how often the SDK was started in NoOp mode and after x times it retries to initialize.
 
 #### Pros <a name="option-b2-pros"></a>
 
@@ -428,9 +428,11 @@ No notes on [crashing scenarios](#crashing-scenarios), because we can discard th
 
 ## C: Knowing When the SDK is Disabled <a name="c-knowing-when-the-sdk-is-disabled"></a>
 
-### Option C1: Failing SDK Endpoint <a name="option-c1"></a>
+### Option C1: Failing SDK Envelope <a name="option-c1"></a>
 
-Add a unique endpoint for sending a simple HTTP request with only the SDK version and a bit of meta-data, such as the DSN, to notify Sentry about failed SDKs. We must keep this logic as simple as possible, and it should hardly ever change to drastically minimize the risk of causing more damage. The HTTP request must not use other parts of the SDK, such as client, hub, or transport. The SDKs must only send this request once. As we can’t have any logic running, such as rate-limiting or client reports, it’s good to have a specific endpoint for this to reduce the potential impact on the rest of the infrastructure.
+To notify Sentry about a failing SDK, the SDK must send a new envelope item type. There is a slight chance that the SDK can send a crash report of the SDK failure on a previous run before disabling itself. Therefore, the envelope must contain the SDK version and some meta-data, such as the DSN, userID, and device model, to find related crash reports.
+
+To drastically minimize the risk of causing more damage, we must keep this logic as simple as possible, and it should hardly ever change. The HTTP request must not use other parts of the SDK, such as client, hub, or transport. As the SDKs must only send this request once, it might be acceptable to skip rate limiting, as the request load should be the same as session init updates, which the infrastructure can handle. We still need to figure out the details with the ingest team.
 
 #### Pros <a name="option-c1-pros"></a>
 
@@ -440,7 +442,7 @@ Add a unique endpoint for sending a simple HTTP request with only the SDK versio
 
 1. Potential risk of crashing while performing this action.
 2. It requires extra infrastructure.
-3. We don't know why the SDK disabled itself.
+3. When the SDK can't send crash reports on a previous run, we don't know why the SDK disabled itself.
 
 ### Option C2: SDK Retry Logic <a name="option-c2"></a>
 
@@ -462,7 +464,7 @@ The backend detects anomalies in our customers' session data. If there is a sign
 #### Pros <a name="option-c3-pros"></a>
 
 1. No SDK changes are needed, so it works even for old SDK versions.
-2. This would be a useful feature for our customers even with this RFC.
+2. This would be a useful feature for our customers even without this RFC.
 
 #### Cons <a name="option-c3-cons"></a>
 
@@ -505,8 +507,18 @@ multiple options are presented:
 1. False positives: Potentially wrongly disabling the SDK.
 2. Introducing new crashes with the new logic.
 
+# FAQ
+
+**Q1: Do we allow users to opt-out of this feature?**
+
+Yes, we can add a flag to the SDK to opt-out of this feature.
+
+**Q2: Do we allow a configuration for number of retries for our users?**
+
+No, a configuration adds complexity and we must avoid it. We only allow to enable or disable the feature.
+
 # Unresolved questions
 
 - How do we test and rollout the new logic?
 - Should we surface the info of a failing SDK information to the user?
-- How does the failing SDK endpoint look like? Maybe we wan't to replace it with a special type of envelope with specific metadata so the load balancer can discard envelopes in the worst case.
+- How does the failing SDK envelope look like? Is it OK to skip rate limiting?
