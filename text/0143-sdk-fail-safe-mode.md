@@ -402,7 +402,7 @@ The remote kill switch has to be strictly tied to SDK versions. When the SDK get
 
 #### Cons <a name="option-b3-cons"></a>
 
-1. When the SDK is in a critical state and potentially causing crashes, the last thing we want to do is make a web request.
+1. When the SDK is in a critical state and potentially causing crashes, the last thing we want to do is to make a web request.
 2. It doesn't work for continuous SDK crashes during SDK init.
 3. It doesn't work offline.
 4. It requires manual action. We need to monitor our SDK crashes and input from customers continuously.
