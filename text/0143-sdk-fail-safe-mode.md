@@ -107,6 +107,8 @@ flowchart LR
     sdk-init-no-op --> sdk-fail-envelope
 ```
 
+**What about Hybrid SDKs?** This logic works independently for every SDK and doesn't work across multiple SDKs. Implementing such a logic across different hybrid SDK layers would significantly increase the complexity. We have to remember that there are multiple variations of hybrid SDK setups. Some users manually initialize the native SDKs before or after initializing the hybrid SDKs. Getting the fail-safe logic correct logic across all variations of hybrid SDK layers is a nightmare we don't want to deal with. It is permitted to have a hybrid SDK running with a normal SDK init and the underlying native SDK in safe mode or vice versa.
+
 # Problems to Solve
 
 This section looks at the three different problems we need to solve:
@@ -187,6 +189,8 @@ This happens frequently, and we must ensure that the SDK correctly ignores this 
 ### Option A1: [Preferred] Checkpoints <a name="option-a1"></a>
 
 The SDK uses two checkpoints to identify if it can start successfully. The first checkpoint is the **start init**, which marks that the SDK started initialization. The second checkpoint is the **success init** checkpoint. This checkpoint marks that the SDK could successfully initialize. Every time the SDK initializes, it validates the checkpoints from the previous SDK initialization. Therefore, the SDK must persist the checkpoint information across SDK initializations. Based on which checkpoints were successfully persisted, the SDK can decide if it was initialized successfully on a previous run.
+
+**What about Hybrid SDKs?** Checkpoints don't work across multiple SDKs. Each SDK has its checkpoint logic. Implementing checkpoints across different hybrid SDK layers would significantly increase the complexity. We have to remember that there are multiple variations of hybrid SDK setups. Some users manually initialize the native SDKs before or after initializing the hybrid SDKs. Communicating the checkpoint logic across all variations of hybrid SDK layers is a nightmare we don't want to deal with.
 
 The specification is written in the [Gherkin syntax](https://cucumber.io/docs/gherkin/reference/) and might not work for all edge cases yet, as it can be complicated to get it right. We'll figure out the exact details once we decide to implement it, but it should cover the main scenarios. The spec uses marker files for the checkpoints, which might be replaced by key-value storage depending on the platform. You can read more about that after the specification.
 
