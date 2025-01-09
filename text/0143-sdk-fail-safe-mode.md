@@ -52,9 +52,9 @@ The recommended approach solves the three problems mentioned [above](#background
 
 1. [A: Detecting a continuously crashing SDK](#a-detecting-continuous-sdk-crashes) with [Checkpoints](#option-a1).
 2. [B: Minimizing the damage of a continuously crashing SDK](b-minimizing-the-damage) with [Safe Mode](#option-b1) and [NoOp Init](#option-b2).
-3. [C: Knowing when and why the SDK is continuously crashing](#c-knowing-when-the-sdk-is-disabled) with [Failing SDK Envelope](#option-c1) and [Retry Logic](#option-c2).
+3. [C: Knowing when and why the SDK is continuously crashing](#c-knowing-when-the-sdk-is-disabled) with [Failing SDK Event](#option-c4) and [Retry Logic](#option-c2).
 
-After detecting a potential SDK crash via [checkpoints](#option-a1), the SDK switches to a [safe SDK mode](#option-b1), a bare minimum SDK with only essential features. When the SDK initialization fails in the safe mode, the SDK makes the initialization a [NoOp (no operation)](#option-b2), communicating this to a [failing SDK envelope](#option-c1). When in fail-safe mode, the SDK adds a yet-to-be-defined field in the SDK context so that we and our users know when it is active. To minimize the risk of staying incorrectly in the NoOp mode, the SDK implements a [retry logic](#option-c2), which switches to the safe mode after being initialized x times in the NoOp mode. The same applies to the safe mode. The SDK switches back to a normal initialization after being initalized x times in the safe mode. While the retry mode will yield further crashes in the worst-case scenario, it ensures our users still receive some SDK crashes in the App Store Connect and the Google Play Console, which is essential for fixing the root cause. We accept this tradeoff over completely flying blind. We might use the [stacktrace detection](#option-a3) in addition to the checkpoints on platforms that allow it.
+After detecting a potential SDK crash via [checkpoints](#option-a1), the SDK switches to a [safe SDK mode](#option-b1), a bare minimum SDK with only essential features. When the SDK initialization fails in the safe mode, the SDK makes the initialization a [NoOp (no operation)](#option-b2), communicating this with a [failing SDK event](#option-c4). When in fail-safe mode, the SDK adds a yet-to-be-defined field in the SDK context so that we and our users know when it is active. To minimize the risk of staying incorrectly in the NoOp mode, the SDK implements a [retry logic](#option-c2), which switches to the safe mode after being initialized x times in the NoOp mode. The same applies to the safe mode. The SDK switches back to a normal initialization after being initalized x times in the safe mode. While the retry mode will yield further crashes in the worst-case scenario, it ensures our users still receive some SDK crashes in the App Store Connect and the Google Play Console, which is essential for fixing the root cause. We accept this tradeoff over completely flying blind. We might use the [stacktrace detection](#option-a3) in addition to the checkpoints on platforms that allow it.
 
 ```mermaid
 ---
@@ -437,8 +437,9 @@ To drastically minimize the risk of causing more damage, we must keep this logic
 #### Cons <a name="option-c1-cons"></a>
 
 1. Potential risk of crashing while performing this action.
-2. It requires extra infrastructure.
-3. When the SDK can't send crash reports on a previous run, we don't know why the SDK disabled itself.
+2. It requires changes to Relay.
+3. It doesn't surface to the customer per default.
+4. When the SDK can't send crash reports on a previous run, we don't know why the SDK disabled itself.
 
 ### Option C2: SDK Retry Logic <a name="option-c2"></a>
 
@@ -466,6 +467,24 @@ The backend detects anomalies in our customers' session data. If there is a sign
 
 1. Requires backend changes.
 2. It doesn't work when the SDK starts to crash for a new release for all users, as the backend won't know that there is a new release to expect data from unless users manually create the release.
+
+### Option C4: Failing SDK Event <a name="option-c4"></a>
+
+This option is similar to [option C1](#option-c1), but instead, the SDK sends a hard-coded failing SDK event. There is a slight chance that the SDK can send a crash report of the SDK failure on a previous run before disabling itself. Therefore, the event must contain the SDK version and some meta-data, such as the DSN, userID, and device model, to find related crash reports and some special yet-to-be-defined context to clearly identify the event as a failing SDK event.
+
+To drastically minimize the risk of causing more damage, we must keep this logic as simple as possible, and it should hardly ever change. We can consider creating a special type of transport, and it shouldn't go through the scope/hub or client. As the SDKs must only send this request once, it might be acceptable to skip rate limiting, as the request load should be the same as session init updates, which the infrastructure can handle. We still need to figure out the details with the ingest team.
+
+#### Pros <a name="option-c4-pros"></a>
+
+1. We know when a SDK disables itself.
+2. No changes to Relay or the infrastructure are needed.
+3. Sentry automatically surfaces these events to the user.
+4. We can detect these events with the [SDK crash detection](https://github.com/getsentry/sentry/tree/master/src/sentry/utils/sdk_crashes) and create alerts.
+
+#### Cons <a name="option-c4-cons"></a>
+
+1. Potential risk of crashing while performing this action.
+2. When the SDK can't send crash reports on a previous run, we don't know why the SDK disabled itself.
 
 # Other Ideas to Increase Reliability
 
