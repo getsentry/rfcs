@@ -107,7 +107,7 @@ flowchart LR
     sdk-init-no-op --> sdk-fail-envelope
 ```
 
-**What about Hybrid SDKs?** This logic works independently for every SDK and doesn't work across multiple SDKs. Implementing such a logic across different hybrid SDK layers would significantly increase the complexity. We have to remember that there are multiple variations of hybrid SDK setups. Some users manually initialize the native SDKs before or after initializing the hybrid SDKs. Getting the fail-safe logic correct logic across all variations of hybrid SDK layers is a nightmare we don't want to deal with. It is permitted to have a hybrid SDK running with a normal SDK init and the underlying native SDK in safe mode or vice versa.
+**What about Hybrid SDKs?** This logic works independently for every SDK and doesn't work across multiple SDKs. Implementing such a logic across different hybrid SDK layers would significantly increase the complexity. We have to remember that there are multiple variations of hybrid SDK setups. Some users manually initialize the native SDKs before or after initializing the hybrid SDKs. Getting the fail-safe logic correct across all variations of hybrid SDK layers is a nightmare we don't want to deal with. It is permitted to have a hybrid SDK running with a normal SDK init and the underlying native SDK in safe mode or vice versa.
 
 # Problems to Solve
 
