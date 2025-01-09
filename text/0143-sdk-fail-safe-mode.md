@@ -502,7 +502,7 @@ As described in the [motivation](#motivation), continuous SDK crashes during the
 
 **3. Do we allow users to opt-out of this feature?**
 
-Yes, we can add a flag to the SDK to opt-out of this feature.
+Yes, we can add a flag to the SDK to opt-out of this feature, meaning the SDK will behave as it did before changes discussed in this RFC were implemented.
 
 **4. Do we allow a configuration for number of retries for our users?**
 
