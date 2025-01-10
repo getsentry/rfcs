@@ -178,6 +178,9 @@ To be clear, the Sentry product will always need to support long-lived/multiple 
 
 # Options Considered
 
+1. [[Preferred] Span Links](#preferred-span-links)  
+2. [Previous Trace Id](#alternative-previous-trace-id)   
+
 ## [Preferred] Span Links
 
 We propose to add links on a span level, as defined and specified by [OpenTelemetry](https://opentelemetry.io/docs/concepts/signals/traces/#span-links). In addition to linking to span ids, a span link also holds meta information about the link, collected via attributes. We'll make use of these attributes by annotating our created span links with a `sentry.link.type` attribute which we can later use in the product to query for linked traces.
@@ -405,7 +408,7 @@ The rough MVP implementation order:
 
 1. Ensure Storage can store along span links in `transaction` events today. If not, make necessary changes. Create index/lookup table so that we can query the "next" trace of a given root span/transaction.
 2. Ensure Relay can forward `transaction` events with span links. If not, make necessary changes. Specify types, expected payload structure and discard malformed links.
-3. Implement PoC in SDK, most probably the JS SDK, to send `transaction` envelopes with span links for previous traces
+3. Implement the PoC in one SDK, most probably the JS SDK, to send `transaction` envelopes with span links for previous traces
 4. Add previous and next trace buttons to trace view.
 
 In this order, 1 and 2 have potential overlap. 3 and 4 can happen in parallel, depending on prioritization, available data and capacity.  
