@@ -344,16 +344,16 @@ Optionally, they can contain further fields like `traceState`, `isRemote` or `dr
 
 ### Setting `previous_trace` span links
 
-We can link traces by defining span links on the root spans of respective frontend traces. The general idea is to store the span context of the previous root span in a a storage mechanism of choice (e.g. `sessionStorage` in the browser) and read/write to it when necessary:
+We can link traces by defining span links on the root spans of respective frontend traces. The general idea is to store the span context of the previous root span in a a storage mechanism of choice (e.g. in-memory or `sessionStorage` in the browser) and read/write to it when necessary:
 
 Therefore, on root span start:
   * Check if there is a previous span context stored
     * If yes, add the span link with the `'sentry.link.type': 'previous_trace'` attribute
-  * Store the root span context as the previous root span in a storage mechanism of choice (e.g. `sessionStorage` in the browser)
+  * Store the root span context as the previous root span in a storage mechanism of choice (e.g. in-memory or `sessionStorage` in the browser)
 
 SDKs are free to implement heuristics around how long a previous trace span context should be considered (max time) and store additional necessary data.
 
-This means that the last-started root span will be denote the previous trace. In situations, where multiple root spans are started in parallel, the last started span "wins". However, the multiple root spans aspect of this should play a negligible role in Sentry SDKs, given our SDKs don't allow for this by default and it would require significant manual user setup. We acknowledge though that this could lead to potentially confusing relationships. 
+This means that the trace of the last-started root span will be denote the previous trace. In situations, where multiple root spans are started in parallel, the last started span "wins". However, the multiple root spans aspect of this should play a negligible role in Sentry SDKs, given our SDKs don't allow for this by default and it would require significant manual user setup. We acknowledge though that this could lead to potentially confusing or non-linear relationships. 
 
 The following diagram shows optimal examples with a `tracesSampleRate` of `1.0`, meaning every span tree is positively sampled, sent to Sentry and therefore connected via a span link: 
 
@@ -383,11 +383,19 @@ This further includes specifying the type of the `sentry.link.type` attribute va
 
 ### Storage
 
-We need to adapt our events table to support storing span links in our current event storage. Furthermore, we need to take span links into account for the EAP storage architecture.
+We need to be able to store span links in our current event storage. Furthermore, we need to take span links into account for the EAP storage architecture.
 
 Our storage system needs to handle storing span links on root spans (i.e. today's `transaction` event) as well as on child spans or EAP spans in the future. 
 
-Furthermore, for `previous_trace` span links, we need to set up an index or a lookup table that enables us to query the **next trace**. More specifically, we need to be able to support a query like:Given a transaction (span) `t`, list transactions (spans) that have span links with the attribute `sentry.link.type === "previous_trace"` to  `t`.
+#### Next Trace Relationship
+
+Furthermore, for transactions and spans holding `previous_trace` span links, we need to set up a lookup table that enables us to query the **next trace**. More specifically, we need to be able to support a query like: _Given a transaction (span) `t`, list transactions (spans) that have span links with the attribute `sentry.link.type === "previous_trace"` to  `t`. 
+
+Concretely, we need this doubly-linked-list-like relationship so that we can query if there is a next trace for a given trace. We'll use this for the "next trace" navigation button in the trace view UI.
+
+In the future, we might also want to query for a trace chain into both directions of a given trace to find an entire trace chain.
+
+It's important to note that the "next trace" relationship needs to be created at span/transaction storage time, rather than in the SDK. The SDK can only know the predecessor of the current trace but it cannot know the span context of the next trace in advance. 
 
 ### Advantages
 
