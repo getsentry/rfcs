@@ -67,3 +67,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0138-achieving-order-between-pageload-and-srr-spans](text/0138-achieving-order-between-pageload-and-srr-spans.md): Achieving order between Pageload and SRR spans
 - [0139-versioned-docs](text/0139-versioned-docs.md): Versioned documentation for Sentry Docs
 - [0143-sdk-fail-safe-mode](text/0143-sdk-fail-safe-mode.md): SDK Fail-Safe Mode
+- [0141-linking-traces](text/0141-linking-traces.md): Support Linking Traces
