@@ -470,7 +470,7 @@ The backend detects anomalies in our customers' session data. If there is a sign
 
 ### Option C4: Failing SDK Event <a name="option-c4"></a>
 
-This option is similar to [option C1](#option-c1), but instead, the SDK sends a hard-coded failing SDK event. There is a slight chance that the SDK can send a crash report of the SDK failure on a previous run before disabling itself. Therefore, the event must contain the SDK version and some meta-data, such as the DSN, userID, and device model, to find related crash reports and some special yet-to-be-defined context to clearly identify the event as a failing SDK event.
+This option is similar to [option C1](#option-c1), but instead, the SDK sends a hard-coded failing SDK event. The event envelope doesn't go through the scope/hub or client. Instead, the payload for the event envelope is hard-coded, and the SDK directly sends the HTTP payload to Sentry. There is a slight chance that the SDK can send a crash report of the SDK failure on a previous run before disabling itself. Therefore, the event must contain the SDK version and some meta-data, such as the DSN, userID, and device model, to find related crash reports and some special yet-to-be-defined context to clearly identify the event as a failing SDK event.
 
 To drastically minimize the risk of causing more damage, we must keep this logic as simple as possible, and it should hardly ever change. We can consider creating a special type of transport, and it shouldn't go through the scope/hub or client. As the SDKs must only send this request once, it might be acceptable to skip rate limiting, as the request load should be the same as session init updates, which the infrastructure can handle. We still need to figure out the details with the ingest team.
 
