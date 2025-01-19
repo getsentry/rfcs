@@ -50,6 +50,7 @@ Some remarks on the example:
  * `windows`: contains all visible windows, on mobile it's typically just one or two (e.g. if a dialog is open)
  * `type`: The fully qualified widget class name, this name may be obfuscated on certain platforms (e.g. Android release builds with proguard enabled)
  * `children` nests all child UI widgets, which then builds up the whole UI tree
+ * Positioning attributes (`x`, `y`, `z`) are relative to the parent window. To enable absolute positioning, the `rendering_system` should contain `absolute`
 
 A typical Android/iOS view hierarchy for a single window consists of around 100-200 objects. Taking the attributes from the example above this generates a raw JSON file with a size of around 50KB. More complex view hierarchies, for example a Unity game, may hold 1000-2000 objects, producing a JSON file of around 500KB.
 
