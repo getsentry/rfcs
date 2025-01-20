@@ -1,7 +1,9 @@
 - Start Date: 2024-11-12
 - RFC Type: feature
 - RFC PR: https://github.com/getsentry/rfcs/pull/143
-- RFC Status: draft
+- RFC Status: Done
+- RFC Author: @philipphofmann
+- RFC Approver: @kahest
 
 # Summary
 
