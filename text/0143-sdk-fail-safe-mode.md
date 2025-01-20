@@ -309,7 +309,7 @@ Notes on [potential false positives](#potential-false-positives):
 #### Cons <a name="option-a2-cons"></a>
 
 1. It doesn't work for SDK init crashes.
-2. It doesn't only works for single tenants or self-hosted.
+2. It doesn't work for single tenants or self-hosted.
 3. It runs on the server, so it's delayed, and we need extra functionality to communicate the failing SDK info to the SDKs.
 4. It doesn't work offline.
 
