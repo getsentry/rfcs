@@ -20,7 +20,7 @@ Why didn't the [SDK crash detection](https://github.com/getsentry/sentry/tree/ma
 To identify and minimize the damage of such incidents, we need to develop extra strategies. To get there, we have to solve three different problems:
 
 1. [**A: Detecting a continuously crashing SDK**](#a-detecting-continuous-sdk-crashes): First, we need to know when our SDKS continuously crash our customers.
-2. [**B: Minimizing the damage of a continuously crashing SDK**](b-minimizing-the-damage): It's better to have no data than crashes and no data.
+2. [**B: Minimizing the damage of a continuously crashing SDK**](#b-minimizing-the-damage): It's better to have no data than crashes and no data.
 3. [**C: Knowing when and why the SDK is continuously crashing**](#c-knowing-when-the-sdk-is-disabled): After minimizing the damage, we still need to fix the root cause. We can only do that if we're aware and have some data to fix the problem.
 
 We're going to look at each one of the problems in an extra section below. But before we do, we must look at related topics impacting the ideal solution.
