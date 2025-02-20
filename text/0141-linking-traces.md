@@ -280,7 +280,7 @@ SDKs are free to chose whatever storage mechanism makes sense to store span link
 
 ### Envelope Item Payload Changes
 
-Span trees are serialized to transaction event envelopes in all Sentry SDKs. Therefore, the envelope item needs to accommodate span links in its payload.
+Span trees are serialized to transaction event envelopes in all Sentry SDKs. Therefore, the envelope item needs to accommodate span links in its payload. If the `links` entry is an empty array, it can be omitted from the envelope.
 
 We propose to store span links in the `trace` context if the root span has links, similarly to how we serialize root span attributes today:
 
@@ -296,11 +296,12 @@ We propose to store span links in the `trace` context if the root span has links
       trace_id: string;
       // new field for links:
       links?: Array<{
-        "span_id": string,
-        "trace_id": string, 
-        sampled?: boolean, // traceFlags from Otel converted to boolean
+        "span_id": string, // OTel spanId
+        "trace_id": string, // OTel traceId
+        sampled?: boolean, // traceFlags from OTel converted to boolean
         attributes?: Record<string, AttributeValue>,
         // + potentially more fields 1:1 from Otel. e.g. (traceState, droppedAttributesCount, isRemote)
+        // - duplicate OTel data fields like spanId, traceId and traceFlags (we use our own key names for those)
       }>
       // ...
     }
@@ -309,7 +310,7 @@ We propose to store span links in the `trace` context if the root span has links
 }
 ```
 
-For links stored in child spans, SDKs should serialize them to `spans[i].links`:
+For links stored in child spans, SDKs should serialize them to `spans[i].links` (or omitted if empty):
 
 ```typescript
 // event envelope item
@@ -340,7 +341,8 @@ This means that the serialized `links` objects should always contain:
 - `sampled: boolean` - required if sampling decision of the span to link to (corresponds to `traceFlags` in Otel span context converted to `boolean`) is available
 - `attributes:` - required if attributes were added to the link
 
-Optionally, they can contain further fields like `traceState`, `isRemote` or `droppedAttributesCount` which will be just forwarded unless we find a use case for them.
+Optionally, the serialized link object can contain further fields from OTel like `traceState`, `isRemote` or `droppedAttributesCount` which will be just forwarded unless we find a use case for them.
+However, we use our own keys for `spanId`, `traceId`, and `traceFlags` to avoid duplicate data. Those OTel fields should be excluded from the links objects in the envelope.
 
 ### Setting `previous_trace` span links
 
