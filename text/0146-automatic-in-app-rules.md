@@ -5,7 +5,7 @@
 
 # Summary
 
-For Java projects, when a code mapping is automatically created, also create an in-app stack trace rules to categorize the frames as in-app.
+For Java projects, when a code mapping is automatically created, also create an in-app stack trace rule to categorize the frames as in-app.
 
 # Motivation
 
@@ -13,7 +13,7 @@ The majority of Java SDKs cannot determine if a frame is in-app or not and we de
 
 # Supporting Data
 
-There's 42% of Java projects with no issue with an in-app frame. Java projects with GitHub installed and automatic in-app generation only has 25% of projects with no issues with an in-app frame.
+There are 42% of Java projects with no issue with an in-app frame. Java projects with GitHub installed and automatic in-app generation only have 25% of projects with no issues with an in-app frame.
 
 # Drawbacks
 
@@ -21,8 +21,8 @@ If the logic is not correct we may generate wrong in-app stack trace rules, howe
 
 # Details
 
-If a code mapping is generated for `com.example.foo` we generate an in-app rule for `stack.module:com.example.**`. This rule has one degree-less of specificity in order to match all packages across the board (e.g. `com.example.bar`).
+If a code mapping is generated for `com.example.foo` we generate an in-app rule for `stack.module:com.example.**`. This rule has one degree less of specificity to match all packages across the board (e.g. `com.example.bar`).
 
-This feature is build on top of [the derived code mappings system](0016-auto-code-mappings.md).
+This feature is built on top of [the derived code mappings system](0016-auto-code-mappings.md).
 
 All logic for the creation of the rules can be found [here](https://github.com/getsentry/sentry/blob/4ce5da73a3896062636a214d384f439071741f89/src/sentry/issues/auto_source_code_config/task.py#L196-L200).
