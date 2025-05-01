@@ -68,3 +68,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0139-versioned-docs](text/0139-versioned-docs.md): Versioned documentation for Sentry Docs
 - [0143-sdk-fail-safe-mode](text/0143-sdk-fail-safe-mode.md): SDK Fail-Safe Mode
 - [0141-linking-traces](text/0141-linking-traces.md): Support Linking Traces
+- [0146-automatic-in-app-rules]
