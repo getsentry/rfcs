@@ -69,3 +69,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0143-sdk-fail-safe-mode](text/0143-sdk-fail-safe-mode.md): SDK Fail-Safe Mode
 - [0141-linking-traces](text/0141-linking-traces.md): Support Linking Traces
 - [0146-automatic-in-app-rules](text/0146-automatic-in-app-rules.md): For Java projects, when a code mapping is automatically created, also create an in-app stack trace rules to categorize the frames as in-app
+- [0147-make-sentry-semantic-conversions-mandatory-in-sd-ks](text/0147-make-sentry-semantic-conversions-mandatory-in-sd-ks.md): Make Sentry Semantic Conversions Mandatory in SDKs
