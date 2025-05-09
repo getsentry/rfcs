@@ -1,7 +1,7 @@
 - Start Date: 2025-05-08
 - RFC Type: decision
 - RFC PR: https://github.com/getsentry/rfcs/pull/147
-- RFC Status: draft
+- RFC Status: withdrawn
 
 # Summary
 
