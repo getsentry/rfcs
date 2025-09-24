@@ -2,7 +2,7 @@
 - RFC Type: feature
 - RFC PR: https://github.com/getsentry/rfcs/pull/148
 - RFC Status: draft
-- - RFC Author: @philipphofmann
+- RFC Author: @philipphofmann
 
 
 # Summary
