@@ -167,16 +167,6 @@ Similar to [~~A - Store Logs on Calling Thread~~ ](https://www.notion.so/A-Store
 
 1. When a crash or watchdog termination occurs, some logs may be missing. On Cocoa, users rely on breadcrumbs for investigating watchdog terminations. If some logs are missing, users may be reluctant to migrate from breadcrumbs to logs.
 
-# Drawbacks
-
-Why should we not do this? What are the drawbacks of this RFC or a particular option if
-multiple options are presented.
-
-# Unresolved questions
-
-- What parts of the design do you expect to resolve through this RFC?
-- What issues are out of scope for this RFC but are known?
-
 ## ~~D - CrashReporter Sync~~
 
 > ⛔ **Dismissed because of con 1.** ⛔
@@ -217,6 +207,11 @@ Similar to how we already make transactions and SR work for crashes, we could ad
 # Useful resources
 
 On Cocoa, we can get inspired by [CacheAdvance](https://github.com/dfed/CacheAdvance), which is an open source lib storing anything implementing Swift Codable to disk using file handles. The solution isn’t thread-safe.
+
+# Drawbacks
+
+Why should we not do this? What are the drawbacks of this RFC or a particular option if
+multiple options are presented.
 
 # Unresolved Questions
 
