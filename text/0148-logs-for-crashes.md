@@ -4,7 +4,6 @@
 - RFC Status: draft
 - RFC Author: @philipphofmann
 
-
 # Summary
 
 This RFC aims to develop a strategy for SDKs to prevent the loss of logs when an application terminates abnormally, such as a crash or watchdog termination.
@@ -15,13 +14,15 @@ Understanding the sequence of events leading up to an abnormal termination is cr
 
 # Background
 
-The Cocoa and Java SDKs implement scope observers that continuously synchronize scope data to their respective crash handling backends (SentryCrash for Cocoa, sentry-native for Java). This stores scope information in C memory, making it accessible during signal handlers when crashes occur. For watchdog terminations, both SDKs persist scope data directly to disk since the crash handling backends cannot capture these terminations. The Cocoa SDK performs disk writes synchronously on the calling thread, while the Java SDK uses a dedicated background thread due to Android's strict mode restrictions on main thread disk I/O. Both implementations use persistent file handles to minimize I/O overhead, with thread safety guaranteed by the scope's existing synchronization mechanisms.
+The Cocoa and Java SDKs implement scope observers that continuously synchronize scope data to their respective crash handling backends (SentryCrash for Cocoa, sentry-native for Java). The scope observers store the information in C memory, so when a crash occurs, the crash handlers can access that information [async safe](https://man7.org/linux/man-pages/man7/signal-safety.7.html) and write it to disk.
+For watchdog terminations, both SDKs persist scope data directly to disk since the crash handling backends cannot capture these terminations. The Cocoa SDK performs disk writes synchronously on the calling thread, while the Java SDK uses a dedicated background thread due to Android's strict mode restrictions on main thread disk I/O. Both implementations use file handles to minimize I/O overhead, with thread safety guaranteed by the scope's existing synchronization mechanisms.
 
-Links to implementations:
+Links to some implementations:
 
-* Java [PersistingScopeObserver](https://github.com/getsentry/sentry-java/blob/main/sentry/src/main/java/io/sentry/cache/PersistingScopeObserver.java)
-* [SentryCrashScopeObserver](https://github.com/getsentry/sentry-cocoa/blob/d8ceea3a0ce99c0dd499d3b9472c87aaf0713d3c/Sources/Sentry/SentryCrashScopeObserver.m)
-* [SentryWatchdogTerminationScopeObserver](https://github.com/getsentry/sentry-cocoa/blob/main/Sources/Sentry/SentryWatchdogTerminationScopeObserver.m)
+* Java: [PersistingScopeObserver](https://github.com/getsentry/sentry-java/blob/main/sentry/src/main/java/io/sentry/cache/PersistingScopeObserver.java)
+* Java: [NdkScopeObserver](https://github.com/getsentry/sentry-java/blob/d21770841d84eddba0636e2082c029db2a158457/sentry-android-ndk/src/main/java/io/sentry/android/ndk/NdkScopeObserver.java)
+* Cocoa: [SentryCrashScopeObserver](https://github.com/getsentry/sentry-cocoa/blob/d8ceea3a0ce99c0dd499d3b9472c87aaf0713d3c/Sources/Sentry/SentryCrashScopeObserver.m)
+* Cocoa: [SentryWatchdogTerminationScopeObserver](https://github.com/getsentry/sentry-cocoa/blob/main/Sources/Sentry/SentryWatchdogTerminationScopeObserver.m)
 
 ## Requirements
 
@@ -33,7 +34,8 @@ logger.trace("Starting database connection")
 // The above log must show up in Sentry
 SentrySDK.crash()
 ```
-2. The solution should minimize the loss of log messages for watchdog terminations.
+
+2. The solution SHOULD minimize the loss of log messages for watchdog terminations.
 3. The solution MUST NOT block the main thread.
 4. The solution MUST be thread-safe.
 5. The solution MUST work for hybrid SDKs.
@@ -44,31 +46,35 @@ SentrySDK.crash()
 
 ## A - FIFO Queue With Async IO
 
-The [BatchProcessor](https://develop.sentry.dev/sdk/telemetry/spans/batch-processor/) stores its logs in a thread-safe FIFO queue, living in a crash-safe memory space. When the BatchProcessor receives a log, it performs the following steps
+The existing [BatchProcessor](https://develop.sentry.dev/sdk/telemetry/spans/batch-processor/) minimizes the number of HTTP requests that SDKs make to Sentry for logs and currently stores the logs in memory. When a crash happens, all these logs are lost.
+
+With this option, the BatchProcessor stores its logs in a thread-safe FIFO queue, residing in an async-safe memory space, allowing the crash reporter to write them to disk when a crash occurs. Furthermore, the BatchProcessor stores logs asynchronously into a file, allowing it to recover after an abnormal termination, for which the crash handler can't run.
+
+When the BatchProcessor receives a log, it performs the following steps
 
 1. Put the log into the FIFO queue on the calling thread.
-2. On a background thread, serialize the next log of the FIFO queue and store it in the `BatchProcessorCacheFile`.
+2. On a background thread, serialize the next log of the FIFO queue and store it in the `batch-processor-cache-file`.
 3. Remove the log from the FIFO queue.
 4. If the queue isn’t empty, go to step 2.
 
-When a crash occurs, the SDKs write the logs in the FIFO queue to the `LogCrashRecoveryFile`  and send these logs on the next SDK launch. For the Cocoa SDK, the crash-safe memory space structure MUST be C memory, because Swift and Objective-C aren’t async-safe. For Java, it’s Java memory, because the JVM allows you to store logs in memory or on disk when a crash occurs. This solution also works for watchdog terminations, as the BatchProcessor MUST check on SDK launch if there are logs in the `BatchProcessorCacheFile` and send these.
+When a crash occurs, the SDKs write the logs in the FIFO queue to the `log-crash-recover-file`  and send these logs on the next SDK launch. For the Cocoa SDK, the crash-safe memory space structure MUST be C memory, because Swift and Objective-C aren’t async-safe. For Java, it’s Java memory, because the JVM allows you to store logs in memory or on disk when a crash occurs. This solution also works for watchdog terminations, as the BatchProcessor MUST check on SDK launch if there are logs in the `batch-processor-cache-file` and send these.
 
-The BatchProcessor MUST keep two `BatchProcessorCacheFiles`. When it sends the logs from `logs-cache-file1`, it must store new logs to `logs-cache-file2` until the SDK stores the envelope successfully, to avoid losing logs if a crash occurs in between. These are the flushing steps:
+The BatchProcessor MUST keep two `BatchProcessorCacheFiles`. When it sends the logs from `batch-processor-cache-file-1`, it must store new logs to `batch-processor-cache-file-2` until the SDK stores the envelope successfully, to avoid losing logs if a crash occurs in between. These are the flushing steps:
 
-1. Reroute new logs to `logs-cache-file2`
+1. Reroute new logs to `batch-processor-cache-file-2`
 2. Load logs into memory and store them in an envelope.
-3. Delete all logs from `logs-cache-file1`
+3. Delete all logs from `batch-processor-cache-file-1`
 
 The BatchProcessor maintains its logic of batching multiple logs together into a single envelope to avoid multiple HTTP requests.
 
-Hybrid SDKs pass every span down to the native SDKs, which will put every log in their BatchProcessor and it’s cache.
+Hybrid SDKs pass every span down to the native SDKs, which will put every log in their BatchProcessor and its cache.
 
 ### Duplicated Logs Edge Cases
 
 We intentionally ignore duplicate logs in two edge cases:
 
-1) if the application crashes between storing the envelope and deleting `logs-cache-file1`.
-2) if a crash occurs during step 2 and before step 3, where logs might exist in both the `BatchProcessorCacheFile` and `LogCrashRecoveryFile`.
+1) if the application crashes between storing the envelope and deleting a `batch-processor-cache-file` or `log-crash-recover-file`.
+2) if a crash occurs between step 2 and before step 3 of the FIFO queue process, where logs might exist in both the `batch-processor-cache-file` and the FIFO queue.
 
 In both cases, the SDK will send duplicate logs on the next launch. While this isn't acceptable long-term, we accept it for now because solving this correctly is complicated and we don't currently handle this edge case for other telemetry data such as crashes. If duplicate logs become problematic, we can implement database-style atomic operations using marker files or something similar to prevent duplication.
 
