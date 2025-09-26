@@ -57,6 +57,8 @@ When the BatchProcessor receives a log, it performs the following steps
 3. Remove the log from the FIFO queue.
 4. If the queue isn’t empty, go to step 2.
 
+The FIFO queue has a `max-logs-count` of 64 logs. When logs the FIFO exceeds `max-logs-count`, the BatchProcessor MUST drop logs and record client reports with the category `queue_overflow` for every dropped log. SDKs MAY choose a different `max-logs-count` value, if needed.
+
 When a crash occurs, the SDKs write the logs in the FIFO queue to the `log-crash-recover-file`  and send these logs on the next SDK launch. For the Cocoa SDK, the crash-safe memory space structure MUST be C memory, because Swift and Objective-C aren’t async-safe. For Java, it’s Java memory, because the JVM allows you to store logs in memory or on disk when a crash occurs. This solution also works for watchdog terminations, as the BatchProcessor MUST check on SDK launch if there are logs in the `batch-processor-cache-file` and send these.
 
 The BatchProcessor MUST keep two `BatchProcessorCacheFiles`. When it sends the logs from `batch-processor-cache-file-1`, it must store new logs to `batch-processor-cache-file-2` until the SDK stores the envelope successfully, to avoid losing logs if a crash occurs in between. These are the flushing steps:
@@ -85,7 +87,7 @@ In both cases, the SDK will send duplicate logs on the next launch. While this i
 
 ### Cons
 
-1. Not a 100% guarantee to drop any logs for watchdog terminations.
+1. Not a 100% guarantee to drop any logs for watchdog terminations, because when a watchdog termination occurs the SDK looses all logs in the FIFO queue.
 2. A slight synchronization overhead is required for storing logs in the crash-safe data structure.
 3. The solution adds a slight serialization overhead when passing logs layers, such as React-Native to Java, or Swift/Objective-C to C.
 4. Potential duplication of logs in a few crash scenarios.
