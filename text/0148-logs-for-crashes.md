@@ -35,12 +35,12 @@ logger.trace("Starting database connection")
 SentrySDK.crash()
 ```
 
-2. The solution SHOULD minimize the loss of log messages for watchdog terminations.
-3. The solution MUST NOT block the main thread.
-4. The solution MUST be thread-safe.
-5. The solution MUST work for hybrid SDKs.
-6. The solution SHOULD NOT depend on or interfere with the offline caching of envelopes, meaning once we tackle the cache overflow problem with priority queues or whatever, little or no changes SHOULD be required for this solution.
-7. The solution MAY also work for spans and other future telemetry data.
+1. The solution SHOULD minimize the loss of log messages for watchdog terminations. This MAY vary based on the platform. If the platforms allows it, SDKs SHOULD try to not loose any logs for watchdog terminations.
+2. The solution MUST NOT block the main thread.
+3. The solution MUST be thread-safe.
+4. The solution MUST work for hybrid SDKs.
+5. The solution SHOULD NOT depend on or interfere with the offline caching of envelopes, meaning once we tackle the cache overflow problem with priority queues or whatever, little or no changes SHOULD be required for this solution.
+6. The solution MAY also work for spans and other future telemetry data.
 
 # Options Considered
 
@@ -57,28 +57,25 @@ When the BatchProcessor receives a log, it performs the following steps
 3. Remove the log from the FIFO queue.
 4. If the queue isn’t empty, go to step 2.
 
-The FIFO queue has a `max-logs-count` of 64 logs. When logs the FIFO exceeds `max-logs-count`, the BatchProcessor MUST drop logs and record client reports with the category `queue_overflow` for every dropped log. SDKs MAY choose a different `max-logs-count` value, if needed.
+The FIFO queue has a `max-logs-count` of 64 logs. When the FIFO queue exceeds `max-logs-count` log items, the BatchProcessor MUST drop logs and record client reports with the category `queue_overflow` for every dropped log. SDKs MAY choose a different `max-logs-count` value, if needed.
 
-When a crash occurs, the SDKs write the logs in the FIFO queue to the `log-crash-recover-file`  and send these logs on the next SDK launch. For the Cocoa SDK, the crash-safe memory space structure MUST be C memory, because Swift and Objective-C aren’t async-safe. For Java, it’s Java memory, because the JVM allows you to store logs in memory or on disk when a crash occurs. This solution also works for watchdog terminations, as the BatchProcessor MUST check on SDK launch if there are logs in the `batch-processor-cache-file` and send these.
+When a crash occurs, the SDKs write the logs in the FIFO queue to the `log-crash-recover-file`  and send these logs on the next SDK launch. To avoid sending duplicated logs, the SDKs MUST deduplicate the logs from the `log-crash-recover-file` and `batch-processor-cache-file` based on the logID after a crash before sending them. It's worth noting that logs don't have an ID yet, and we MUST extend the protocol for this.
 
-The BatchProcessor MUST keep two `BatchProcessorCacheFiles`. When it sends the logs from `batch-processor-cache-file-1`, it must store new logs to `batch-processor-cache-file-2` until the SDK stores the envelope successfully, to avoid losing logs if a crash occurs in between. These are the flushing steps:
+For the Cocoa SDK, the crash-safe memory space structure MUST be C memory, because Swift and Objective-C aren’t async-safe. For Java, it’s Java memory, because the JVM allows you to store logs in memory or on disk when a crash occurs. This solution also works for watchdog terminations, as the BatchProcessor MUST check on SDK launch if there are logs in the `batch-processor-cache-file` and send these.
 
-1. Reroute new logs to `batch-processor-cache-file-2`
-2. Load logs into memory and store them in an envelope.
-3. Delete all logs from `batch-processor-cache-file-1`
+The BatchProcessor MUST keep two `batch-processor-cache-files`. When it sends the logs from `batch-processor-cache-file`, it renames it to `batch-processor-cache-file-to-flush` and creates a new `batch-processor-cache-file` to avoid losing logs if a crash occurs when flushing the logs. To avoid sending duplicate logs if the app crashes in between storing the envelope and deleting the cache file, the BatchProcessor MUST first store the envelope to the same folder as the BatchProcessor file. After deleting the `batch-processor-cache-file-to-flush`, SDKs MUST move the envelope to the envelope cache folder. As moving files can be done atomic, SDKs avoid sending duplicated logs in the described scenario. We're going to add a more detailed explanation once we add this concept to the develop docs. These are the flushing steps:
+
+1. Rename `batch-processor-cache-file` to `batch-processor-cache-file-to-flush`.
+2. Create a new `batch-processor-cache-file`
+3. Store new logs to `batch-processor-cache-file`
+4. Load logs into memory from the `batch-processor-cache-file-to-flush`
+5. Store the logs in memory into an envelope into the batch processor directory, which MUST be the same folder as the other BatchProcessor files, and name it `batch-processor-cache-envelope-to-flush`.
+6. Delete all logs from `batch-processor-cache-file-to-flush`
+7. Move the `batch-processor-cache-envelope-to-flush` to the envelopes cache folder.
 
 The BatchProcessor maintains its logic of batching multiple logs together into a single envelope to avoid multiple HTTP requests.
 
 Hybrid SDKs pass every span down to the native SDKs, which will put every log in their BatchProcessor and its cache.
-
-### Duplicated Logs Edge Cases
-
-We intentionally ignore duplicate logs in two edge cases:
-
-1) if the application crashes between storing the envelope and deleting a `batch-processor-cache-file` or `log-crash-recover-file`.
-2) if a crash occurs between step 2 and before step 3 of the FIFO queue process, where logs might exist in both the `batch-processor-cache-file` and the FIFO queue.
-
-In both cases, the SDK will send duplicate logs on the next launch. While this isn't acceptable long-term, we accept it for now because solving this correctly is complicated and we don't currently handle this edge case for other telemetry data such as crashes. If duplicate logs become problematic, we can implement database-style atomic operations using marker files or something similar to prevent duplication.
 
 ### Pros
 
@@ -90,7 +87,6 @@ In both cases, the SDK will send duplicate logs on the next launch. While this i
 1. Not a 100% guarantee to drop any logs for watchdog terminations, because when a watchdog termination occurs the SDK looses all logs in the FIFO queue.
 2. A slight synchronization overhead is required for storing logs in the crash-safe data structure.
 3. The solution adds a slight serialization overhead when passing logs layers, such as React-Native to Java, or Swift/Objective-C to C.
-4. Potential duplication of logs in a few crash scenarios.
 
 
 ## ~~B - Store Logs on Calling Thread~~
