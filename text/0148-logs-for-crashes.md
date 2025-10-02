@@ -3,11 +3,15 @@
 - RFC PR: https://github.com/getsentry/rfcs/pull/148
 - RFC Status: In Progress
 - RFC Author: @philipphofmann
-- RFC Approver:
+- RFC Approver: @AbhiPrasad
 
 # Summary
 
 This RFC aims to develop a strategy for SDKs to prevent the loss of logs when an application terminates abnormally, such as a crash or watchdog termination.
+
+# Decision
+
+We decided to go with [Option A - FIFO Queue With Async IO](#a---fifo-queue-with-async-io), because the other options all had some knockout criteria. This option is the basis for adding a more detailed spec to the BatchProcessor in the [develop docs](https://develop.sentry.dev/sdk/telemetry/spans/batch-processor/).
 
 # Motivation
 
@@ -208,16 +212,7 @@ Similar to how we already make transactions and SR work for crashes, we could ad
 3. We violate async safety for signal handlers, but we already do that for transactions and SR for crashes.
 
 
-
 # Useful resources
 
 On Cocoa, we can get inspired by [CacheAdvance](https://github.com/dfed/CacheAdvance), which is an open source lib storing anything implementing Swift Codable to disk using file handles. The solution isn’t thread-safe.
 
-# Drawbacks
-
-Why should we not do this? What are the drawbacks of this RFC or a particular option if
-multiple options are presented.
-
-# Unresolved Questions
-
-1. Is it acceptable to have duplicated logs in certain edge cases, as pointed out in [Option A](#a---fifo-queue-with-async-io).
