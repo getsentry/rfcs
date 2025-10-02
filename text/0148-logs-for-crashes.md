@@ -75,7 +75,7 @@ The BatchProcessor MUST keep two `batch-processor-cache-files`. When it sends th
 
 The BatchProcessor maintains its logic of batching multiple logs together into a single envelope to avoid multiple HTTP requests.
 
-Hybrid SDKs pass every span down to the native SDKs, which will put every log in their BatchProcessor and its cache.
+Hybrid SDKs pass every span down to the native SDKs, which will put every log in their BatchProcessor and its cache when logs are ready for sending, meaning after they go through beforeLog, integrations, processors, etc.
 
 ### Pros
 
