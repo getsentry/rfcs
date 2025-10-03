@@ -75,7 +75,7 @@ The BatchProcessor MUST keep two `batch-processor-cache-files`. When it sends th
 3. Store new logs to `batch-processor-cache-file`
 4. Load logs into memory from the `batch-processor-cache-file-to-flush`
 5. Store the logs in memory into an envelope into the batch processor directory, which MUST be the same folder as the other BatchProcessor files, and name it `batch-processor-cache-envelope-to-flush`.
-6. Delete all logs from `batch-processor-cache-file-to-flush`
+6. Delete the file `batch-processor-cache-file-to-flush`
 7. Move the `batch-processor-cache-envelope-to-flush` to the envelopes cache folder.
 
 The BatchProcessor maintains its logic of batching multiple logs together into a single envelope to avoid multiple HTTP requests.
