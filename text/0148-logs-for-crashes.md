@@ -53,7 +53,7 @@ SentrySDK.crash()
 
 The existing [BatchProcessor](https://develop.sentry.dev/sdk/telemetry/spans/batch-processor/) minimizes the number of HTTP requests that SDKs make to Sentry for logs and currently stores the logs in memory. When a crash happens, all these logs are lost.
 
-With this option, the BatchProcessor stores its logs in a thread-safe FIFO queue, residing in an async-safe memory space, allowing the crash reporter to write them to disk when a crash occurs. Furthermore, the BatchProcessor stores logs asynchronously into a file, allowing it to recover after an abnormal termination, for which the crash handler can't run. The BatchProcessor MUST store the logs immidiately to disk after adding them to the FIFO queue. It MUST NOT use a timeout as it does for flushing the logs to Sentry to minimize data loss in case of a watchdog termination.
+With this option, the BatchProcessor stores its logs in a thread-safe FIFO queue, residing in an async-safe memory space, allowing the crash reporter to write them to disk when a crash occurs. Furthermore, the BatchProcessor stores logs asynchronously into a file, allowing it to recover after an abnormal termination, for which the crash handler can't run. The BatchProcessor MUST store the logs immediately to disk after adding them to the FIFO queue. It MUST NOT use a timeout as it does for flushing the logs to Sentry to minimize data loss in case of a watchdog termination.
 
 When the BatchProcessor receives a log, it performs the following steps
 
