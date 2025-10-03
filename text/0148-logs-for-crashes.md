@@ -1,7 +1,7 @@
 - Start Date: 2025-09-24
 - RFC Type: feature
 - RFC PR: https://github.com/getsentry/rfcs/pull/148
-- RFC Status: In Progress
+- RFC Status: Done
 - RFC Author: @philipphofmann
 - RFC Approver: @AbhiPrasad
 
