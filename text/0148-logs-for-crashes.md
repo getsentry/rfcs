@@ -89,7 +89,7 @@ Hybrid SDKs pass every span down to the native SDKs, which will put every log in
 
 ### Cons
 
-1. Not a 100% guarantee to drop any logs for watchdog terminations, because when a watchdog termination occurs the SDK looses all logs in the FIFO queue.
+1. Not a 100% guarantee to drop any logs for watchdog terminations, because when a watchdog termination occurs the SDK loses all logs in the FIFO queue.
 2. A slight synchronization overhead is required for storing logs in the crash-safe data structure.
 3. The solution adds a slight serialization overhead when passing logs layers, such as React-Native to Java, or Swift/Objective-C to C.
 
