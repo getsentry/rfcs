@@ -1,6 +1,6 @@
 - Start Date: 2026-01-23
 - RFC Type: decision
-- RFC PR: -
+- RFC PR: https://github.com/getsentry/rfcs/pull/149
 - RFC Status: draft
 - RFC Driver: [Charly Gomez](https://github.com/chargome)
 - RFC Approver: JavaScript SDK Team
@@ -38,11 +38,11 @@ By merging the repositories, we can:
 
 # Background
 
-The bundler plugins were originally developed in a separate repository to allow independent versioning and release cycles. The plugins are built on [unplugin](https://github.com/unjs/unplugin) and provide:
+The bundler plugins were originally developed in a separate repository (during hackweek) to allow independent versioning and release cycles. The plugins are built on [unplugin](https://github.com/unjs/unplugin) and provide:
 
 - Sourcemap upload to Sentry
 - Release creation and management
-- Automatic release name discovery (CI environment detection: Vercel, AWS, Heroku, CircleCI, Git SHA)
+- Automatic release name discovery
 - Release injection for automatic error association
 - React component display names for breadcrumbs and Session Replays
 
