@@ -78,10 +78,11 @@ On a dedicated branch (e.g., `merge-prep`):
 2. **Migrate tests from Jest to Vitest**
 3. **Audit dependencies** for conflicts with sentry-javascript
 4. **Publish final standalone version** with deprecation notice
+5. **Merge prep branch to main** when ready for migration
 
 ## Phase 2: Migration to sentry-javascript
 
-1. **Copy packages** into `sentry-javascript/packages/` (flat structure or nested under `packages/bundler-plugins/`)
+1. **Merge packages** into `sentry-javascript/packages/` while preserving git history (via `git subtree` or [git-filter-repo](https://github.com/newren/git-filter-repo))
 2. **Integrate with monorepo** build system and CI
 3. **Update `.craft.yml`** for new release targets
 
