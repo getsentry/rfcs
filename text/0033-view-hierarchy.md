@@ -26,6 +26,7 @@ The attachment payload is a JSON structure containing the view hierarchy, here's
 ```json
 {
     "rendering_system": "compose", // or android_view_system, apple_uikit, apple_swiftui, unity, flutter, ...
+    "positioning": "relative|absolute", 
     "windows": [
         {
             "type": "com.example.ui.FancyButton",
@@ -34,7 +35,6 @@ The attachment payload is a JSON structure containing the view hierarchy, here's
             "width": 100.0,
             "height": 100.0,
             "depth": 100.0, // if applies
-            "positioning": "relative|absolute", 
             "x": 0.0,
             "y": 0.0,
             "z": 2.0, // if applies.
