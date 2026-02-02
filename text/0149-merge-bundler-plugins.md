@@ -65,7 +65,6 @@ Maintain the current separate repository structure.
 ## Prerequisites
 
 - [x] Verify license compatibility (both MIT)
-- [ ] Gather Webpack 4 usage statistics ([PR #857](https://github.com/getsentry/sentry-javascript-bundler-plugins/pull/857))
 
 ## Phase 1: Preparation (in sentry-javascript-bundler-plugins repo)
 
@@ -73,7 +72,7 @@ On a dedicated branch (e.g., `merge-prep`):
 
 1. **Update dependencies**:
    - Bump minimum Node.js to 18+
-   - Migrate unplugin to v2 (drops Node 16 and Webpack 4 support)
+   - Remove unplugin dependency ([POC](https://github.com/getsentry/sentry-javascript-bundler-plugins/pull/858)) - unplugin pins us to specific Node versions; removing it also allows us to keep Webpack 4 support
    - Bump Sentry CLI to v3
 2. **Migrate tests from Jest to Vitest**
 3. **Audit dependencies** for conflicts with sentry-javascript
@@ -100,8 +99,7 @@ On a dedicated branch (e.g., `merge-prep`):
 Released with v11:
 
 1. **Node.js 16 dropped** - Minimum version increased to 18+
-2. **Webpack 4 dropped** (pending usage stats) - Required by unplugin v2; Webpack 5 was released 5+ years ago
-3. **Version number jump** - Plugins jump from v4.x to v11.x to align with SDK
+2. **Version number jump** - Plugins jump from v4.x to v11.x to align with SDK
 
 # Versioning Strategy
 
