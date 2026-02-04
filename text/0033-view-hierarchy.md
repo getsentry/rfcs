@@ -26,6 +26,7 @@ The attachment payload is a JSON structure containing the view hierarchy, here's
 ```json
 {
     "rendering_system": "compose", // or android_view_system, apple_uikit, apple_swiftui, unity, flutter, ...
+    "positioning": "relative|absolute", 
     "windows": [
         {
             "type": "com.example.ui.FancyButton",
@@ -50,6 +51,7 @@ Some remarks on the example:
  * `windows`: contains all visible windows, on mobile it's typically just one or two (e.g. if a dialog is open)
  * `type`: The fully qualified widget class name, this name may be obfuscated on certain platforms (e.g. Android release builds with proguard enabled)
  * `children` nests all child UI widgets, which then builds up the whole UI tree
+ * `positioning`: indicates how the element is positioned in relation to its parent. If not supplied, defaults to platform default.
 
 A typical Android/iOS view hierarchy for a single window consists of around 100-200 objects. Taking the attributes from the example above this generates a raw JSON file with a size of around 50KB. More complex view hierarchies, for example a Unity game, may hold 1000-2000 objects, producing a JSON file of around 500KB.
 
