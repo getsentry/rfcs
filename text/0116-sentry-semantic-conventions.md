@@ -6,7 +6,7 @@
 
 # Summary
 
-The purpose of this RFC is to formalize the a set of semantic conventions in Sentry, aligning with [OpenTelemetry's semantic conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/). At the curren time, these semantic conventions are meant to apply to spans, breadcrumbs, and metrics, but not to errors/transactions/replays/crons. This may change in the future.
+The purpose of this RFC is to formalize the a set of semantic conventions in Sentry, aligning with [OpenTelemetry's semantic conventions](https://opentelemetry.io/docs/concepts/semantic-conventions/). At the current time, these semantic conventions are meant to apply to spans, breadcrumbs, and metrics, but not to errors/transactions/replays/crons. This may change in the future.
 
 These will be a standardized naming scheme for operations and data that will be shared across the SDKs, ingest, and the product. We will implement the semantic conventions via a versioned JSON schema that is published as packages for Python, JavaScript, and Rust. This allows us to have a single source of truth for the semantic conventions, and also allows us to generate code for all parts of the stack (ingest, frontend, backend, data pipelines) that need to be aware of this.
 
