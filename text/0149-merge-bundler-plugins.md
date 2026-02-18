@@ -72,7 +72,7 @@ On a dedicated branch (e.g., `merge-prep`):
 
 1. **Update dependencies**:
    - Bump minimum Node.js to 18+
-   - Remove unplugin dependency ([POC](https://github.com/getsentry/sentry-javascript-bundler-plugins/pull/858)) - unplugin pins us to specific Node versions; removing it also allows us to keep Webpack 4 support
+   - Remove unplugin dependency ([POC](https://github.com/getsentry/sentry-javascript-bundler-plugins/pull/858)) - unplugin pins us to specific Node versions
    - Bump Sentry CLI to v3
 2. **Migrate tests from Jest to Vitest**
 3. **Audit dependencies** for conflicts with sentry-javascript
@@ -98,7 +98,7 @@ On a dedicated branch (e.g., `merge-prep`):
 
 Released with v11:
 
-1. **Node.js 16 dropped** - Minimum version increased to 18+
+1. **Node.js 16 dropped** - Minimum version increased to 18+. Note: Node 18 removed support for the MD4 hashing algorithm that webpack v4 relied on, so bumping to Node 18+ effectively drops webpack v4 support as well.
 2. **Version number jump** - Plugins jump from v4.x to v11.x to align with SDK
 
 # Versioning Strategy
