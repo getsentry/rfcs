@@ -39,7 +39,7 @@ The bundler plugins were originally developed in a separate repository to allow 
 | Current Version | v4.x                              | v9.x              |
 | Test Framework  | Jest                              | Vitest            |
 | Node.js Minimum | Node 16                           | Node 18+          |
-| Monorepo Tool   | Nx                                | Nx/Lerna          |
+| Monorepo Tool   | Nx                                | Nx                |
 
 **Packages to migrate:**
 - `@sentry/bundler-plugin-core`
@@ -74,10 +74,12 @@ On a dedicated branch (e.g., `merge-prep`):
    - Bump minimum Node.js to 18+
    - Remove unplugin dependency ([POC](https://github.com/getsentry/sentry-javascript-bundler-plugins/pull/858)) - unplugin pins us to specific Node versions
    - Bump Sentry CLI to v3
+   - Replace Rollup v2 build tooling (currently pinned to v2, likely for Node 14 compat) with a modern bundler
 2. **Migrate tests from Jest to Vitest**
-3. **Audit dependencies** for conflicts with sentry-javascript
-4. **Publish final standalone version** with deprecation notice
-5. **Merge prep branch to main** when ready for migration
+3. **Fix e2e/integration test isolation** - Tests currently aren't isolated and pick up incorrect bundler versions (e.g., Rollup tests only test Rollup v2 because it's the build dependency, despite us not even supporting Rollup v2). Tests should invoke bundlers in isolated environments rather than calling them from code.
+4. **Audit dependencies** for conflicts with sentry-javascript
+5. **Publish final standalone version** with deprecation notice
+6. **Merge prep branch to main** when ready for migration
 
 ## Phase 2: Migration to sentry-javascript
 
