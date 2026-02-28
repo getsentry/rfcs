@@ -73,7 +73,7 @@ This RFC focuses on the **stack trace display and symbolication** aspect of the 
 
 This is a cross-cutting concern that touches:
 
-- **SDKs**: All native code handling SDKs (sentry-native, sentry-java/Android NDK, sentry-dotnet, and downstream dependents + any future SDK performing client-side symbolication).
+- **SDKs**: All native code handling SDKs (sentry-native, sentry-java/Android NDK, sentry-dotnet, (maybe sentry-cocoa), and downstream dependants + any future SDK performing client-side native symbolication).
 - **Relay / ingestion**: The frame schema needs to either gain a new typed field or explicitly allow SDKs to set existing fields.
 - **Processing (monolith)**: `sentry/lang/native/processing.py` needs to honor the new signal and skip symbolication for marked frames.
 - **Symbolicator**: May need awareness of the flag if processing delegates the decision.
@@ -152,6 +152,7 @@ Let SDKs explicitly set `symbolicator_status: "symbolicated"` (or a new value) i
 
 # Unresolved Questions
 
+- How are the associated debug-meta images being resolved? If a frame is marked as "client-symbolicated" and thus doesn't show a "missing symbol" warning, images that are missing, but whose associated frames are entirely "client-symbolicated", shouldn't be marked as an error either (but should still be listed). Should this be resolved on the client (with a tag similar to the frame)? Or should this be resolved in native processing?
 - Are there workflow interactions between symbolication, line-number and source lookup that would be prevented by the presented approach?
 - What is the interaction with demangling? If an SDK provides a mangled C++ symbol, should the backend still demangle it even if the frame is marked as client-symbolicated?
 - Should the UI distinguish between server-symbolicated and client-symbolicated frames (e.g. a subtle indicator), or treat them identically?
