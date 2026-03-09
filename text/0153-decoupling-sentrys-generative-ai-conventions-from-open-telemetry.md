@@ -173,7 +173,7 @@ Agent creation spans are currently emitted when instrumenting LangGraph with eit
 
 Handoff spans are only created by the Python SDK's instrumentation for OpenAI Agents. In the `openai-agents` package, handoffs are implemented by responding to a tool call request in the model's output. The dedicated handoff span will be replaced by an Execute Tool Span.
 
-Workflow spans are not documented by either OpenTelemetry or the [AI Agents Insights module development guide](https://github.com/getsentry/sentry-docs/blob/66e106ace45b29754e8422008f57852aa8ac9316/develop-docs/sdk/telemetry/traces/modules/ai-agents.mdx#L2), and only captured by the OpenAI Agents Python instrumentation. The span currently associates multiple agents running in the same workflow together. In the future, an agent that performs a handoff will appear as the parent of an Execute Tool Span, which itself will be the parent of the Invoke Agent Span for the agent which is handed off to.
+Workflow spans are not documented by either OpenTelemetry or the [AI Agents Insights module development guide](https://github.com/getsentry/sentry-docs/blob/master/develop-docs/sdk/telemetry/traces/modules/ai-agents.mdx), and only captured by the OpenAI Agents Python instrumentation. The span currently associates multiple agents running in the same workflow together. In the future, an agent that performs a handoff will appear as the parent of an Execute Tool Span, which itself will be the parent of the Invoke Agent Span for the agent which is handed off to.
 
 The current `openai-agents` span tree of the form
 
@@ -200,7 +200,7 @@ where the secondary agent's Invoke Agent Span continues after the primary agent'
 
 # Proposed Attributes
 
-The attribute definitions follow the [OpenTelemetry definitions](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md) at the time this proposal is accepted.
+The attribute definitions follow the [OpenTelemetry definitions](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md) at the time this proposal is accepted. If an attribute is not included, its definition is provided by the [AI Agents Insights module development guide](https://github.com/getsentry/sentry-docs/blob/master/develop-docs/sdk/telemetry/traces/modules/ai-agents.mdx).
 
 #### Agent Attributes
 
