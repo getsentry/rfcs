@@ -72,3 +72,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0148-logs-for-crashes](text/0148-logs-for-crashes.md): Logs for Crashes
 - [0149-merge-bundler-plugins](text/0149-merge-bundler-plugins.md): Merge sentry-javascript-bundler-plugins into sentry-javascript
 - [0153-decoupling-sentrys-generative-ai-conventions-from-open-telemetry](text/0153-decoupling-sentrys-generative-ai-conventions-from-open-telemetry.md): Decoupling Sentry's Generative AI conventions from OpenTelemetry
+- [0154-preventing-duplicate-ai-client-spans](text/0154-preventing-duplicate-ai-client-spans.md): Preventing duplicate AI Client Spans
