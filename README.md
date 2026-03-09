@@ -71,3 +71,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0146-automatic-in-app-rules](text/0146-automatic-in-app-rules.md): For Java projects, when a code mapping is automatically created, also create an in-app stack trace rules to categorize the frames as in-app
 - [0148-logs-for-crashes](text/0148-logs-for-crashes.md): Logs for Crashes
 - [0149-merge-bundler-plugins](text/0149-merge-bundler-plugins.md): Merge sentry-javascript-bundler-plugins into sentry-javascript
+- [0155-prevent-duplicate-ai-client-spans](text/0155-prevent-duplicate-ai-client-spans.md): Prevent duplicate AI Client Spans
