@@ -5,9 +5,9 @@
 
 # Summary
 
-Decouple Sentry semantic conventions for attributes on Generative AI spans from OpenTelemetry to improve the stability of the Sentry SDKs. The proposed conventions broadly align with the current OpenTelemetry conventions, with some ill-defined attributes removed.
+Decouple Sentry semantic conventions for attributes on Generative AI spans from OpenTelemetry to improve the stability of Sentry SDKs. The proposed conventions broadly align with the current OpenTelemetry conventions, with some ill-defined attributes removed.
 
-The proposal also defines the types of spans SDKs are expected to emit for Generative AI systems and the operations those spans represent. Finally, it proposes a plan to stop capturing Generative AI spans not defined in this proposal.
+The proposal also defines the types of spans SDKs are expected to emit for Generative AI systems, the operations those spans represent, and the attributes expected on each span type. Finally, it proposes a plan to stop capturing Generative AI spans not defined in this proposal.
 
 # Motivation
 
