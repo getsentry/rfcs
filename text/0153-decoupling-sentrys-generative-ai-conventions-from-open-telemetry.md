@@ -66,7 +66,7 @@ Attributes on the proposed spans are grouped into categories, and their types ar
 
 AI Client Spans represent a single request to a provider handled by one model and not involving tool calls.
 
-**Note**: The operation is more narrowly scoped than OpenTelemetry's "client AI spans". The agent invocation span must be used for any operations which can involve multiple model calls or may invoke tools.
+**Note**: The operation is more narrowly scoped than [OpenTelemetry's "client AI spans"](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md). The agent invocation span must be used for any operations which can involve multiple model calls or may invoke tools.
 
 #### Agent Attributes
 
