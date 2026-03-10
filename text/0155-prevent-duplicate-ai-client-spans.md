@@ -17,7 +17,7 @@ Users of a supported agent framework with a supported model provider therefore g
 
 Generative AI libraries can be categorized into client and agent libraries. Client libraries like the `openai`, `anthropic` and `google-genai` Python packages are language-specific wrappers for calling the endpoints serving models from the respective providers. Agent libraries provide abstractions that trigger multiple model calls, and give users the ability to define tools. Examples of such libraries include the `openai-agents`, `langchain` and `pydantic-ai` Python packages.
 
-Agent libraries typically provide an interface that lets the user define the code executed when an agent performs a model call. When these functions use an instrumented client library, two AI Client Spans are created. At the moment an API call to a model provider is triggered, the agent invocation call stack has the following structure:
+Agent libraries typically provide an interface that lets the user define the code executed when an agent performs a model call. When these functions make use of an instrumented client library, two AI Client Spans are created. At the moment an API call to a model provider is triggered, the agent invocation call stack has the following structure:
 
 ```
 Invoke agent
@@ -30,12 +30,12 @@ Some data exposed by the client library is not available at the agent's model ab
 
 # Options Considered
 
-1. Global client library disabling
-2. Disabling agent library spans based on the request model 
-3. Dropping AI Client Spans when the parent is an AI Client Span
-4. [Preferred] Dropping duplicate AI Client spans under a scope
+- [Option 1: Global client library disabling](#option-1)
+- [Option 2: Disabling agent library spans based on the request model](#option-2)
+- [Option 3: Dropping AI Client Spans when the parent is an AI Client Span](#option-3)
+- [Option 4: [Preferred] Dropping duplicate AI Client spans under a scope](#option-4)
 
-## Option 1: Global client library disabling
+## Option 1: Global client library disabling <a name="option-1"></a>
 
 The solution automatically disables client library instrumentation when an agent library emits spans, unless the user explicitly overrides the behavior.
 
@@ -49,7 +49,7 @@ Client libraries are used alongside agent libraries. A global mechanism that dis
 
 Explicitly overriding the disabling mechanism results in the creation of two AI Client Spans when an instrumented agent calls an instrumented model provider. This also biases the statistics.
 
-## Option 2: Disabling agent library spans based on the request model
+## Option 2: Disabling agent library spans based on the request model <a name="option-2"></a>
 
 Maintain a global list that associates common request models, like `gpt-4-mini`, to their providers. Use the list to disable AI Client Spans in the instrumentation for the agent library when the provider corresponding to a request model is supported by the SDK.
 
@@ -61,7 +61,7 @@ More information used to populate the attributes of AI Client Spans is available
 
 There is no universal mapping from requested model to provider that stays up to date as new models are released. Old SDK versions must function with new models to avoid biasing the summary statistics in the AI Agents Insights module.
 
-## Option 3: Dropping AI Client Spans when the parent is an AI Client Span
+## Option 3: Dropping AI Client Spans when the parent is an AI Client Span <a name="option-3"></a>
 
 The `start_span()` API attaches the new span as a child of an active span if present. The solution would check if the active span is an AI Client Span. If the active span is an AI Client Span, exit `start_span()` early instead of creating an AI Client Span.
 
@@ -75,13 +75,13 @@ Disabling spans at the client library level results in a loss of information whe
 
 Additionally, since the model abstraction used by an agent may contain user-defined code, there can be spans in between the AI Client Spans for the agent and client library. The parent-aware disabling only applies if there are no spans in between AI Client Spans in the trace hierarchy.
 
-## Option 4: [Preferred] Dropping duplicate AI Client spans under a scope
+## Option 4: [Preferred] Dropping duplicate AI Client spans under a scope <a name="option-4"></a>
 
-Use the existing SDK scope mechanism. There are two possible implementation depending on whether the SDK must capture information from client libraries that is not available in a supported agent framework. If information must be propagated, then the scope must be subclassed. If not, a boolean flag can be added on the scope to indicate whether an AI Client Span has already be created while the scope has been active.
+Use the existing SDK scope mechanism. There are two possible implementation depending on whether the SDK must capture information from client libraries that is not available in a supported agent framework. If information must be propagated, a new AI Client Scope class must be created. If not, a boolean flag can be added on the scope to indicate whether an AI Client Span has already be created while the scope has been active.
 
-For the scope subclass solution, create a new AI Client Scope that subclasses the existing SDK scope class. Run the code that the agent uses to invoke a model under the AI Client Scope. If the current scope is an AI Client Scope when `start_span()` is invoked in the client library instrumentation, set AI Client Span attributes on the existing AI Client Span. Otherwise, create an AI Client Span before setting attributes on the span in the client library instrumentation.
+For the AI Client Scope solution, run the code that the agent uses to invoke a model under the AI Client Scope. If the current scope is an AI Client Scope when `start_span()` is invoked in the client library instrumentation, set AI Client Span attributes on the existing AI Client Span. Otherwise, create an AI Client Span before setting attributes on the span in the client library instrumentation.
 
-For the boolean flag solution, add a boolean flag that is true precisely when an AI Client Span has been created within the scope. When `start_span()` is invoked in a client library and the flag is true, then `start_span()` must exit early. Otherwise, `start_span()` creates the span and sets relevant attributes in the client library.
+For the boolean flag solution, add a boolean flag that is true precisely when an AI Client Span has been created within the scope. When `start_span()` is invoked in a client library and the flag is true, then `start_span()` must exit early. Otherwise, `start_span()` creates the span and sets relevant attributes.
 
 #### Pros
 
