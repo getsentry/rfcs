@@ -45,11 +45,20 @@ The native frame handler in `processing.py` iterates over all frames and uncondi
 
 [`processing.py` L378-L379](https://github.com/getsentry/sentry/blob/422487ea4acad23710cd1fe5392a5b684e09c2e4/src/sentry/lang/native/processing.py#L378-L379): this early-exit is what we want to trigger for SDK-symbolicated frames, accepting them at face value without attempting further symbolication.
 
+## The `platform` field's dual role
+
+Each stack frame carries a `platform` property (defaulting to the event's platform if unset). This single field currently controls **two distinct behaviors**:
+
+1. **Symbolication strategy**: The `platform` value determines which symbolication pipeline handles the frame: native symbolication, source map resolution, ProGuard deobfuscation, etc.
+1. **UI rendering**: The same `platform` value also determines how the frame is displayed in the Sentry UI — different platforms have different frame renderers (e.g., showing module paths vs. file paths, different address formatting, etc.).
+
+This coupling means there is no way to say "render this frame as a native frame, but don't attempt to symbolicate it." Any approach that changes `platform` (e.g., setting it to a no-op value to skip symbolication) would also alter how the frame is rendered in the UI, which is undesirable. This dual role is relevant to the options considered below, particularly for proposals that suggest decoupling the symbolication decision from `platform`.
+
 ## Existing workarounds
 
 ### Hard-coded exceptions in the monolith
 
-A `FIXME` in `processing.py` adds a special case for .NET, which never had debug images before but can send fully symbolicated events from the SDK. This was added to prevent false symbolication errors when .NET started sending debug images. The `FIXME` tag indicates this was not considered the right long-term approach.
+A `FIXME` in `processing.py` adds a special case for .NET, which previously had no debug images but can now send fully symbolicated events from the SDK. This was added to prevent false symbolication errors when .NET started sending debug images. The `FIXME` tag indicates this was not considered the right long-term approach.
 
 Notably, the .NET SDK has since evolved to **send debug images** (with `type: "pe_dotnet"`), because this enables symbolicator to fetch source context via the Microsoft symbol server and SourceLink. Once debug images are present, however, the FIXME's original precondition ("no debug images -> skip") no longer triggers. Symbolicator now sees debug images, attempts to resolve symbols for *all* frames, including user-code frames that the SDK already symbolicated locally, and marks them as `"missing"` because the PDB was never uploaded. This is exactly the scenario reported in [getsentry/sentry#97054](https://github.com/getsentry/sentry/issues/97054): the FIXME handled the old .NET world correctly, but the SDK outgrew the workaround.
 
@@ -83,7 +92,7 @@ This is a cross-cutting concern that touches:
 
 ## Option A: New typed frame attribute: `symbolicated` (currently preferred)
 
-Add a new boolean field `symbolicated` (or similar, can be renamed on the server to `client_symbolicated`, analog to `in_app` -> `client_in_app`) to the frame schema in relay. When set to `true`, processing skips symbolication for that frame and treats it as already resolved. We might also make this an enum to give the client finer-grained control over the level of frame enrichment, but I currently see no immediate scenario.
+Add a new boolean field `symbolicated` (or similar, can be renamed on the server to `client_symbolicated`, analog to `in_app` -> `client_in_app`) to the frame schema in relay. When set to `true`, processing skips symbolication for that frame and treats it as already resolved. We might also make this an enum to give the client finer-grained control over the level of frame enrichment, but I don't currently see an immediate use case.
 
 **Changes required:**
 
