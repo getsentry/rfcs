@@ -7,7 +7,7 @@
 
 # Summary
 
-This RFC proposes a mechanism for SDKs to mark stack frames as already symbolicated on the client side, so that the backend (processing/symbolicator) can skip symbolication for those frames. This avoids wasted symbolicator resources, prevents false-positive "missing debug symbols" errors in the UI, and gives SDKs a first-class way to indicate that a frame's symbol and associated module/image should be treated at face value and not considered missing.
+This RFC proposes a mechanism for SDKs to mark stack frames as already symbolicated on the client side, so that the backend (processing/symbolicator) can skip symbolication for those frames. This avoids wasted symbolicator resources, prevents false-positive "missing debug symbols" errors in the UI, and gives SDKs a first-class way to indicate that a frame's symbol and its associated module/image should be treated at face value rather than considered missing.
 
 # Motivation
 
@@ -15,7 +15,7 @@ When an SDK symbolicates a native stack frame on the client (e.g., because the d
 
 1. **Wasted resources:** Symbolicator attempts symbolication for frames that are already fully resolved, consuming resources unnecessarily. This might be an operational non-issue, and I only add it for completeness.
 
-2. **Incorrect and misleading UI errors:** When symbolicator cannot find debug symbols for an already-symbolicated frame, it sets `symbolicator_status: "missing"` and surfaces an error telling the user to upload the debug symbols for the associated module. In most cases, this is **by design**: users typically do not want to add symbol tables or debug information to their deployment artifacts and usually release a stripped artifact and separately upload debug information once per release to Sentry. In such a setup, the client cannot symbolicate anyway, and a `missing` status is sensible feedback. However, there are situations where the opposite is true: the symbols exist only on the client device (e.g., system libraries on end-user devices), and there is no realistic chance of collecting them upfront. The user sees a broken-looking stack trace and a confusing call-to-action that doesn't apply. 
+2. **Incorrect and misleading UI errors:** When symbolicator cannot find debug symbols for an already-symbolicated frame, it sets `symbolicator_status: "missing"` and surfaces an error telling the user to upload the debug symbols for the associated module. In most cases, this is **by design**: users typically do not want to add symbol tables or debug information to their deployment artifacts and usually release a stripped artifact and separately upload debug information once per release to Sentry. In such a setup, the client cannot symbolicate anyway, and a `missing` status is sensible feedback. However, there are situations where the opposite is true: the symbols exist only on the client device (e.g., system libraries on end-user devices), and there is no realistic chance of collecting them upfront. The user sees a broken-looking stack trace and a confusing call to action that doesn't apply. 
 
 This problem is not theoretical. It already manifests today in at least two concrete scenarios:
 
@@ -63,11 +63,11 @@ There is a `is_known_third_party()` check that suppresses missing-symbol errors 
 
 ### Passing `symbolicator_status` from the SDK
 
-In theory, an SDK could set `symbolicator_status` directly on the frame's `data` dict. Since `data` is part of the stacktrace `Frame` and falls into relay's untyped "other" catch-all ([`relay-event-schema/.../stacktrace.rs` L200-202](https://github.com/getsentry/relay/blob/55c59cf75d3c35bbbb66df14072d147eca056bd7/relay-event-schema/src/protocol/stacktrace.rs#L200-L202)), it would technically be forwarded. However, using untyped catch-all fields for regular SDK usage is explicitly frowned upon and for good reason.
+In theory, an SDK could set `symbolicator_status` directly on the frame's `data` dict. Since `data` is part of the stacktrace `Frame` and falls into relay's untyped "other" catch-all ([`relay-event-schema/.../stacktrace.rs` L200-202](https://github.com/getsentry/relay/blob/55c59cf75d3c35bbbb66df14072d147eca056bd7/relay-event-schema/src/protocol/stacktrace.rs#L200-L202)), it could technically be forwarded (currently it is not, because the catch-all does not have `retain = true`). However, using untyped catch-all fields for regular SDK usage is explicitly frowned upon and for good reason.
 
 ## Scope
 
-This RFC focuses on the **stack trace display and symbolication** aspect of the problem. Specifically: how can an SDK tell the backend "this frame is already symbolicated, don't try again"? It is also assumed that any solution to misattributing "missing symbols" should also rectify attributing associated modules in the debug-meta as missing. The scope intentionally does **not** cover source context fetching: even if a frame is marked as symbolicated, the backend may still want to fetch source files for inline source context display.
+This RFC focuses on the **stack trace display and symbolication** aspect of the problem. Specifically: how can an SDK tell the backend "this frame is already symbolicated, don't try again"? It is also assumed that any solution to misattributing "missing symbols" should also rectify the attribution of associated modules in the debug-meta as missing. The scope intentionally does **not** cover source context fetching: even if a frame is marked as symbolicated, the backend may still want to fetch source files for inline source context display.
 
 ## Affected components
 
@@ -130,7 +130,7 @@ If a frame already has a resolved `function` name (and optionally `filename`, `l
 
 Let SDKs explicitly set `symbolicator_status: "symbolicated"` (or a new value) in `frame.data`. Relay would need to explicitly allow this field from SDKs rather than treating it as backend-only.
 
-**Testing has shown that SDK-set values in `frame.data.symbolicator_status` are discarded or overwritten by the backend during processing.** This means Option C is not viable without changes to either relay (to stop stripping/ignoring the field) or processing (to check for an existing value before overwriting).
+**Testing has shown that SDK-set values in `frame.data.symbolicator_status` are discarded** (which was also [confirmed](https://github.com/getsentry/rfcs/pull/152#discussion_r2916112223) by [@jjbayer](https://github.com/jjbayer)). This means Option C is not viable without changes to relay.
 
 **Changes required (if pursued despite the above):**
 
@@ -150,6 +150,101 @@ Let SDKs explicitly set `symbolicator_status: "symbolicated"` (or a new value) i
 - If the field is later moved or renamed during a schema cleanup, SDK behavior breaks silently.
 - Tested and confirmed not to work today: SDK-set values are discarded/overwritten in the backend.
 
+## Option D: Shared `symbolication` annotation object on frames
+
+(Proposed by [@jjbayer](https://github.com/jjbayer) in [PR discussion](https://github.com/getsentry/rfcs/pull/152#discussion_r2916151048))
+
+Instead of a simple boolean or reusing `symbolicator_status`, add a structured `symbolication` object to each frame that records **who** symbolicated the frame and the **outcome**. Both SDKs and symbolicator would write to the same schema, making it a unified annotation format.
+
+This serves a dual purpose: it acts as a **control mechanism** (processing can skip symbolication when the SDK already succeeded) and as a **diagnostic record** (the pipeline can audit what happened and by whom).
+
+**Proposed schema:**
+
+Minimal form (set by SDK or symbolicator):
+
+```json
+{
+  "symbolication": {
+    "by": "client",
+    "status": "success"
+  }
+}
+```
+
+Extended form with attempt history (future extension):
+
+```json
+{
+  "symbolication": {
+    "by": "symbolicator",
+    "status": "success",
+    "previous_attempts": [
+      {"by": "client", "status": "failed", "reason": "unknown_image"}
+    ]
+  }
+}
+```
+
+**Example: SDK-symbolicated system frame (Android tombstone):**
+
+```json
+{
+  "function": "pthread_create",
+  "package": "/apex/com.android.runtime/lib64/bionic/libc.so",
+  "symbolication": {
+    "by": "client",
+    "status": "success"
+  }
+}
+```
+
+**Example: Frame left for backend symbolication:**
+
+```json
+{
+  "function": null,
+  "instruction_addr": "0x7f1234",
+  "symbolication": null
+}
+```
+
+After symbolicator processes it:
+
+```json
+{
+  "function": "myapp::handle_request",
+  "instruction_addr": "0x7f1234",
+  "symbolication": {
+    "by": "symbolicator",
+    "status": "success"
+  }
+}
+```
+
+**Control semantics:** When processing encounters a frame with `symbolication.by == "client"` and `symbolication.status == "success"`, it skips symbolicator for that frame (analogous to the early-exit in Option A). If the status is `"failed"`, processing may still attempt server-side symbolication and record the outcome, optionally preserving the client attempt in `previous_attempts`.
+
+**Changes required:**
+
+- **relay-event-schema**: Add a typed `symbolication` object to `Frame` with fields `by: enum("client", "symbolicator")`, `status: enum("success", "failed", "missing", "unknown")`, and optionally `reason: string` and `previous_attempts: list`.
+- **SDKs**: Set `symbolication: { "by": "client", "status": "success" }` on frames the SDK has symbolicated.
+- **processing.py**: Check for `symbolication.by == "client" && symbolication.status == "success"` early in frame handling; if present, skip symbolicator. Otherwise, proceed normally and write the symbolicator result into the same `symbolication` field.
+- **symbolicator**: Write results into the `symbolication` object instead of (or in addition to) the current `symbolicator_status` field in `frame.data`.
+- **UI**: Read `symbolication` object for display. Can distinguish client vs. server symbolication if desired. Replaces the current `symbolicator_status`-based logic with the `success` tag, indicating that symbolication is in effect (independent of where it happened).
+
+### Pros
+
+- Unified format for both SDK and backend symbolication status: no ambiguity about who did what.
+- Serves as both a control mechanism and a diagnostic/audit trail.
+- Future-proof: extensible to multiple attempts, failure reasons, and new symbolication sources without schema-breaking changes.
+- Subsumes `symbolicator_status` and could eventually replace it, reducing redundancy.
+- Could be used to integrate [@Dav1dde](https://github.com/Dav1dde)'s [proposal](https://github.com/getsentry/rfcs/pull/152#issuecomment-3991710125).
+
+### Cons
+
+- Larger schema change than Option A, trading a more complete protocol for a broader effort.
+- Overlaps with existing `symbolicator_status` in `frame.data`: migration path and backward compatibility need careful planning.
+- The dual role (control + diagnostic) may conflate concerns: the decision to skip symbolication and the record of what happened are conceptually distinct, and coupling them in one object may complicate future changes to either.
+
 # Unresolved Questions
 
 - How are the associated debug-meta images being resolved? If a frame is marked as "client-symbolicated" and thus doesn't show a "missing symbol" warning, images that are missing, but whose associated frames are entirely "client-symbolicated", shouldn't be marked as an error either (but should still be listed). Should this be resolved on the client (with a tag similar to the frame)? Or should this be resolved in native processing?
@@ -157,6 +252,7 @@ Let SDKs explicitly set `symbolicator_status: "symbolicated"` (or a new value) i
 - What is the interaction with demangling? If an SDK provides a mangled C++ symbol, should the backend still demangle it even if the frame is marked as client-symbolicated?
 - Should the UI distinguish between server-symbolicated and client-symbolicated frames (e.g., a subtle indicator), or treat them identically?
 - Naming: `symbolicated`, `client_symbolicated`, `sdk_symbolicated`, `symbolication_source`, or something else?
+- The `platform` property of each stack frame currently acts as the arbiter for UI (each frame is rendered differently depending on `platform`) and `symbolicator` decisions. Should we use this RFC as a starting point for moving away from `platform` as the selection property for symbolication? [Raised](https://github.com/getsentry/rfcs/pull/152#issuecomment-3991710125) by [@Dav1dde](https://github.com/Dav1dde).
 
 # Related Issues and Prior Art
 
