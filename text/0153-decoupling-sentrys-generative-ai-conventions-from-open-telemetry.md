@@ -319,6 +319,20 @@ where the secondary agent's Invoke Agent Span continues after the primary agent'
 
 The attribute definitions follow the [OpenTelemetry definitions](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md) at the time this proposal is accepted. If an attribute is not included, its definition is provided by the [AI Agents Insights module development guide](https://github.com/getsentry/sentry-docs/blob/master/develop-docs/sdk/telemetry/traces/modules/ai-agents.mdx).
 
+#### Meta Attributes
+
+| Attribute | Required |
+|---|---|
+| `gen_ai.operation.name` | string |
+| `gen_ai.provider.name` | string |
+
+#### Conversation Attributes
+
+| Attribute | Required |
+|---|---|
+| `gen_ai.conversation.id` | string |
+
+
 #### Agent Attributes
 
 | Attribute | Type |
@@ -497,9 +511,8 @@ The output array contains items with a role, parts, and an optional name of the 
 ```json
 [
     {
-        "role": "user",
+        "role": "assistant",
         "parts": [...],
-        "name": "participant_identifier",
     },
     ...
 ]
@@ -649,6 +662,6 @@ def agent_loop(system_instructions, model_parameters, conversation_id):
             message_history += new_messages
 
             if terminal_condition(message_history):
-                agent_span.set_attribute("gen_ai.output.messages", message_history[-1])
+                agent_span.set_attribute("gen_ai.output.messages", [message_history[-1]])
                 return message_history[-1]
 ```
