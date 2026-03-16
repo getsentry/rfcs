@@ -634,11 +634,13 @@ def agent_loop(system_instructions, model_parameters, conversation_id):
 
         # Input attributes
         agent_span.set_attribute("gen_ai.tool.definitions", json.dumps(
-            {
-                "name": "example_tool",
-                "type": "function",
-                "parameters": {},
-            }
+            [
+                {
+                    "name": "example_tool",
+                    "type": "function",
+                    "parameters": {},
+                }
+            ]
         ))
         ...
 
