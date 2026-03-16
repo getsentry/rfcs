@@ -630,7 +630,7 @@ def agent_loop(system_instructions, model_parameters, conversation_id):
         agent_span.set_attribute("gen_ai.agent.name", "example agent")
         ...
 
-        # Input Attributes
+        # Input attributes
         agent_span.set_attribute("gen_ai.tool.definitions", json.dumps(
             {
                 "name": "example_tool",
