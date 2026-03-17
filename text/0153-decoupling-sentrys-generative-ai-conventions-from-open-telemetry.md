@@ -662,6 +662,9 @@ def agent_loop(system_instructions, model_parameters, conversation_id):
             message_history += new_messages
 
             if terminal_condition(message_history):
+                # Output attributes
                 agent_span.set_attribute("gen_ai.output.messages", [message_history[-1]])
+                ...
+
                 return message_history[-1]
 ```
