@@ -109,6 +109,7 @@ AI Client Spans represent one request with structured roles to a provider handle
 | Attribute | Required |
 |---|---|
 | `gen_ai.input.messages` | Required |
+| `gen_ai.tool.definitions` | Required if provided |
 | `gen_ai.request.model` | Required if provided |
 | `gen_ai.system_instructions` | Required if provided |
 
@@ -273,7 +274,6 @@ An agent for the purposes of these conventions is an abstraction that can make m
 | Attribute | Required |
 |---|---|
 | `gen_ai.input.messages` | Required |
-| `gen_ai.tool.definitions` | Required if provided |
 | `gen_ai.system_instructions` | Required if provided |
 
 #### Output Attributes
