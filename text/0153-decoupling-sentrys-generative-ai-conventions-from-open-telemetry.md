@@ -557,6 +557,8 @@ def chat(system_instructions, model_parameters, conversation_id, message_history
         ai_client_span.set_attribute("gen_ai.usage.input_tokens", model_response.input_tokens)
         ...
 
+    return model_response
+
 
 def tool():
     with start_span() as tool_span:
