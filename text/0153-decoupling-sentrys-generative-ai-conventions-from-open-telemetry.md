@@ -484,6 +484,8 @@ The tool call result must be serialized as the most appropriate JSON representat
 Start with the following schematic example of an application in which an agent loop is built around successive calls to a chat API, and the agent has access to a tool.
 
 ```python
+import copy
+
 def chat(system_instructions, model_parameters, conversation_id, message_history):
     model_response = api_call(system_instructions, model_parameters, conversation_id, message_history)
     ...
@@ -506,8 +508,8 @@ def agent_turn(system_instructions, model_parameters, conversation_id, message_h
 
     return new_messages
 
-def agent_loop(system_instructions, model_parameters, conversation_id):
-    message_history = []
+def agent_loop(system_instructions, user_input, model_parameters, conversation_id):
+    message_history = copy.deepcopy(user_input)
     while True:
         new_messages = agent_turn(system_instructions, model_parameters, conversation_id, message_history)
         message_history += new_messages
@@ -520,7 +522,7 @@ The application can be instrumented as follows. Not all required attributes are 
 
 ```python
 from sentry_sdk.tracing import start_span
-import
+import copy
 
 def chat(system_instructions, model_parameters, conversation_id, message_history):
     with start_span() as ai_client_span:
