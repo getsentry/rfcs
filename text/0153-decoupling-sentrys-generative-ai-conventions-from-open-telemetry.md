@@ -66,7 +66,7 @@ Attributes on the proposed spans are grouped into categories, and their types ar
 
 ## AI Client Span
 
-AI Client Spans represent one request to a provider handled by a single model without invoking tool calls. Tool call execution must not fall under AI Client Spans. A tool call request can be captured in the model's output or a tool call response can be captured by its input. Embedding requests to model providers are traced by other span types.
+AI Client Spans represent one request to a provider handled by a single model without invoking tool calls. Tool call execution must not fall under AI Client Spans. A tool call request can be captured in the model's output or a tool call response can be captured by its input. Embedding requests to model providers are traced by another span type.
 
 **Note**: The operation is more narrowly scoped than [OpenTelemetry's "client AI spans"](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md). The agent invocation span must be used for any operations which can involve multiple model calls or may invoke tools.
 
