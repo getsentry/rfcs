@@ -637,8 +637,8 @@ def agent_turn(system_instructions, model_parameters, conversation_id, message_h
 
     return new_messages
 
-def agent_loop(system_instructions, model_parameters, conversation_id):
-    message_history = []
+def agent_loop(system_instructions, user_input, model_parameters, conversation_id):
+    message_history = [user_input]
 
     with start_span() as agent_span:        
         # Agent attributes
@@ -646,15 +646,7 @@ def agent_loop(system_instructions, model_parameters, conversation_id):
         ...
 
         # Input attributes
-        agent_span.set_attribute("gen_ai.tool.definitions",
-            [
-                {
-                    "name": "example_tool",
-                    "type": "function",
-                    "parameters": {},
-                }
-            ]
-        )
+        agent_span.set_attribute("gen_ai.input.messages", user_input)
         ...
 
         while True:
