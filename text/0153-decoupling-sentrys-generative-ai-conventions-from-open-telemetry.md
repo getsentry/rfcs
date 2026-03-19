@@ -19,8 +19,6 @@ OpenTelemetry semantic conventions for monitoring Generative AI systems are in d
 
 The OpenTelemetry conventions for agent invocation spans are based on "simple" client spans. Agents are abstractions that can make multiple model calls and trigger tool calls. Frameworks like the Claude Agent SDK have a public API for changing the request model in successive model calls of an agent. While one API call to a model provider is parameterized by the model the user requests, agents, in general, do not have well-defined request or response models.
 
-[OpenTelemetry's "Inference" span type](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md#inference) encapsulates diverse operations, including chat endpoints with structured roles and text completion endpoints without structured roles. The input and output formats depend on whether the endpoint uses roles such as "system", "user" and "assistant" or not.
-
 Many OpenTelemetry attributes are redundant. A Generative AI application instrumented according to OpenTelemetry conventions sends the same information multiple times. An example is the redundancy between the `gen_ai.response.finish_reasons` attribute and finish reasons in the `gen_ai.output.messages` attribute. Storing information on multiple attributes results in inconsistencies.
 
 # Options Considered
@@ -37,9 +35,9 @@ Tightly coupling to the OpenTelemetry Generative AI conventions requires renamin
 
 # Proposed Spans
 
-The proposal keeps and more narrowly defines 5 out of the 8 types of Generative AI spans currently created by SDKs. The Invoke Agent Span, AI Client Span, Text Completion Span, Embedding Span, and Execute Tool Span are defined in the section below, and their relationship to one another is described in the following paragraphs.
+The proposal keeps and more narrowly defines 4 out of the 7 types of Generative AI spans currently created by SDKs. The Invoke Agent Span, AI Client Span, Embedding Span, and Execute Tool Span are defined in the section below, and their relationship to one another is described in the following paragraphs.
 
-The Invoke Agent Span can be a parent of AI Client Spans, Text Completion Spans, Embedding Spans, and Execute Tool Spans. Similarly, the Execute Tool Span can be the parent of Invoke Agent Spans, AI Client Spans, Text Completion Spans, and Embedding Spans, since a tool call can be a function which invokes an agent or calls a model.
+The Invoke Agent Span can be a parent of AI Client Spans, Embedding Spans, and Execute Tool Spans. Similarly, the Execute Tool Span can be the parent of Invoke Agent Spans, AI Client Spans, and Embedding Spans, since a tool call can be a function which invokes an agent or calls a model.
 To invoke a tool, the model requests the tool call in its response. The agent executes the tool and provides the result as input to a subsequent model request. A typical trace in which an agent invokes a tool contains two AI Client Spans that are siblings of the Execute Tool Span. The structure is depicted below:
 
 ```
@@ -49,7 +47,7 @@ Invoke Agent
 └── AI Client (receives tool result)
 ```
 
-The AI Client Span, Text Completion Span, and the Embedding Span represent precisely one request to a model provider. The spans cannot be the parent of an Execute Tool Span or an Invoke Agent Span. Generative AI spans in a trace may form subtrees such as the following:
+The AI Client Span, and the Embedding Span represent precisely one request to a model provider. The spans cannot be the parent of an Execute Tool Span or an Invoke Agent Span. Generative AI spans in a trace may form subtrees such as the following:
 
 ```
 Invoke Agent
@@ -68,7 +66,7 @@ Attributes on the proposed spans are grouped into categories, and their types ar
 
 ## AI Client Span
 
-AI Client Spans represent one request with structured roles to a provider handled by a single model without invoking tool calls. Tool call execution must not fall under AI Client Spans. A tool call request can be captured in the model's output or a tool call response can be captured by its input. Embedding and text completion requests to model providers are traced by other span types.
+AI Client Spans represent one request to a provider handled by a single model without invoking tool calls. Tool call execution must not fall under AI Client Spans. A tool call request can be captured in the model's output or a tool call response can be captured by its input. Embedding requests to model providers are traced by other span types.
 
 **Note**: The operation is more narrowly scoped than [OpenTelemetry's "client AI spans"](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-spans.md). The agent invocation span must be used for any operations which can involve multiple model calls or may invoke tools.
 
@@ -125,65 +123,6 @@ AI Client Spans represent one request with structured roles to a provider handle
 | `gen_ai.response.time_to_first_token` | Required if streaming response |
 
 #### Token Usage Attribute
-
-| Attribute | Required |
-|---|---|
-| `gen_ai.usage.input_tokens` | Required |
-| `gen_ai.usage.input_tokens.cached` | Required if in the model response |
-| `gen_ai.usage.input_tokens.cache_write` | Required if in the model response |
-| `gen_ai.usage.output_tokens` | Required |
-| `gen_ai.usage.output_tokens.reasoning` | Required if in the model response |
-| `gen_ai.usage.total_tokens` | Required |
-
-## Text Completion Span
-
-Text Completion Spans represent one request to a provider to complete an input string.
-
-#### Meta Attributes
-
-| Attribute | Required |
-|---|---|
-| `gen_ai.operation.name` | Required |
-| `gen_ai.provider.name` | Required |
-
-#### Agent Attributes
-
-| Attribute | Required |
-|---|---|
-| `gen_ai.agent.name` | Required if provided |
-| `gen_ai.pipeline.name` | Required if provided |
-
-#### Configuration Attributes
-
-| Attribute | Required |
-|---|---|
-| `gen_ai.request.max_tokens` | Required if provided |
-| `gen_ai.request.seed` | Required if provided |
-| `gen_ai.request.frequency_penalty` | Required if provided |
-| `gen_ai.request.presence_penalty` | Required if provided |
-| `gen_ai.request.temperature` | Required if provided |
-| `gen_ai.request.top_p` | Required if provided |
-| `gen_ai.request.top_k` | Required if provided |
-
-#### Input Attributes
-
-| Attribute | Required |
-|---|---|
-| `gen_ai.text_completion.input` | Required |
-| `gen_ai.request.model` | Required if provided |
-
-#### Output Attributes
-
-| Attribute | Required |
-|---|---|
-| `gen_ai.text_completion.output` | Required |
-| `gen_ai.response.id` | Required if in the model response |
-| `gen_ai.response.model` | Required if in the model response |
-| `gen_ai.response.finish_reasons` | Required if in the model response |
-| `gen_ai.response.streaming` | Required |
-| `gen_ai.response.time_to_first_token` | Required if streaming response |
-
-#### Token Usage Attributes
 
 | Attribute | Required |
 |---|---|
@@ -345,7 +284,6 @@ The attribute definitions follow the [OpenTelemetry definitions](https://github.
 | Attribute | Type |
 |---|---|
 | `gen_ai.input.messages` | object |
-| `gen_ai.text_completion.input` | string[] |
 | `gen_ai.embeddings.input` | object |
 | `gen_ai.request.model` | string |
 | `gen_ai.tool.definitions` | object |
@@ -368,7 +306,6 @@ The attribute definitions follow the [OpenTelemetry definitions](https://github.
 | Attribute | Type |
 |---|---|
 | `gen_ai.output.messages` | object |
-| `gen_ai.text_completion.output` | string[] |
 | `gen_ai.embeddings.dimension.count` | integer[] |
 | `gen_ai.response.model` | string |
 | `gen_ai.response.finish_reasons` | string[] |
@@ -419,6 +356,8 @@ The SDKs will map the provider's role names to the above set when the provider u
 If the user provides an input item with an unexpected role, the SDK will not perform any conversion, and set the user-provided string as the role.
 
 **Note**: Not all items will have a "user", "assistant", or "tool" role. SDKs must emit unexpected user-provided roles.
+
+**Note**: Input to legacy text completion APIs are not assigned a role by the user. The SDK must assign the role "user" for these inputs.
 
 Allowed input part types will be recorded in the [AI Agents Insights module development guide](https://github.com/getsentry/sentry-docs/blob/master/develop-docs/sdk/telemetry/traces/modules/ai-agents.mdx).
 
@@ -519,6 +458,8 @@ The output array contains items with a role, parts, and an optional name of the 
 ```
 Each item in the array represents a candidate generation from the model, also referred to as a choice. All items are generated based on the same input.
 
+**Note**: Output from legacy text completion APIs do not have a role. The SDK must assign the role "assistant" for these outputs.
+
 **Note**: The [OpenTelemetry output schema](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-output-messages.json) includes a mandatory `finish_reason` property for each candidate generation. The `gen_ai.response.finish_reasons` attribute already records one finish reason per candidate response, and the Sentry conventions purposefully do not require duplicating finish reasons in the output array.
 
 Allowed output part types will be recorded in the [AI Agents Insights module development guide](https://github.com/getsentry/sentry-docs/blob/master/develop-docs/sdk/telemetry/traces/modules/ai-agents.mdx).
@@ -579,6 +520,7 @@ The application can be instrumented as follows. Not all required attributes are 
 
 ```python
 from sentry_sdk.tracing import start_span
+import
 
 def chat(system_instructions, model_parameters, conversation_id, message_history):
     with start_span() as ai_client_span:
@@ -638,7 +580,7 @@ def agent_turn(system_instructions, model_parameters, conversation_id, message_h
     return new_messages
 
 def agent_loop(system_instructions, user_input, model_parameters, conversation_id):
-    message_history = [user_input]
+    message_history = copy.deepcopy(user_input)
 
     with start_span() as agent_span:        
         # Agent attributes
