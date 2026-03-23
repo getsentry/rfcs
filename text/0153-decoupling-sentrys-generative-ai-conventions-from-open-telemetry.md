@@ -264,82 +264,83 @@ where the secondary agent's Invoke Agent Span continues after the primary agent'
 
 The attribute definitions follow the [OpenTelemetry definitions](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md) at the time this proposal is accepted. If an attribute is not included, its definition is provided by the [AI Agents Insights module development guide](https://github.com/getsentry/sentry-docs/blob/master/develop-docs/sdk/telemetry/traces/modules/ai-agents.mdx).
 
+Sensitive attributes can be controlled by either the `record_inputs` or the `record_outputs` option. The last column indicates which option suppresses a given attribute, or "-" if the attribute cannot be disabled. Both options must be enabled by default, so no attributes are omitted unless the user explicitly disables the options.
+
 #### Meta Attributes
 
-| Attribute | Required |
-|---|---|
-| `gen_ai.operation.name` | string |
-| `gen_ai.provider.name` | string |
+| Attribute | Required | Gated by |
+|---|---|---|
+| `gen_ai.operation.name` | string | - |
+| `gen_ai.provider.name` | string | - |
 
 #### Conversation Attributes
 
-| Attribute | Required |
-|---|---|
-| `gen_ai.conversation.id` | string |
-
+| Attribute | Required | Gated by |
+|---|---|---|
+| `gen_ai.conversation.id` | string | - |
 
 #### Agent Attributes
 
-| Attribute | Type |
-|---|---|
-| `gen_ai.agent.name` | string |
-| `gen_ai.pipeline.name` | string |
+| Attribute | Type | Gated by |
+|---|---|---|
+| `gen_ai.agent.name` | string | - |
+| `gen_ai.pipeline.name` | string | - |
 
 #### Input Attributes
 
-| Attribute | Type |
-|---|---|
-| `gen_ai.input.messages` | object |
-| `gen_ai.embeddings.input` | object |
-| `gen_ai.request.model` | string |
-| `gen_ai.tool.definitions` | object |
-| `gen_ai.system_instructions` | object |
+| Attribute | Type | Gated by |
+|---|---|---|
+| `gen_ai.input.messages` | object | `record_inputs` |
+| `gen_ai.embeddings.input` | object | `record_inputs` |
+| `gen_ai.request.model` | string | - |
+| `gen_ai.tool.definitions` | object | `record_inputs` |
+| `gen_ai.system_instructions` | object | `record_inputs` |
 
 #### Configuration Attributes
 
-| Attribute | Type |
-|---|---|
-| `gen_ai.request.max_tokens` | integer |
-| `gen_ai.request.seed` | integer |
-| `gen_ai.request.frequency_penalty` | double |
-| `gen_ai.request.presence_penalty` | double |
-| `gen_ai.request.temperature` | double |
-| `gen_ai.request.top_p` | double |
-| `gen_ai.request.top_k` | integer |
+| Attribute | Type | Gated by |
+|---|---|---|
+| `gen_ai.request.max_tokens` | integer | - |
+| `gen_ai.request.seed` | integer | - |
+| `gen_ai.request.frequency_penalty` | double | - |
+| `gen_ai.request.presence_penalty` | double | - |
+| `gen_ai.request.temperature` | double | - |
+| `gen_ai.request.top_p` | double | - |
+| `gen_ai.request.top_k` | integer | - |
 
 #### Output Attributes
 
-| Attribute | Type |
-|---|---|
-| `gen_ai.output.messages` | object |
-| `gen_ai.embeddings.dimension.count` | integer[] |
-| `gen_ai.response.model` | string |
-| `gen_ai.response.finish_reasons` | string[] |
-| `gen_ai.response.id` | string |
-| `gen_ai.response.streaming` | boolean |
-| `gen_ai.response.time_to_first_token` | double |
+| Attribute | Type | Gated by |
+|---|---|---|
+| `gen_ai.output.messages` | object | `record_outputs` |
+| `gen_ai.embeddings.dimension.count` | integer[] | - |
+| `gen_ai.response.model` | string | - |
+| `gen_ai.response.finish_reasons` | string[] | - |
+| `gen_ai.response.id` | string | - |
+| `gen_ai.response.streaming` | boolean | - |
+| `gen_ai.response.time_to_first_token` | double | - |
 
 #### Token Usage Attributes
 
-| Attribute | Type |
-|---|---|
-| `gen_ai.usage.input_tokens` | integer |
-| `gen_ai.usage.input_tokens.cached` | integer |
-| `gen_ai.usage.input_tokens.cache_write` | integer |
-| `gen_ai.usage.output_tokens` | integer |
-| `gen_ai.usage.output_tokens.reasoning` | integer |
-| `gen_ai.usage.total_tokens` | integer |
+| Attribute | Type | Gated by |
+|---|---|---|
+| `gen_ai.usage.input_tokens` | integer | - |
+| `gen_ai.usage.input_tokens.cached` | integer | - |
+| `gen_ai.usage.input_tokens.cache_write` | integer | - |
+| `gen_ai.usage.output_tokens` | integer | - |
+| `gen_ai.usage.output_tokens.reasoning` | integer | - |
+| `gen_ai.usage.total_tokens` | integer | - |
 
 #### Tool Attributes
 
-| Attribute | Type |
-|---|---|
-| `gen_ai.tool.call.id` | string |
-| `gen_ai.tool.name` | string |
-| `gen_ai.tool.description` | string |
-| `gen_ai.tool.type` | string |
-| `gen_ai.tool.call.arguments` | object |
-| `gen_ai.tool.call.result` | object |
+| Attribute | Type | Gated by |
+|---|---|---|
+| `gen_ai.tool.call.id` | string | - |
+| `gen_ai.tool.name` | string | - |
+| `gen_ai.tool.description` | string | - |
+| `gen_ai.tool.type` | string | - |
+| `gen_ai.tool.call.arguments` | object | `record_outputs` |
+| `gen_ai.tool.call.result` | object | `record_outputs` |
 
 # JSON Attributes
 
