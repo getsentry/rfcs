@@ -201,6 +201,12 @@ An agent for the purposes of these conventions is an abstraction that can make m
 
 **Note**: Many attributes in the [OpenTelemetry conventions for Invoke Agent Spans](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md) are ill-defined for agents that call multiple models in the course of their execution. Attributes that depend on a specific model, such as token usage attributes, are therefore not meaningful in this context and have been omitted from the proposed Sentry conventions.
 
+#### Meta Attributes
+
+| Attribute | Required |
+|---|---|
+| `gen_ai.operation.name` | Required |
+
 #### Agent Attributes
 
 | Attribute | Required |
@@ -587,6 +593,10 @@ def agent_loop(system_instructions, user_input, model_parameters, conversation_i
     message_history = copy.deepcopy(user_input)
 
     with start_span() as agent_span:        
+        # Meta attributes
+        agent_span.set_attribute("gen_ai.operation.name", "invoke_agent")
+        ...
+        
         # Agent attributes
         agent_span.set_attribute("gen_ai.agent.name", "example agent")
         ...
