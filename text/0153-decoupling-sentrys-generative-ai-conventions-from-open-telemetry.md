@@ -126,12 +126,12 @@ AI Client Spans represent one request to a provider handled by a single model wi
 
 | Attribute | Required |
 |---|---|
-| `gen_ai.usage.input_tokens` | Required |
+| `gen_ai.usage.input_tokens` | Required if in the model response |
 | `gen_ai.usage.input_tokens.cached` | Required if in the model response |
 | `gen_ai.usage.input_tokens.cache_write` | Required if in the model response |
-| `gen_ai.usage.output_tokens` | Required |
+| `gen_ai.usage.output_tokens` | Required if in the model response |
 | `gen_ai.usage.output_tokens.reasoning` | Required if in the model response |
-| `gen_ai.usage.total_tokens` | Required |
+| `gen_ai.usage.total_tokens` | Required if in the model response |
 
 ## Embedding Span
 
