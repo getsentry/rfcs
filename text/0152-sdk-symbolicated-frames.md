@@ -7,7 +7,7 @@
 
 # Summary
 
-This RFC proposes adding a typed `symbolication` object to the stack frame schema that lets SDKs mark frames as already symbolicated on the client side. When present, symbolicator honors the annotation by not overriding client-provided symbols while continuing to apply other enrichment (demangling, source context, line numbers). The same object is written by symbolicator for frames it processes, creating a unified annotation format. This avoids wasted symbolicator resources, prevents false-positive "missing debug symbols" errors in the UI, and gives SDKs a first-class way to indicate that a frame's symbol and its associated module/image should be treated at face value rather than considered missing.
+This RFC proposes adding a typed `symbolication` object to the stack frame schema, allowing SDKs to mark frames as already symbolicated on the client side. When present, symbolicator honors the annotation by not overriding client-provided symbols while continuing to apply other enrichment (demangling, source context, line numbers). The same object is written by symbolicator for the frames it processes, creating a unified annotation format. This avoids wasted symbolicator resources, prevents false-positive "missing debug symbols" errors in the UI, and gives SDKs a first-class way to indicate that a frame's symbol and its associated module/image should be treated at face value rather than considered missing.
 
 # Motivation
 
@@ -74,7 +74,7 @@ This RFC focuses on the **stack trace display and symbolication** aspect of the 
 
 The following concerns are explicitly **out of scope** for this RFC:
 
-- **UI rendering decisions**: Whether and how the UI distinguishes client-symbolicated frames from server-symbolicated frames is a product decision. The proposed design provides the `by` field that enables such a distinction, but this RFC does not prescribe UI behavior.
+- **UI rendering decisions**: Whether and how the UI distinguishes client-symbolicated frames from server-symbolicated frames is a product decision. The proposed design provides a `by` field that enables this distinction, but this RFC does not prescribe UI behavior.
 - **Decoupling symbolication strategy from `platform`**: The proposed design's extensibility via a future `as` field provides a potential path for decoupling the symbolication pipeline selection from the `platform` field ([raised](https://github.com/getsentry/rfcs/pull/152#issuecomment-3991710125) by [@Dav1dde](https://github.com/Dav1dde)), but this is not part of this proposal.
 
 ## Affected components
@@ -82,14 +82,14 @@ The following concerns are explicitly **out of scope** for this RFC:
 This is a cross-cutting concern that touches:
 
 - **SDKs**: All native code handling SDKs (sentry-native, sentry-java/Android NDK, sentry-dotnet, (maybe sentry-cocoa), and downstream dependants + any future SDK performing client-side native symbolication).
-- **Relay / ingestion**: The frame schema needs to gain a new typed field.
+- **Relay**: The frame schema needs to gain a new typed field.
 - **Processing (monolith)**: `sentry/lang/native/processing.py` needs to pass the `symbolication` object through to symbolicator.
 - **Symbolicator**: Needs to honor the `symbolication` annotation: skip symbol override for client-symbolicated frames while continuing other stages (demangling, source context, line numbers).
 - **UI**: Should stop showing misleading "missing symbols" errors for frames that are intentionally client-symbolicated.
 
 # Proposed Design
 
-Add a typed `symbolication` object to each stack frame that records **who** symbolicated the frame and the **outcome**. Both SDKs and symbolicator write to the same schema, making it a unified annotation format. This serves as a **control mechanism** (symbolicator honors the annotation by skipping symbol override when the SDK already succeeded) and as a **diagnostic record** (the pipeline, developers and users can audit what happened and by whom).
+Add a typed `symbolication` object to each stack frame that records **who** symbolicated the frame and the **outcome**. Both SDKs and symbolicator write to the same schema, making it a unified annotation format. This serves as a **control mechanism** (symbolicator honors the annotation by skipping symbol override when the SDK already succeeded) and as a **diagnostic record** (the pipeline, developers, and users can audit what happened and by whom).
 
 Originally [proposed](https://github.com/getsentry/rfcs/pull/152#discussion_r2916151048) by [@jjbayer](https://github.com/jjbayer) and [confirmed](https://github.com/getsentry/rfcs/pull/152#discussion_r2921167424) as intended primarily for control with diagnostic as a secondary benefit.
 
@@ -109,7 +109,7 @@ The initial implementation is deliberately minimal. The `symbolication` object c
 - **`by`**: Identifies who performed the symbolication. An enum of `"client"` (SDK) or `"symbolicator"` (backend).
 - **`status`**: The outcome. An enum of `"success"`, `"failed"`, `"missing"`, or `"unknown"`.
 
-This minimal shape already provides the control mechanism needed to solve the motivating problems while the object structure allows future extension without breaking changes.
+This minimal shape already provides the control mechanism needed to solve the motivating problems, while the object structure allows future extension without breaking changes.
 
 ## Control semantics
 
@@ -122,7 +122,7 @@ When symbolicator encounters a frame with `symbolication.by == "client"` and `sy
 - **Source context** is still applied. If symbolicator has access to the source file (e.g., via SourceLink or uploaded sources), it can add `pre_context`, `context_line`, and `post_context`.
 - **Line numbers** provided by the client are accepted, but symbolicator may still enrich them if debug information is available and the client did not provide them.
 
-Whether symbolicator performs a debug file lookup for a client-symbolicated frame is an implementation detail; ideally it can be skipped when there is nothing to add, but this is a performance consideration rather than a correctness requirement.
+Whether symbolicator performs a debug file lookup for a client-symbolicated frame is an implementation detail; ideally, it can be skipped when there is nothing to add, but this is a performance consideration rather than a correctness requirement.
 
 For frames without a `symbolication` object (the default), symbolicator proceeds as it does today. After symbolicator processes any frame, it writes its result into the `symbolication` object:
 
