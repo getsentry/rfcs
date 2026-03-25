@@ -7,7 +7,7 @@
 
 # Summary
 
-This RFC proposes adding a typed `symbolication` object to the stack frame schema that lets SDKs mark frames as already symbolicated on the client side. When present, processing skips symbolication for those frames. The same object is written by symbolicator for frames it processes, creating a unified annotation format. This avoids wasted symbolicator resources, prevents false-positive "missing debug symbols" errors in the UI, and gives SDKs a first-class way to indicate that a frame's symbol and its associated module/image should be treated at face value rather than considered missing.
+This RFC proposes adding a typed `symbolication` object to the stack frame schema that lets SDKs mark frames as already symbolicated on the client side. When present, symbolicator honors the annotation by not overriding client-provided symbols while continuing to apply other enrichment (demangling, source context, line numbers). The same object is written by symbolicator for frames it processes, creating a unified annotation format. This avoids wasted symbolicator resources, prevents false-positive "missing debug symbols" errors in the UI, and gives SDKs a first-class way to indicate that a frame's symbol and its associated module/image should be treated at face value rather than considered missing.
 
 # Motivation
 
@@ -38,12 +38,6 @@ After symbolicator processes an event, each native frame receives a `symbolicato
 This status is set exclusively by the backend during processing. It currently cannot be influenced by SDKs.
 
 Relevant code: [`sentry/lang/native/processing.py`](https://github.com/getsentry/sentry/blob/422487ea4acad23710cd1fe5392a5b684e09c2e4/src/sentry/lang/native/processing.py#L129-L131)
-
-## Frame handling in processing
-
-The native frame handler in `processing.py` iterates over all frames and unconditionally sends them through symbolicator. There is already a code path that exits frame handling early when certain conditions are met:
-
-[`processing.py` L378-L379](https://github.com/getsentry/sentry/blob/422487ea4acad23710cd1fe5392a5b684e09c2e4/src/sentry/lang/native/processing.py#L378-L379): this early-exit is what we want to trigger for SDK-symbolicated frames, accepting them at face value without attempting further symbolication.
 
 ## The `platform` field's dual role
 
@@ -76,7 +70,12 @@ In theory, an SDK could set `symbolicator_status` directly on the frame's `data`
 
 ## Scope
 
-This RFC focuses on the **stack trace display and symbolication** aspect of the problem. Specifically: how can an SDK tell the backend "this frame is already symbolicated, don't try again"? It is also assumed that any solution to misattributing "missing symbols" should also rectify the attribution of associated modules in the debug-meta as missing. The scope intentionally does **not** cover source context fetching: even if a frame is marked as symbolicated, the backend may still want to fetch source files for inline source context display.
+This RFC focuses on the **stack trace display and symbolication** aspect of the problem. Specifically: how can an SDK tell the backend "this frame is already symbolicated, don't try again"? It is also assumed that any solution to misattributing "missing symbols" should also rectify the attribution of associated modules in the debug-meta as missing.
+
+The following concerns are explicitly **out of scope** for this RFC:
+
+- **UI rendering decisions**: Whether and how the UI distinguishes client-symbolicated frames from server-symbolicated frames is a product decision. The proposed design provides the `by` field that enables such a distinction, but this RFC does not prescribe UI behavior.
+- **Decoupling symbolication strategy from `platform`**: The proposed design's extensibility via a future `as` field provides a potential path for decoupling the symbolication pipeline selection from the `platform` field ([raised](https://github.com/getsentry/rfcs/pull/152#issuecomment-3991710125) by [@Dav1dde](https://github.com/Dav1dde)), but this is not part of this proposal.
 
 ## Affected components
 
@@ -84,13 +83,13 @@ This is a cross-cutting concern that touches:
 
 - **SDKs**: All native code handling SDKs (sentry-native, sentry-java/Android NDK, sentry-dotnet, (maybe sentry-cocoa), and downstream dependants + any future SDK performing client-side native symbolication).
 - **Relay / ingestion**: The frame schema needs to gain a new typed field.
-- **Processing (monolith)**: `sentry/lang/native/processing.py` needs to honor the new signal and skip symbolication for marked frames.
-- **Symbolicator**: May need awareness of the flag if processing delegates the decision.
+- **Processing (monolith)**: `sentry/lang/native/processing.py` needs to pass the `symbolication` object through to symbolicator.
+- **Symbolicator**: Needs to honor the `symbolication` annotation: skip symbol override for client-symbolicated frames while continuing other stages (demangling, source context, line numbers).
 - **UI**: Should stop showing misleading "missing symbols" errors for frames that are intentionally client-symbolicated.
 
 # Proposed Design
 
-Add a typed `symbolication` object to each stack frame that records **who** symbolicated the frame and the **outcome**. Both SDKs and symbolicator write to the same schema, making it a unified annotation format. This serves as a **control mechanism** (processing skips symbolication when the SDK already succeeded) and as a **diagnostic record** (the pipeline, developers and users can audit what happened and by whom).
+Add a typed `symbolication` object to each stack frame that records **who** symbolicated the frame and the **outcome**. Both SDKs and symbolicator write to the same schema, making it a unified annotation format. This serves as a **control mechanism** (symbolicator honors the annotation by skipping symbol override when the SDK already succeeded) and as a **diagnostic record** (the pipeline, developers and users can audit what happened and by whom).
 
 Originally [proposed](https://github.com/getsentry/rfcs/pull/152#discussion_r2916151048) by [@jjbayer](https://github.com/jjbayer) and [confirmed](https://github.com/getsentry/rfcs/pull/152#discussion_r2921167424) as intended primarily for control with diagnostic as a secondary benefit.
 
@@ -114,9 +113,18 @@ This minimal shape already provides the control mechanism needed to solve the mo
 
 ## Control semantics
 
-When processing encounters a frame with `symbolication.by == "client"` and `symbolication.status == "success"`, it skips symbolicator for that frame and accepts it at face value (analogous to the existing early-exit path in `processing.py`). If the status is `"failed"`, processing may still attempt server-side symbolication.
+Processing passes the `symbolication` object through to symbolicator as part of each frame. Symbolicator interprets the annotation and decides how to handle each stage.
 
-For frames without a `symbolication` object (the default), processing proceeds normally. After symbolicator handles a frame, the result is written into the same `symbolication` object:
+When symbolicator encounters a frame with `symbolication.by == "client"` and `symbolication.status == "success"`:
+
+- **Symbol resolution** is skipped. The client-provided `function`, `symbol`, `filename`, `lineno`, `colno`, and `abs_path` are not overwritten. The frame is not reported as `"missing"` if the corresponding debug file is unavailable.
+- **Demangling** is still applied. If the SDK sends a mangled C++ symbol, symbolicator can demangle it.
+- **Source context** is still applied. If symbolicator has access to the source file (e.g., via SourceLink or uploaded sources), it can add `pre_context`, `context_line`, and `post_context`.
+- **Line numbers** provided by the client are accepted, but symbolicator may still enrich them if debug information is available and the client did not provide them.
+
+Whether symbolicator performs a debug file lookup for a client-symbolicated frame is an implementation detail; ideally it can be skipped when there is nothing to add, but this is a performance consideration rather than a correctness requirement.
+
+For frames without a `symbolication` object (the default), symbolicator proceeds as it does today. After symbolicator processes any frame, it writes its result into the `symbolication` object:
 
 ```json
 {
@@ -126,6 +134,8 @@ For frames without a `symbolication` object (the default), processing proceeds n
   }
 }
 ```
+
+For client-symbolicated frames where symbolicator contributed additional enrichment (e.g., demangling or source context), the `symbolication` object retains `"by": "client"` since the symbol resolution itself was performed by the client.
 
 ## Examples
 
@@ -178,13 +188,13 @@ These are not part of the initial implementation.
 
 - **relay-event-schema**: Add a typed `symbolication` object to `Frame` with fields `by: enum("client", "symbolicator")` and `status: enum("success", "failed", "missing", "unknown")`.
 - **SDKs**: Set `symbolication: { "by": "client", "status": "success" }` on frames the SDK has symbolicated.
-- **processing.py**: Check for `symbolication.by == "client" && symbolication.status == "success"` early in frame handling; if present, skip symbolicator. Otherwise, proceed normally and write the symbolicator result into the `symbolication` object.
-- **symbolicator**: Write results into the `symbolication` object instead of (or in addition to) the current `symbolicator_status` field in `frame.data`. During migration, symbolicator can double-write into both fields ([suggested](https://github.com/getsentry/rfcs/pull/152#discussion_r2920693398) by [@jjbayer](https://github.com/jjbayer)).
+- **processing.py**: Pass the `symbolication` object through to symbolicator as part of the frame payload. No filtering of client-symbolicated frames; symbolicator makes the call.
+- **symbolicator**: Honor `symbolication.by == "client" && symbolication.status == "success"` by not overriding client-provided symbols and not reporting frames as `"missing"`. Continue applying demangling, source context, and line-number enrichment. Write results into the `symbolication` object instead of (or in addition to) the current `symbolicator_status` field in `frame.data`. During migration, symbolicator can double-write into both fields ([suggested](https://github.com/getsentry/rfcs/pull/152#discussion_r2920693398) by [@jjbayer](https://github.com/jjbayer)).
 - **UI**: Read `symbolication` object for display. Can distinguish client vs. server symbolication if desired. The `success` status indicates symbolication succeeded regardless of origin, replacing the current `symbolicator_status`-based logic.
 
 ## Design rationale
 
-This approach was chosen over the alternatives described in Alternatives Considered below. In particular, a simple boolean flag (Alternative A) would have been equally effective for the immediate use case. The `symbolication` object starts with the same minimal footprint while providing a natural extension point for future needs such as audit trails, failure reasons, and symbolication strategy hints, without requiring further schema changes.
+This approach was chosen over the alternatives described in Alternatives Considered below. In particular, a simple boolean flag (Alternative A) would have been sufficient for the immediate use case. The `symbolication` object starts with a comparable SDK-side footprint (two fields on a frame) while providing a richer contract: symbolicator can make per-stage decisions based on the annotation (see [Control semantics](#control-semantics)), and the object structure provides a natural extension point for future needs such as audit trails, failure reasons, and symbolication strategy hints, without requiring further schema changes.
 
 ### Pros
 
@@ -193,7 +203,7 @@ This approach was chosen over the alternatives described in Alternatives Conside
 - Future-proof: extensible to multiple attempts, failure reasons, and new symbolication sources without schema-breaking changes.
 - Subsumes `symbolicator_status` and could eventually replace it, reducing redundancy.
 - Could later accommodate [@Dav1dde](https://github.com/Dav1dde)'s [proposal](https://github.com/getsentry/rfcs/pull/152#issuecomment-3991710125) to decouple symbolication strategy from `platform` via an `as` field.
-- In its initial minimal form (`by` + `status`), the implementation effort and scope are comparable to a simple boolean flag.
+- From an SDK perspective, the initial effort is minimal: set two fields on a frame. The richer semantics (symbolicator honoring the annotation per-stage) are handled server-side.
 
 ### Cons
 
@@ -279,13 +289,6 @@ Let SDKs explicitly set `symbolicator_status: "symbolicated"` (or a new value) i
 - If the field is later moved or renamed during a schema cleanup, SDK behavior breaks silently.
 - Tested and confirmed not to work today: SDK-set values are discarded/overwritten in the backend.
 
-# Unresolved Questions
-
-- How are the associated debug-meta images being resolved? If a frame is marked as "client-symbolicated" and thus doesn't show a "missing symbol" warning, images that are missing, but whose associated frames are entirely "client-symbolicated", shouldn't be marked as an error either (but should still be listed). Should this be resolved on the client (with a tag similar to the frame)? Or should this be resolved in native processing?
-- Are there workflow interactions between symbolication, line-number, and source lookup that would be prevented by the presented approach?
-- What is the interaction with demangling? If an SDK provides a mangled C++ symbol, should the backend still demangle it even if the frame is marked as client-symbolicated?
-- Should the UI distinguish between server-symbolicated and client-symbolicated frames (e.g., a subtle indicator), or treat them identically?
-- The `platform` property of each stack frame currently acts as the arbiter for UI (each frame is rendered differently depending on `platform`) and `symbolicator` decisions. Should we use this RFC as a starting point for moving away from `platform` as the selection property for symbolication? [Raised](https://github.com/getsentry/rfcs/pull/152#issuecomment-3991710125) by [@Dav1dde](https://github.com/Dav1dde). The proposed design's extensibility (a future `as` field on the `symbolication` object) provides a potential path for this.
 
 # Related Issues and Prior Art
 
