@@ -117,7 +117,7 @@ Processing passes the `symbolication` object through to symbolicator as part of 
 
 When symbolicator encounters a frame with `symbolication.by == "client"` and `symbolication.status == "success"`:
 
-- **Symbol resolution** is skipped. The client-provided `function`, `symbol`, `filename`, `lineno`, `colno`, and `abs_path` are not overwritten. The frame is not reported as `"missing"` if the corresponding debug file is unavailable.
+- **Symbol resolution** is skipped. The client-provided `function`, `symbol`, `filename`, `lineno`, `colno`, and `abs_path`, if provided, are not overwritten. The frame is not reported as `"missing"` if the corresponding debug file is unavailable.
 - **Demangling** is still applied. If the SDK sends a mangled C++ symbol, symbolicator can demangle it.
 - **Source context** is still applied. If symbolicator has access to the source file (e.g., via SourceLink or uploaded sources), it can add `pre_context`, `context_line`, and `post_context`.
 - **Line numbers** provided by the client are accepted, but symbolicator may still enrich them if debug information is available and the client did not provide them.
