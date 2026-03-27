@@ -211,6 +211,122 @@ This fits existing Go APIs well. `otel`, `grpc/metadata`, and similar packages a
 - More cloning and allocations on write (instead of using a mutable scope). This is `semi-solved` with the vision of using only `SetAttributes`, users would only need one more scope allocation compared to the mutable scope proposal (option 1).
 - We would need to be mindful on future APIs, since every logical mutation requires deriving a new `context.Context` value.
 
+### API Migration Changes under Option 2
+
+The breaking changes fall into a few different buckets.
+
+#### Capture APIs
+- Top-level capture calls would change from sentry.CaptureException(error) to sentry.CaptureException(ctx, error).
+- The public capture calls that would likely change are:
+    - sentry.CaptureException(ctx, error)
+    - sentry.CaptureMessage(ctx, message)
+    - sentry.CaptureEvent(ctx, event)
+    - sentry.CaptureCheckIn(ctx, checkIn, monitorConfig)
+- Any code relying on ambient global/request-local Hub state at capture time would need to pass the correct ctx explicitly.
+
+Migration path:
+- Minimal migration: thread ctx through call sites and switch capture calls first. In non request scoped methods, passing `context.Background()` would fall to the global scope which is safe.
+- Safer migration: where users already have a request ctx, replace `hub.CaptureX(...)` with top-level `sentry.CaptureX(ctx, ...)`.
+```go 
+// Before:
+hub := sentry.GetHubFromContext(ctx)
+hub.CaptureException(err)
+
+// After: 
+sentry.CaptureException(ctx, err)
+```
+
+#### Scope mutation APIs
+
+Scope mutation/forking APIs are no longer needed (`ConfigureScope` and `WithScope`). Users instead derive a new ctx:
+```go
+  ctx = sentry.SetTag(ctx, "key", "value")
+  ctx = sentry.SetUser(ctx, user)
+  ctx = sentry.SetAttributes(ctx, attrs)
+```
+- Any helper that currently mutates scope in place would need to return the derived ctx or accept and return ctx.
+- The same applies to helpers such as breadcrumbs or request enrichment, for example:
+```go
+ctx = sentry.AddBreadcrumb(ctx, breadcrumb)
+ctx = sentry.SetRequest(ctx, r)
+ctx = sentry.SetLevel(ctx, sentry.LevelWarning)
+```
+
+Migration path:
+
+- We keep `WithScope` and `ConfigureScope` as a compatibility wrapper around `fork current
+  scope and pass derived ctx`.
+  ```go
+  // Before:
+  hub.WithScope(func(scope *sentry.Scope) {
+		scope.SetTag("unwantedQuery", "someQueryDataMaybe")
+		hub.CaptureMessage("User provided unwanted query string, but we recovered just fine")
+	})
+  // After: 
+  sentry.WithScope(ctx context.Context, func(scope *sentry.Scope) {
+  	scope.SetTag("unwantedQuery", "someQueryDataMaybe")
+    scope.CaptureMessage("User provided unwanted query string, but we recovered just fine")
+  })
+	```
+- Easiest first step for many users is to move logic into scope-level methods conceptually (this happens under option 1 as well):
+    - scope.SetTag(...)
+    - scope.SetUser(...)
+    - scope.SetAttributes(...)
+- Then replace the mutation site with the ctx-returning equivalent:
+    - ctx = sentry.SetTag(ctx, ...)
+    - ctx = sentry.SetUser(ctx, ...)
+    - ctx = sentry.SetAttributes(ctx, ...)
+
+#### Hub-in-context APIs
+
+- SetHubOnContext(ctx, hub) and GetHubFromContext(ctx) stop being the primary user-facing propagation mechanism.
+- Users should no longer manually clone hubs for request/task isolation, just pass the correct context.Context.
+- This applies under both options.
+
+Migration path:
+
+```go
+	// Before:
+  ctx = sentry.SetHubOnContext(ctx, sentry.CurrentHub().Clone())
+  hub := sentry.GetHubFromContext(ctx)
+  // After:
+  ctx = sentry.NewContext(ctx)
+  sentry.CaptureX(ctx, err)
+```
+
+#### Trace propagation APIs
+
+- Trace propagation helpers that currently depend on Hub would become ctx-based as well.
+- This affects advanced users with custom HTTP/RPC propagation:
+    - ContinueTrace(hub, ...) -> ContinueTrace(ctx, ...)
+    - hub.GetTraceparent() -> sentry.GetTraceparent(ctx)
+    - hub.GetBaggage() -> sentry.GetBaggage(ctx)
+
+#### Manual request-scoped customization
+
+- Framework examples that currently say “get the hub from request context, mutate it, capture through it” would all change.
+- Typical handler code moves from:
+```go
+// Before:
+hub := sentry.GetHubFromContext(r.Context())
+hub.ConfigureScope(func(scope *sentry.Scope) {
+    scope.SetTag("route", "/hello")
+})
+hub.CaptureException(err)
+
+// After:
+ctx := r.Context()
+ctx = sentry.SetTag(ctx, "route", "/hello")
+sentry.CaptureException(ctx, err)
+```
+
+#### Helper signature changes
+
+- User-defined helpers that currently mutate scope as a side effect often need to change shape.
+- For example:
+    - func annotateUser(user User) becomes func annotateUser(ctx context.Context, user User) context.Context
+    - func capture(err error) becomes func capture(ctx context.Context, err error)
+
 ### Integration responsibilities under Option 2
 
 To satisfy the upstream scopes spec requirement, integrations need to create an isolation scope automatically. 
