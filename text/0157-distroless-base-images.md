@@ -5,7 +5,7 @@
 
 # Summary
 
-This RFC proposes adopting distroless (minimal) base Docker images across Sentry's containerized applications, replacing the standard Debian-based images currently in use. A distroless image contains only the application and its runtime dependencies — no shell, no package manager, no standard Linux utilities. This significantly reduces image size and the number of OS-level packages that can be exploited or need to be tracked for vulnerabilities.
+This RFC proposes adopting distroless (minimal) base Docker images across Sentry's containerized applications, replacing the standard Debian-based images currently in use. A distroless image contains only the application and its runtime dependencies — no shell, no package manager, no standard Linux utilities. This significantly reduces image size and the number of OS-level packages that can be exploited or need to be tracked for vulnerabilities. The goals of this initiative are: (1) migrate the most important services to distroless, and (2) establish distroless as the default baseline for all new containerized services going forward.
 
 We had an internal TSC talk about this, see [Notion](https://www.notion.so/sentry/3208b10e4b5d8086a18ff52013025b3a).
 
@@ -88,7 +88,7 @@ Docker Hardened Images (DHI) are minimal, hardened base images published by Dock
 - Available for Python, Node.js, and other runtimes we use
 
 **Cons:**
-- Requires Docker login to pull from `dhi.io` directly (mitigated by our mirroring approach)
+- Requires Docker login to pull from `dhi.io` directly (mitigated by our [mirroring](https://github.com/getsentry/dhi) approach)
 - Some build systems (e.g. CloudBuild) have issues with hard links in the images — affected workloads should be migrated to GitHub Actions
 
 ## Option 2: Google Distroless
@@ -160,4 +160,6 @@ Some CI/CD build systems have compatibility issues with certain distroless image
 - **Snuba and getsentry:** These are the largest remaining Python services. The Snuba PoC (https://github.com/getsentry/snuba/pull/7753, https://github.com/getsentry/snuba/pull/7821, https://github.com/getsentry/snuba/pull/7829, https://github.com/getsentry/ops/pull/19824) showed it is feasible. What is the sequencing and who owns driving this to completion?
 - **Local development compatibility:** Are there any blockers that might disrupt local development workflows when switching to distroless? So far this appears to be a non-issue — for example, Snuba distroless containers work fine in `sentry devservices` (https://github.com/getsentry/snuba/pull/7829).
 - **Services with non-trivial runtime deps:** Some services (e.g. uptime-checker with OpenSSL for certificate validation, or services using external libraries) may need extra work. Are there any blockers that make distroless infeasible for them?
+- **Public mirrors for anonymous access:** Pulling directly from `dhi.io` requires a Docker login, which complicates CI pipelines and local image builds for contributors. Should we commit to maintaining public mirrors at `ghcr.io/getsentry/dhi` to allow unauthenticated pulls? See https://github.com/getsentry/dhi.
+- **Image freshness:** Migrating to distroless is not a one-time fix — base images still need to be updated as new runtime patch versions are released. Corresponding product teams are responsible for bumping base image versions in line with their application's requirements and compatibility constraints.
 - **Standardizing the dev variant:** The `-dev` variant of DHI images (which includes a shell and debugging tools) is useful for development builds and troubleshooting. Should we define a standard pattern for multi-stage Dockerfiles that use `-dev` at build time and the minimal image at runtime?
