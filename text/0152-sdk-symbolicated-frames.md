@@ -9,7 +9,7 @@
 
 This RFC proposes adding a typed `symbolication` object to stack frames so SDKs and symbolicator can describe which enrichments were performed and by whom. This avoids wasted symbolicator work, prevents false-positive "missing debug symbols" errors in the UI, and gives SDKs a first-class way to indicate that a frame's symbol and its associated module/image should be treated at face value rather than considered missing.
 
-The design is stage-aware from the start. SDKs can claim only `symbols` and still leave other enrichments open to backend processing, or they can use a flat shorthand meaning "all enrichments relevant to this frame's effective platform." Platform-specific processing expands that shorthand to long form as early as possible. For native, those enrichments are `symbols`, `demangling`, `source_context`, and `location`. The first end-to-end implementation only needs to honor `symbols`, but the full stage set is part of the initial design. Most SDKs will not annotate frames at all; omitting `symbolication` preserves current behavior, where frames are sent through the existing pipeline and symbolicator does its normal processing.
+The design is stage-aware from the start: SDKs can claim only `symbols` and still leave other enrichments open to backend processing, or they can use a flat shorthand meaning "all enrichments relevant to this frame's effective platform." Platform-specific processing expands that shorthand to long form as early as possible. For native, those enrichments are `symbols`, `demangling`, `source_context`, and `location`. The first end-to-end implementation only needs to honor `symbols`, but the full stage set is part of the initial design. Most SDKs will not annotate frames at all; omitting `symbolication` preserves current behavior, where frames are sent through the existing pipeline, and symbolicator does its normal processing.
 
 # Motivation
 
@@ -137,7 +137,7 @@ For compactness, SDKs may also send a flat shorthand:
 }
 ```
 
-For a given frame, this shorthand means: **all enrichments relevant to the frame's effective platform share the same provenance and outcome**. Because Relay does not generally know that platform-specific stage set, it cannot reliably expand the shorthand on its own. The platform-specific processing module interprets shorthand, because it already matches on platform. Shorthand should be normalized to long form as early as possible; downstream components should then reason only about the normalized long form.
+For a given frame, this shorthand means: **all enrichments relevant to the frame's effective platform share the same provenance and outcome**. Because Relay generally does not know the platform-specific stage set, it cannot reliably expand the shorthand on its own. The platform-specific processing module interprets shorthand because it already matches on the platform. Shorthand should be normalized to long form as early as possible; downstream components should then reason only about the normalized long form.
 
 ## Control semantics
 
@@ -161,7 +161,7 @@ it treats symbol resolution for that frame as already authoritative on the clien
 - The associated module/image should not be attributed as missing solely because server-side symbol resolution was skipped.
 - Other enrichments remain open by default: demangling, source context, and location continue to follow current behavior unless and until the corresponding stage is also claimed in the normalized long form.
 
-Whether symbolicator performs a debug file lookup for a client-symbolicated frame is an implementation detail. If nothing remains to add, a debug file lookup can be skipped; this is a performance concern, not a correctness requirement. Any other value, including non-success values or unknown stage annotations, falls back to current behavior. Unsupported stages are dropped during normalization until they are implemented end-to-end.
+Whether symbolicator performs a debug file lookup for a client-symbolicated frame is an implementation detail. If nothing remains to add, a debug file lookup can be skipped; this is a performance concern, not a correctness requirement. Any other value, including non-success values or unknown stage annotations, falls back to the current behavior. Unsupported stages are dropped during normalization until they are implemented end-to-end.
 
 For frames without a `symbolication` object (the default), symbolicator proceeds as it does today. After symbolicator processes a frame, it writes its result into the corresponding stage entry, for example:
 
@@ -224,7 +224,7 @@ After native processing normalizes the shorthand:
 }
 ```
 
-For native, the processing module defines that stage set. In the initial rollout, unsupported expanded stages are dropped before the frame is forwarded downstream.
+For "native", the processing module defines that stage set. In the initial rollout, unsupported expanded stages are dropped before the frame is forwarded downstream.
 
 **Selective long form: client symbols only**
 
