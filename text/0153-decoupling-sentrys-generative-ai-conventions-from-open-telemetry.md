@@ -1,7 +1,7 @@
 - Start Date: 2026-03-09
 - RFC Type: decision
 - RFC PR: https://github.com/getsentry/rfcs/pull/153
-- RFC Status: draft
+- RFC Status: approved
 
 # Summary
 
