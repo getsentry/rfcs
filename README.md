@@ -72,3 +72,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0148-logs-for-crashes](text/0148-logs-for-crashes.md): Logs for Crashes
 - [0149-merge-bundler-plugins](text/0149-merge-bundler-plugins.md): Merge sentry-javascript-bundler-plugins into sentry-javascript
 - [0152-sdk-symbolicated-frames](text/0152-sdk-symbolicated-frames.md): This RFC proposes a mechanism for SDKs to mark stack frames as already symbolicated on the client side, so that the backend (processing/symbolicator) can skip symbolication for those frames
+- [0153-decoupling-sentrys-generative-ai-conventions-from-open-telemetry](text/0153-decoupling-sentrys-generative-ai-conventions-from-open-telemetry.md): Decoupling Sentry's Generative AI conventions from OpenTelemetry
