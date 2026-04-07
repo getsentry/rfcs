@@ -350,6 +350,59 @@ func middleware(next http.Handler) http.Handler {
 
 This is the Go equivalent of what other SDKs do at async/task boundaries. The important point is that the integration owns the isolation fork, not the user.
 
+### Span API
+
+Separately from the scope model, the SDK also needs a tracing API direction that aligns with Span-First while preserving current functionality.
+
+#### Current tracing model
+
+Today tracing in `sentry-go` is split across two propagation systems:
+
+- the active span is stored in `context.Context`.
+- the active span is also mirrored onto the current scope.
+
+This means the active span is not represented by a single source of truth. Child spans are created from the active span in `ctx`, but tracing logic also mutates scope state to attach the active span and restore parent spans when spans finish.
+
+#### Target direction
+
+The final tracing API should move toward a span-first model similar to OTel:
+
+- `context.Context` is the canonical carrier of the active span.
+- starting a span derives a new `ctx`.
+- child spans should be parented automatically from the active span in `ctx`.
+- explicit parenting should still be supported for advanced cases.
+- root spans should remain the basis for transaction semantics, but transactions should be treated as root spans rather than a separate long-term API model.
+
+#### Final API shape
+
+```go
+ctx, span := sentry.StartSpan(ctx, "validate-cart",
+ 	sentry.WithAttributes(
+		attribute.String("user.id", "123"),
+ 	),
+)
+defer span.End()
+
+span.SetAttribute("valid", attribute.BoolValue(true))
+span.SetStatus(sentry.SpanStatusOK)
+```
+
+The main behavior should be:
+
+- StartSpan(ctx, name, ...) returns (context.Context, Span).
+- the returned ctx carries the started span as the active span.
+- if no explicit parent option is passed, the started span should use the currently active span from ctx as parent.
+- if an explicit WithParent(span) option is passed, that span becomes the parent.
+- if an explicit WithNoParent() option is passed, the new span becomes a root/segment span.
+
+#### Interaction with scope model
+
+Under the proposed scope model, scope if only an infromation carrier and is no longer responsible for owning tracing state. The `context.Context` carries both the scope and active span state.
+This means that `StartSpan` is also a scope-boundary operation and derived scopes already contain the previously inherited local state. Under this, the SDK does not need to merge separate scopes when a span ends. Semanticaly, the model gets simplified to:
+- global scope remains process-wide fallback/default state.
+- the scope stored on `ctx` is effectively the local scope.
+- span-local changes are represented by deriving a new `ctx` with a forked local scope.
+
 ## Supporting Data
 
 ### Performance considerations
