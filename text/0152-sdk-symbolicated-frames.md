@@ -157,8 +157,8 @@ For the first implementation, the only stage that must be honored end-to-end is 
 it treats symbol resolution for that frame as already authoritative on the client side:
 
 - **Symbol resolution** is skipped. The client-provided `function` and `symbol`, if present, are not overwritten.
-- The frame is not reported as `"missing"` if the corresponding debug file is unavailable.
-- The associated module/image should not be attributed as missing solely because server-side symbol resolution was skipped.
+- The frame is not reported as `"missing"` solely because server-side symbol resolution was skipped. If other enrichment stages remain unclaimed (the default when only `symbols` is annotated), symbolicator still attempts them. If those lookups fail because the corresponding debug file is unavailable, the frame and its associated module are reported as `"missing"` as they would be today. Only when all stages relevant to the frame's platform have been claimed as `"success"` by the client is there no further lookup and no missing marker.
+- The associated module/image should not be attributed as missing solely because server-side symbol resolution was skipped. The same principle applies as with frames: if unclaimed stages require a debug file lookup and that lookup fails, the module is attributed as missing.
 - Other enrichments remain open by default: demangling, source context, and location continue to follow current behavior unless and until the corresponding stage is also claimed in the normalized long form.
 
 Whether symbolicator performs a debug file lookup for a client-symbolicated frame is an implementation detail. If nothing remains to add, a debug file lookup can be skipped; this is a performance concern, not a correctness requirement. Any other value, including non-success values or unknown stage annotations, falls back to the current behavior. Unsupported stages are dropped during normalization until they are implemented end-to-end.
