@@ -395,6 +395,8 @@ The main behavior should be:
 - if an explicit WithParent(span) option is passed, that span becomes the parent.
 - if an explicit WithNoParent() option is passed, the new span becomes a root/segment span.
 
+This should be explicit about mutability semantics. `context.Context` remains immutable, but the returned `Span` is mutable. Methods like `SetAttribute`, `SetStatus` and `End` mutate that span during its lifetime. This is distinct from `SpanContext`, which is immutable propagation data (`trace_id`, `span_id`, `dsc`.) and can be exposed separately for propagation-only use cases.
+
 #### Interaction with scope model
 
 Under the proposed scope model, scope if only an infromation carrier and is no longer responsible for owning tracing state. The `context.Context` carries both the scope and active span state.
@@ -402,6 +404,8 @@ This means that `StartSpan` is also a scope-boundary operation and derived scope
 - global scope remains process-wide fallback/default state.
 - the scope stored on `ctx` is effectively the local scope.
 - span-local changes are represented by deriving a new `ctx` with a forked local scope.
+
+This distinction matters for concurrency. The proposal removes shared mutable scope state from `ctx`, which is the main source of request/task isolation problems today. It does not forbid multiple code paths from mutating the same span handle concurrently if they intentionally share that span. That is acceptable tracing behavior and is a much narrower concern than storing mutable scope state in `ctx`.
 
 ## Supporting Data
 
