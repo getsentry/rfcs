@@ -7,9 +7,9 @@
 
 # Summary
 
-Migrate web vitals (LCP, CLS, INP, FCP, TTFB) from spans to trace metrics in the Sentry JavaScript SDK. It's a multi-phase approach to ensure we end up with single data source for web vitals and avoid introducing any billing changes for our customers.
+Migrate web vitals (LCP, CLS, INP, FCP, TTFB) from spans to trace metrics in the Sentry JavaScript SDK.
 
-Relay double-writes web vital spans as trace metrics (free) for a period of time (detailed below), then dashboards cut over to metrics-only queries. New major SDK releases emit web vitals as trace metrics natively, billed as metrics. Finally, Relay stops double writing and only converts spans from older SDKs to metrics, billed as spans, no customer sees a billing change at any phase.
+Relay double-writes web vital spans as trace metrics (free) for a period of time (detailed below), then dashboards cut over to metrics-only queries. New major SDK releases emit web vitals as trace metrics natively, billed as metrics. Finally, Relay stops double writing and only converts spans from older SDKs to metrics. Billing details are covered as we have some caveats to consider.
 
 **Suggested timeline:**
 
@@ -26,33 +26,11 @@ Having said that, these are the work items with their own expected timelines:
 
 Web vitals are measurements, not execution traces. The current span-based implementation carries structural overhead that doesn't serve the data:
 
-- **Span overhead.** Current default browser tracing emits INP as a standalone web vital span and keeps LCP, CLS, FCP, and TTFB on the pageload transaction. With span streaming enabled, LCP and CLS also become web vital spans. The pageload span itself remains either way, so metrics only eliminate standalone web vital spans, not the pageload carrier.
-- **Cost to customers.** Per-item, metrics are ~3.8× cheaper than spans ($0.53/1M vs $2.00/1M). However, the migration adds items: current default has 2 spans per pageload (INP + pageload), v11 has 4 (INP + LCP + CLS + pageload), while metrics always produce 5 items + 1 pageload span. The net cost depends on sample rate. At `sampleRate: 1.0`, v11 with metrics (~$450/mo at 100M pageloads) is 38% cheaper than v11 spans ($730) but 22% more expensive than current default spans ($370). At low sample rates (≤0.1), metrics cost more in absolute terms (~$270 vs $30-$70) because they are unsampled — but they capture 100% of web vitals vs 10%. See the cost comparison table below for the full matrix.
+- **Span overhead.** Current default browser tracing emits INP as a standalone web vital span and keeps LCP, CLS, FCP, and TTFB on the pageload transaction. With span streaming enabled, LCP and CLS also become web vital spans. The pageload span itself remains either way, so metrics only eliminate standalone web vital spans, not the pageload carrier. The savings depend on whether span streaming is enabled or not.
+- **Cost to customers.** Metrics are cheaper per item, but produce 5 unsampled metric items per pageload while the pageload span remains. This is cheaper than v11 streamed spans at full sampling, but more expensive than sampled spans at low sample rates. The tradeoff is cost vs 100% web vital coverage.
 - **Metrics use-cases.** The browser does not have any OOTB metrics use-cases. By moving web vitals to metrics, it encourages metric adoption by customers.
 - **Transaction+Span Schema Deprecation.** The v2 span protocol is in the works and will deprecate the transaction+span schema (v1). Span streaming becomes the default in v11, so this RFC has to account for both the current v1 default and the v11 streamed-span default.
-- **Metrics are not SDK-sampled.** Metrics are not subject to trace sampling at either the SDK level. This means trace metrics capture 100% of emissions while still carrying `trace_id` for correlation. This works well with the cost model.
-
-
-All costs below are Team PAYG at $0.0000020/span (≤100M), $0.0000018/span (>100M), $0.50/GB metrics. 5M spans and 5GB metrics included free. 100M actual pageloads/month.
-
-**Items per pageload:**
-- Current default: 1 standalone web vital span (INP) + 1 pageload span = 2 spans
-- v11 streamed: 3 standalone web vital spans (INP + LCP + CLS) + 1 pageload span = 4 spans
-- v11 with metrics: 1 pageload span (sampled) + 5 metrics (unsampled). Metrics are not subject to `tracesSampleRate`.
-
-| Mode | `sampleRate: 1.0` | `sampleRate: 0.25` | `sampleRate: 0.1` |
-|---|---|---|---|
-| **Current default** | **~$370** (100%) | **~$90** (25%) | **~$30** (10%) |
-| **v11 streamed spans** | **~$730** (100%) | **~$190** (25%) | **~$70** (10%) |
-| **v11 with metrics** | **~$450** (100%) | **~$300** (100%) | **~$270** (100%) |
-
-_How the "v11 with metrics" row is calculated: metrics cost is fixed at ~$260 (500M items × ~1,050B = ~525 GB, 5 GB free, 520 GB × $0.50). The pageload span still exists and is sampled, adding ~$190 at 1.0, ~$40 at 0.25, ~$10 at 0.1. Total = metrics + pageload spans._
-
-**Key observations:**
-- At `sampleRate: 1.0`, metrics (~$450) are 38% cheaper than v11 streamed spans ($730) but 22% more expensive than current default ($370). The v11 span doubling (200M → 400M) is the main cost driver that metrics avoid.
-- At `sampleRate: 0.25`, metrics (~$300) cost more than either span mode ($90 / $190) in absolute terms, but capture 100% of web vitals vs 25%.
-- At `sampleRate: 0.1`, metrics (~$270) cost 4-9× more than spans ($30 / $70), but capture 10× the data. Customers at low sample rates chose that rate to save money — metrics shift web vitals to 100% coverage at a fixed cost regardless of sample rate.
-- The pageload span is not eliminated in any scenario. It continues to carry navigation timing, resource spans, and other non-vital data.
+- **Metrics are not SDK-sampled.** Metrics are not subject to trace sampling at either the SDK level. This means trace metrics capture 100% of emissions while still carrying `trace_id` for correlation.
 
 # Background
 
@@ -93,6 +71,8 @@ Span {
 
 For v1 standalone web vital spans, the vital value lives inside a span event using `sentry.measurement_value` / `sentry.measurement_unit`. Attribute names use flat keys like `lcp.element`, `lcp.size`. For the current default pageload path, LCP/CLS/FCP/TTFB values live in `event.measurements` on the pageload transaction.
 
+Replacing web vital spans with metrics here means we eliminate just the INP standalone span. But produce 5 metrics per pageload. So -1 span, +5 metrics.
+
 ### Streamed spans (v2, already implemented)
 
 Streamed spans embed the vital value directly as a span attribute:
@@ -120,9 +100,11 @@ Key differences from v1: the value is a first-class attribute (`browser.web_vita
 
 INP uses `ui.interaction.{click,hover,drag,press}` as the op (not `ui.webvital.inp`). FCP and TTFB do not have dedicated streamed spans. In streamed mode they are attributes on the pageload span; in non-streamed mode they are measurements on the pageload transaction.
 
+Replacing web vital spans with metrics here means we eliminate the INP, LCP, and CLS standalone spans. But produce 5 metrics per pageload. So -3 spans, +5 metrics. As of this writing, the v11 default is streamed spans.
+
 ## Payload size comparison
 
-Measured from real SDK output (streamed span mode, realistic attributes including release, environment, user agent, route name, LCP element tree, CLS sources). Both span and metric carry the exact same domain attributes — the only differences are the envelope structural fields:
+Measured from real SDK output. Both span and metric carry most of the same domain attributes, the only differences are the envelope structural fields:
 
 - **Span has, metric doesn't (top-level):** `span_id`, `parent_span_id`, `start_timestamp`, `end_timestamp`, `is_segment`, `status`, `links`
 - **Span has, metric doesn't (attributes):** `sentry.segment.name`, `sentry.segment.id`
@@ -139,9 +121,9 @@ Measured from real SDK output (streamed span mode, realistic attributes includin
 | Pageload span (with vital attrs) | 1,532 B | 1,274 B (without) | -258 B |
 | **Total per pageload** | **6,234 B** | **6,526 B** | **+292 B (4.7% more)** |
 
-Per-item, metrics are ~213-240 B (13-17%) smaller than the equivalent span because they drop span structural fields and `sentry.segment.*` attributes. However, the total per-pageload overhead is **slightly larger** with metrics because FCP and TTFB, which currently ride free as attributes on the pageload span (~258 B combined), become standalone metric items (~1,231 B combined). The per-item savings on LCP/CLS/INP (~681 B) plus the pageload span shrinkage (~258 B) don't overcome the new standalone TTFB+FCP items.
+Per-item, metrics are ~213-240 B (13-17%) smaller than the equivalent span because they drop span structural fields. However, the total per-pageload overhead is **slightly larger** with metrics because FCP and TTFB, which currently ride free as attributes on the pageload span (~258 B combined), become standalone metric items (~1,231 B combined). The per-item savings on LCP/CLS/INP (~681 B) plus the pageload span shrinkage (~258 B) don't overcome the new standalone TTFB+FCP items.
 
-The cost argument is not about bytes per pageload — it's about billing category and coverage. Metrics are billed at $0.50/GB vs per-span pricing, and are not SDK-sampled, so they capture 100% of emissions at any `tracesSampleRate`.
+The cost argument is not about bytes per pageload, it's about billing category and coverage. Metrics are billed at $0.50/GB vs per-span pricing, and are not SDK-sampled, so they capture 100% of emissions at any `tracesSampleRate`.
 
 This is not straightforward to calculate because there are two ratios:
 
@@ -150,11 +132,34 @@ This is not straightforward to calculate because there are two ratios:
 
 # Supporting Data
 
+## Cost comparison
+
+All costs below are Team PAYG at $0.0000020/span (≤100M), $0.0000018/span (>100M), $0.50/GB metrics. 5M spans and 5GB metrics included free. 100M actual pageloads/month.
+
+**Items per pageload:**
+
+- Current default: 1 standalone web vital span (INP) + 1 pageload span = 2 spans
+- v11 streamed: 3 standalone web vital spans (INP + LCP + CLS) + 1 pageload span = 4 spans
+- v11 with metrics: 1 pageload span (sampled) + 5 metrics (unsampled). Metrics are not subject to `tracesSampleRate`.
+
+| Mode | `sampleRate: 1.0` | `sampleRate: 0.25` | `sampleRate: 0.1` |
+|---|---|---|---|
+| **Current default** | **~$370** (100%) | **~$90** (25%) | **~$30** (10%) |
+| **v11 streamed spans** | **~$730** (100%) | **~$190** (25%) | **~$70** (10%) |
+| **v11 with metrics** | **~$450** (100%) | **~$300** (100%) | **~$270** (100%) |
+
+_How the "v11 with metrics" row is calculated: metrics cost is fixed at ~$260 (500M items × ~1,050B = ~525 GB, 5 GB free, 520 GB × $0.50). The pageload span still exists and is sampled, adding ~$190 at 1.0, ~$40 at 0.25, ~$10 at 0.1. Total = metrics + pageload spans._
+
+**Key observations:**
+
+- At `sampleRate: 1.0`, metrics (~$450) are 38% cheaper than v11 streamed spans ($730) but 22% more expensive than current default ($370). The v11 span doubling (200M -> 400M) is the main cost driver that metrics avoid.
+- At `sampleRate: 0.25`, metrics (~$300) cost more than either span mode ($90 / $190) in absolute terms, but capture 100% of web vitals vs 25%.
+- At `sampleRate: 0.1`, metrics (~$270) cost 4-9× more than spans ($30 / $70), but capture 10× the data. Customers at low sample rates chose that rate to save money — metrics shift web vitals to 100% coverage at a fixed cost regardless of sample rate.
+- The pageload span is not eliminated in any scenario. It continues to carry navigation timing, resource spans, and other non-vital data.
+
 ## Observed volume (warehouse data, April 2026)
 
 Web vital spans are a significant volume category across a large number of organizations. The conversion is not 1:1, and the ratio depends on whether the SDK is using the current default behavior or streamed spans. Current default SDKs mostly produce INP standalone spans plus pageload measurements; streamed spans produce LCP, CLS, and INP as standalone spans plus FCP/TTFB on the pageload.
-
-Volume is declining MoM (~6-10%) while org count is growing. Per-org standalone web-vital emission is shrinking, consistent with SDK-side sampling improvements in newer versions.
 
 **95–96% of volume** flows through `auto.ui.browser.metrics` (the combined origin used by newer SDKs). Only INP consistently uses a dedicated origin (`auto.http.browser.inp`, ~4–5%). Dedicated `.lcp` / `.cls` origins are <0.1%.
 
@@ -169,7 +174,7 @@ Volume is declining MoM (~6-10%) while org count is growing. Per-org standalone 
 | Unknown | ~5% |
 | v6 and older | ~1% |
 
-**Legacy tail implication:** 48% of web vital span volume comes from pre-v10 SDKs. v7 at 10% is non-trivial and likely sticky (pinned SDKs, older customers). Relay's span-to-metric conversion is not a short-term bridge and needs to be robust and long-lived.
+**Legacy tail implication:** 48% of web vital span volume comes from pre-v10 SDKs. v7 at 10% is non-trivial and likely sticky (pinned SDKs, older customers). Relay's span-to-metric conversion is not a short-term bridge and needs to be robust and long-lived, whether we decide to retire double-writing early or not. The conversion logic will exist for a few years.
 
 ## Pricing
 
@@ -185,10 +190,10 @@ See the cost comparison table above. Summary of item count changes per pageload:
 
 | Mode | Spans per pageload | Metrics per pageload | Net item change |
 |---|---|---|---|
-| Current default → metrics | 2 (INP + pageload) → 1 (pageload remains) | 0 → 5 | -1 span, +5 metrics |
-| v11 streamed → metrics | 4 (INP + LCP + CLS + pageload) → 1 (pageload remains) | 0 → 5 | -3 spans, +5 metrics |
+| Current default -> metrics | 2 (INP + pageload) -> 1 (pageload remains) | 0 -> 5 | -1 span, +5 metrics |
+| v11 streamed -> metrics | 4 (INP + LCP + CLS + pageload) -> 1 (pageload remains) | 0 -> 5 | -3 spans, +5 metrics |
 
-FCP and TTFB currently ride for free on the pageload span (~258 B combined as attributes). As metrics they become separate billable items (~651 B and ~580 B respectively). This makes total per-pageload bytes ~4.7% larger with metrics: the per-item savings on LCP/CLS/INP (~681 B) plus pageload span shrinkage (~258 B) don't overcome FCP and TTFB becoming standalone items (~1,231 B). The pageload span itself continues to exist; we extract measurements from it, not replace it.
+The cost impact is dominated by billing category and sampling behavior; the pageload span itself continues to exist.
 
 Note: these numbers reflect already-sampled volume. The true event count (pre-sampling) would be significantly higher.
 
@@ -210,7 +215,7 @@ Suggested duration: 6 months. It's a significant amount of time, but it's necess
 
 We can do shorter periods, but that creates gaps around the switchover point. For example, if we do a 30 day double-write, that means when dashboards cutover to metrics, customers won't be able to query any web vitals data >30 days old. Unless we allow dashboard to query mixed data from spans and metrics, which is not ideal.
 
-The longer the double-write period, the less we need to compromise and the more we can keep the data consistent.
+The longer the double-write period, the less we need to compromise and the more we can keep the data consistent. We can also consider keeping it on forever if the costs are not too high. There is an estimation for that in the appendix.
 
 ### Relay conversion
 
@@ -293,7 +298,7 @@ When spans stop being written, anything querying the spans dataset for web vital
 
 A non-trivial number of active alerts, saved Discover queries, and custom dashboard widgets reference web vital span measurements across a significant number of orgs. These won't error, they'll just quietly stop producing data. Customers may not notice immediately. We have a couple of options here:
 
-- **Migrate alerts and Discover queries to the metrics dataset.** Auto-migrate known patterns (e.g. `measurements.lcp` → `browser.lcp`) or provide migration tooling.
+- **Migrate alerts and Discover queries to the metrics dataset.** Auto-migrate known patterns (e.g. `measurements.lcp` -> `browser.lcp`) or provide migration tooling.
 - **Gate the single-write conversion on a feature flag.** Keep double-write running longer to give customers time to migrate their alerts and Discover queries to the metrics dataset before spans are dropped.
 
 The longer the double-write period is, the more time we have to migrate the alerts and Discover queries to the metrics dataset.
@@ -314,7 +319,15 @@ This ensures:
 - Old SDKs sending spans -> Relay converts -> billed as `Span` -> no billing change
 - New SDKs sending metrics -> billed as `TraceMetric` -> customer opted in via upgrade
 
-**Billing caveat for measurements that currently ride free on the pageload span:** The set of vitals that are free today depends on the SDK code path. With the current default (v1, no span streaming), LCP, CLS, FCP, and TTFB are all measurements on the pageload transaction — only INP is a standalone billed span. With streamed spans (v11 default), LCP and CLS become standalone billed spans, so only FCP and TTFB remain free on the pageload span. When Relay extracts free-riding measurements as separate metrics, naively billing those as `DataCategory::Span` would charge customers for items they were not paying for before (4 items for v1 SDKs, 2 items for v2/streamed SDKs). To preserve the "no billing change" guarantee, Relay must suppress billing on any metric derived from a measurement that was not a standalone span. In practice: for v1 SDK traffic, suppress billing on LCP, CLS, FCP, and TTFB metrics derived from the pageload span; for v2/streamed SDK traffic, suppress billing on FCP and TTFB only. Only new SDKs emitting all 5 vitals as native metrics (`sentry.metric.source: "sdk"`) should be billed as `DataCategory::TraceMetric`.
+**Billing caveat for measurements that currently ride free on the pageload span:**
+
+| SDK path | Already billed as standalone span | Free on pageload today | Suppress billing for derived metrics |
+|---|---|---|---|
+| v1 current default | INP | LCP, CLS, FCP, TTFB | LCP, CLS, FCP, TTFB |
+| v2/v11 streamed | INP, LCP, CLS | FCP, TTFB | FCP, TTFB |
+| metrics-native SDK | none | none | none |
+
+Relay must suppress billing for any metric derived from a measurement that was not previously billed as a standalone span. Only new SDKs emitting all 5 vitals as native metrics (`sentry.metric.source: "sdk"`) should bill them as `DataCategory::TraceMetric`.
 
 ## SDK emits web vitals as metrics natively (v11)
 
@@ -332,10 +345,8 @@ Ideally the second scenario is the best case. This still doesn't change the doub
 | Phase | Old SDKs v1 (spans, no streaming) | Old SDKs v2 (streamed spans) | New SDKs (v11+, metrics) |
 |---|---|---|---|
 | Double-write | Billed as spans, derived metrics free (outcome suppressed). LCP/CLS/FCP/TTFB derived metrics also free (were free measurements on pageload). | Billed as spans, derived metrics free (outcome suppressed). FCP/TTFB derived metrics also free (were free measurements on pageload). | N/A |
-| Post-double-write | Relay converts to metrics, `sentry.metric.source: "span"` → billed as `DataCategory::Span`. LCP/CLS/FCP/TTFB billing suppressed (were previously free on pageload span). | Relay converts to metrics, `sentry.metric.source: "span"` → billed as `DataCategory::Span`. FCP/TTFB billing suppressed (were previously free on pageload span). | N/A |
-| v11+ | Relay converts to metrics, billed as spans. LCP/CLS/FCP/TTFB billing suppressed. | Relay converts to metrics, billed as spans. FCP/TTFB billing suppressed. | `sentry.metric.source: "sdk"` → all 5 vitals billed as `DataCategory::TraceMetric` |
-
-No customer experiences an unexpected billing change at any phase.
+| Post-double-write | Relay converts to metrics, `sentry.metric.source: "span"` -> billed as `DataCategory::Span`. LCP/CLS/FCP/TTFB billing suppressed (were previously free on pageload span). | Relay converts to metrics, `sentry.metric.source: "span"` -> billed as `DataCategory::Span`. FCP/TTFB billing suppressed (were previously free on pageload span). | N/A |
+| v11+ | Relay converts to metrics, billed as spans. LCP/CLS/FCP/TTFB billing suppressed. | Relay converts to metrics, billed as spans. FCP/TTFB billing suppressed. | `sentry.metric.source: "sdk"` -> all 5 vitals billed as `DataCategory::TraceMetric` |
 
 # Alternatives considered
 
@@ -358,20 +369,28 @@ Instead of double-writing, Relay converts web vital spans to metrics from day on
 
 This approach trades double-write cost for query-layer complexity. It may be simpler overall and is worth exploring with the databrowsing team.
 
-## SDK-only, query-side fallback, no Relay involvement
+## SDK-only, no Relay involvement
 
-The SDK ships metrics natively in v11 as a breaking change. Customers upgrading are expected to understand the pricing implications. No Relay conversion, no double-write. Dashboards query both the spans and metrics datasets.
+The SDK ships metrics natively in v11 as a breaking change. Customers upgrading are expected to understand the pricing implications. No Relay conversion will happen, the SDK will emit metrics natively.
+
+This can be done in two ways:
+
+- Either dashboards are able to query mixed span/metric data for the same existing widgets/alerts/queries.
+- New SDK traffic tags projects with a `has_web_vitals_metrics` flag that is then used to switch over to metrics widget/dashboards/alerts/queries.
+
+In either case, the SDK will allow customers to opt-out and send spans instead of metrics.
 
 **Pros:**
 
 - No double-write cost absorbed by Sentry
 - No Relay conversion logic to build or maintain
-- Simpler overall: SDK emits metrics, dashboards query both datasets, done
+- Simpler overall: SDK emits metrics, customers are aware of billing implications and can choose to upgrade to the new SDK version.
 
 **Cons:**
 
-- Query layer must merge results from two datasets with different schemas
-- Dual-query logic may need to be maintained indefinitely. Pre-v11 SDKs (currently 48% of volume) will continue sending spans, and many customers will never upgrade. The query layer must support both datasets as long as old SDKs are in the wild
+- If the first option is chosen, the following cons apply:
+  - Query layer must merge results from two datasets with different schemas
+  - Dual-query logic may need to be maintained indefinitely. Pre-v11 SDKs (currently 48% of volume) will continue sending spans, and many customers will never upgrade.
 - Old SDKs (pre-v11) never produce metrics, so their web vitals are only visible through the span query path. There is no single dataset that contains all web vital data
 - No convergence to a single data source without Relay conversion
 
@@ -386,7 +405,8 @@ Keep web vitals as spans. No migration, no metrics conversion.
 **Cons:**
 
 - The browser platform has no metrics use-cases, limiting customer adoption of the metrics product.
-- Customers may lose out on the reduced cost of web vitals as metrics, especially if they adopt soft navigation.  
+- Web vitals continue to be sampled, customers will lose information on the web vital values, especially when soft navigation vitals are adopted.
+- Customers may lose out on the reduced cost/coverage of web vitals as metrics, especially when soft navigation vitals are adopted.
 
 # Unresolved questions
 
