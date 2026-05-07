@@ -9,7 +9,7 @@
 
 Migrate web vitals (LCP, CLS, INP, FCP, TTFB) from spans to trace metrics in the Sentry JavaScript SDK.
 
-Relay double-writes web vital spans as trace metrics (free) for a period of time (detailed below), then dashboards cut over to metrics-only queries. New major SDK releases emit web vitals as trace metrics natively, billed as metrics. Finally, Relay stops double writing and only converts spans from older SDKs to metrics. Billing details are covered as we have some caveats to consider.
+Relay double-writes web vital spans as trace metrics (free) for a period of time (detailed below), then dashboards cut over to metrics-only queries. New major SDK releases emit web vitals as trace metrics natively, billed as metrics. Finally, Relay stops double writing and only converts spans from older SDKs to metrics. Billing details are covered [below](#cost-comparison) as we have some caveats to consider.
 
 **Suggested timeline:**
 
@@ -215,7 +215,7 @@ Suggested duration: 6 months. It's a significant amount of time, but it's necess
 
 We can do shorter periods, but that creates gaps around the switchover point. For example, if we do a 30 day double-write, that means when dashboards cutover to metrics, customers won't be able to query any web vitals data >30 days old. Unless we allow dashboard to query mixed data from spans and metrics, which is not ideal.
 
-The longer the double-write period, the less we need to compromise and the more we can keep the data consistent. We can also consider keeping it on forever if the costs are not too high. There is an estimation for that in the appendix.
+The longer the double-write period, the less we need to compromise and the more we can keep the data consistent. We can also consider keeping it on forever if the costs are not too high. There is an estimation for that in the [appendix](#appendix).
 
 ### Relay conversion
 
@@ -369,14 +369,13 @@ Instead of double-writing, Relay converts web vital spans to metrics from day on
 
 This approach trades double-write cost for query-layer complexity. It may be simpler overall and is worth exploring with the databrowsing team.
 
+It doesn't seem like querying mixed span/metric data is possible as some folks are suggesting.
+
 ## SDK-only, no Relay involvement
 
 The SDK ships metrics natively in v11 as a breaking change. Customers upgrading are expected to understand the pricing implications. No Relay conversion will happen, the SDK will emit metrics natively.
 
-This can be done in two ways:
-
-- Either dashboards are able to query mixed span/metric data for the same existing widgets/alerts/queries.
-- New SDK traffic tags projects with a `has_web_vitals_metrics` flag that is then used to switch over to metrics widget/dashboards/alerts/queries.
+We can have the new SDK traffic tagging projects with a `has_web_vitals_metrics` flag that is then used to switch over to metrics widget/dashboards/alerts/queries. This will benefit newer projects more since customers wouldn't have historical data to worry about.
 
 In either case, the SDK will allow customers to opt-out and send spans instead of metrics.
 
@@ -388,10 +387,7 @@ In either case, the SDK will allow customers to opt-out and send spans instead o
 
 **Cons:**
 
-- If the first option is chosen, the following cons apply:
-  - Query layer must merge results from two datasets with different schemas
-  - Dual-query logic may need to be maintained indefinitely. Pre-v11 SDKs (currently 48% of volume) will continue sending spans, and many customers will never upgrade.
-- Old SDKs (pre-v11) never produce metrics, so their web vitals are only visible through the span query path. There is no single dataset that contains all web vital data
+- Old SDKs (pre-v11) never produce metrics, so their web vitals are only visible through the span query path. There is no single dataset that contains all web vital data.
 - No convergence to a single data source without Relay conversion
 
 ## Do nothing
@@ -412,3 +408,7 @@ Keep web vitals as spans. No migration, no metrics conversion.
 
 - **Downsampling model.** How does the metrics backend downsample beyond 30 days? Pre-aggregated percentile rollups (lossy for cross-window percentile queries) or retained distributions at lower time granularity (lossless)? This determines whether "p75 LCP over 90 days" on the metrics dashboard is accurate or approximate.
 - **Early adopters of v11.** How do we handle the early adopters of v11? Do we prepare the metric dashboards for them and show it once they have enough metrics data?
+
+# Appendix
+
+- [Absorbed cost estimations and web vital analysis](https://www.notion.so/sentry/Web-Vitals-as-Metrics-Numbers-3568b10e4b5d80a8b802d1370a42c3e2)
