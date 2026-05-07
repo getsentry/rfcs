@@ -39,7 +39,7 @@ Web vitals are measurements, not execution traces. The current span-based implem
 | Streamed spans / v11 default, `tracesSampleRate: 1.0` | 300M standalone web vital spans (INP + LCP + CLS) + 100M pageload spans that remain | TODO: recalculate | 100% |
 | Current default spans, `tracesSampleRate: 0.1` | 10M sampled INP standalone spans + 10M sampled pageload spans that remain | TODO: recalculate | 10% |
 | Streamed spans / v11 default, `tracesSampleRate: 0.1` | 30M sampled standalone web vital spans + 10M sampled pageload spans that remain | TODO: recalculate | 10% |
-| Metrics (unsampled), measured avg ~1,000B/item | 500M metrics (300M LCP/CLS/INP + 200M FCP/TTFB) | ~$250 | 100% |
+| Metrics (unsampled), measured avg ~1,100B/item | 500M metrics (300M LCP/CLS/INP + 200M FCP/TTFB) | ~$275 | 100% |
 
 The table above intentionally leaves the span-side costs as TODOs. The previous draft treated the current model as 3 standalone vital spans + 2 bundled measurements per pageload, but the SDK currently only sends INP as a standalone web vital span by default. LCP and CLS become standalone spans when span streaming is enabled, and span streaming is the v11 default. FCP and TTFB ride on the pageload span in both models. As metrics, all 5 vitals become separate items. The pageload span continues to exist and should not be counted as eliminated.
 
@@ -111,21 +111,26 @@ INP uses `ui.interaction.{click,hover,drag,press}` as the op (not `ui.webvital.i
 
 ## Payload size comparison
 
-Measured from real SDK output (streamed span mode, realistic attributes including release, environment, user agent, route name, LCP element tree, CLS sources):
+Measured from real SDK output (streamed span mode, realistic attributes including release, environment, user agent, route name, LCP element tree, CLS sources). Both span and metric carry the exact same domain attributes — the only differences are the envelope structural fields:
+
+- **Span has, metric doesn't (top-level):** `span_id`, `parent_span_id`, `start_timestamp`, `end_timestamp`, `is_segment`, `status`, `links`
+- **Span has, metric doesn't (attributes):** `sentry.segment.name`, `sentry.segment.id`
+- **Metric has, span doesn't (top-level):** `timestamp`, `type`, `unit`, `value`
+- **Metric has, span doesn't (attributes):** `server.address`, `sentry.timestamp.sequence`
 
 | Item | As Span | As Metric | Delta |
 |---|---|---|---|
-| LCP | 1,874 B | 1,387 B | -487 B (26%) |
-| CLS | 1,552 B | 1,079 B | -473 B (30%) |
-| INP | 1,276 B | 1,134 B | -142 B (11%) |
-| TTFB | (on pageload) | 713 B | N/A |
-| FCP | (on pageload) | 643 B | N/A |
-| Pageload span (with vital attrs) | 1,532 B | 1,273 B (without) | -259 B |
-| **Total per pageload** | **6,234 B** | **6,229 B** | **~0 (wash)** |
+| LCP | 1,874 B | 1,696 B | -178 B (9.5%) |
+| CLS | 1,552 B | 1,387 B | -165 B (10.6%) |
+| INP | 1,276 B | 1,125 B | -151 B (11.8%) |
+| TTFB | (on pageload) | 713 B | +713 B |
+| FCP | (on pageload) | 643 B | +643 B |
+| Pageload span (with vital attrs) | 1,531 B | 1,274 B (without) | -257 B |
+| **Total per pageload** | **6,233 B** | **6,838 B** | **+605 B (9.7% more)** |
 
-Per-item, metrics are 11-30% smaller than spans because they drop span structural fields (`span_id`, `parent_span_id`, `start_timestamp`, `end_timestamp`, `is_segment`, `status`) and redundant attributes (`sentry.origin`, `sentry.op`, `sentry.exclusive_time`, `sentry.segment.name`, `sentry.segment.id`, `sentry.sample_rate`). However, the total per-pageload overhead is roughly the same because FCP and TTFB, which currently ride free as attributes on the pageload span (~259 B combined), become standalone metric items (~1,356 B combined) in the metrics scenario. The two effects cancel out.
+Per-item, metrics are ~150-178 B (10-12%) smaller than the equivalent span because they drop span structural fields and `sentry.segment.*` attributes. However, the total per-pageload overhead is **slightly larger** with metrics because FCP and TTFB, which currently ride free as attributes on the pageload span (~257 B combined), become standalone metric items (~1,356 B combined). The per-item savings on LCP/CLS/INP (~494 B) plus the pageload span shrinkage (~257 B) don't overcome the new standalone TTFB+FCP items.
 
-The cost argument is not about bytes per pageload — it's about billing category. A span-item at $2.00/1M vs a metric-item at $0.50/GB. And metrics are not SDK-sampled, so they capture 100% of emissions at any `tracesSampleRate`.
+The cost argument is not about bytes per pageload — it's about billing category and coverage. Metrics are billed at $0.50/GB vs per-span pricing, and are not SDK-sampled, so they capture 100% of emissions at any `tracesSampleRate`.
 
 This is not straightforward to calculate because there are two ratios:
 
@@ -161,7 +166,7 @@ Confirmed with product/billing, April 2026:
 
 - **Spans (Team PAYG):** $0.0000020/span (5M–100M), $0.0000018/span (>100M). 5M included.
 - **Trace Metrics (post-GA):** $0.50/GB. 5GB included. Confirmed at log parity pricing.
-- **Per-emission cost:** Spans ~$2.00/1M. Metrics at measured avg ~1,000B/item ~$0.50/1M.
+- **Per-emission cost:** Spans ~$2.00/1M. Metrics at measured avg ~1,100B/item ~$0.55/1M.
 
 ## Cost projection (observed volume, last 30 days)
 
@@ -171,9 +176,9 @@ Confirmed with product/billing, April 2026:
 | Streamed/v11 relevant span/metric shape | 4 spans touched : 5 metrics per pageload; 3 standalone web vital spans eliminated |
 | Current default metric volume increase vs eliminated standalone span count | TODO: recalculate |
 | Streamed/v11 metric volume increase vs eliminated standalone span count | TODO: recalculate |
-| **Cost reduction (@ measured avg ~1,000B/item)** | TODO: recalculate for current default and streamed/v11 |
+| **Cost reduction (@ measured avg ~1,100B/item)** | TODO: recalculate for current default and streamed/v11 |
 
-FCP and TTFB currently ride for free on the pageload span (~259 B combined as attributes). As metrics they become separate billable items (~713 B and ~643 B respectively). This is the main reason per-pageload byte overhead is roughly a wash: the per-item savings on LCP/CLS/INP (~1,102 B total) are offset by FCP and TTFB becoming standalone items (~1,356 B total). The pageload span itself continues to exist; we extract measurements from it, not replace it.
+FCP and TTFB currently ride for free on the pageload span (~257 B combined as attributes). As metrics they become separate billable items (~713 B and ~643 B respectively). This makes total per-pageload bytes ~9.7% larger with metrics: the per-item savings on LCP/CLS/INP (~494 B) plus pageload span shrinkage (~257 B) don't overcome FCP and TTFB becoming standalone items (~1,356 B). The pageload span itself continues to exist; we extract measurements from it, not replace it.
 
 Note: these numbers reflect already-sampled volume. The true event count (pre-sampling) would be significantly higher.
 
