@@ -1,4 +1,3 @@
-
 - Start Date: 2026-03-19
 - RFC Type: decision
 - RFC PR: https://github.com/getsentry/rfcs/pull/156
@@ -10,7 +9,7 @@ This RFC evaluates how `sentry-go` should model scope state so it can align with
 
 ## Motivation
 
-The upstream [scopes spec](https://develop.sentry.dev/sdk/foundations/state-management/scopes/) is designed around three scope types: a global scope, an isolation scope, and a current scope. 
+The upstream [scopes spec](https://develop.sentry.dev/sdk/foundations/state-management/scopes/) is designed around three scope types: a global scope, an isolation scope, and a current scope.
 
 The intent of the upstream scopes spec is:
 
@@ -42,7 +41,7 @@ Today the SDK is built around:
 - a mutable `Scope` attached to the top layer of a `Hub`
 - optional per-request or per-operation propagation by storing a cloned `Hub` in `context.Context`
 
- and the user facing API:
+and the user facing API:
 
 - `CurrentHub()` returns the process-global hub.
 - `Hub.Clone()` clones the top scope and reuses the client.
@@ -68,7 +67,7 @@ The current `Hub`/`Scope` model of the SDK uses `context.Context` to store a mut
 ```go
 ctx := context.Background()
 ctx = sentry.SetHubOnContext(ctx, sentry.CurrentHub().Clone())
-hub = sentry.GetHubFromContext(ctx) 
+hub = sentry.GetHubFromContext(ctx)
 // goroutines with the same ctx can concurrently mutate the same Hub reference.
 // the SDK partially solves this with locks.
 ```
@@ -137,7 +136,7 @@ The way this option works is for integrations to have a request-local scope at r
 ### API example:
 
 ```go
-ctx := sentry.NewContext(context.Background()) 
+ctx := sentry.NewContext(context.Background())
 sentry.ConfigureScope(ctx, func(scope *sentry.Scope) {
 	scope.SetTag("release", "1.2.3")
 	scope.SetUser(sentry.User{ID: "123"})
@@ -216,36 +215,42 @@ This fits existing Go APIs well. `otel`, `grpc/metadata`, and similar packages a
 The breaking changes fall into a few different buckets.
 
 #### Capture APIs
+
 - Top-level capture calls would change from sentry.CaptureException(error) to sentry.CaptureException(ctx, error).
 - The public capture calls that would likely change are:
-    - sentry.CaptureException(ctx, error)
-    - sentry.CaptureMessage(ctx, message)
-    - sentry.CaptureEvent(ctx, event)
-    - sentry.CaptureCheckIn(ctx, checkIn, monitorConfig)
+  - sentry.CaptureException(ctx, error)
+  - sentry.CaptureMessage(ctx, message)
+  - sentry.CaptureEvent(ctx, event)
+  - sentry.CaptureCheckIn(ctx, checkIn, monitorConfig)
 - Any code relying on ambient global/request-local Hub state at capture time would need to pass the correct ctx explicitly.
 
 Migration path:
+
 - Minimal migration: thread ctx through call sites and switch capture calls first. In non request scoped methods, passing `context.Background()` would fall to the global scope which is safe.
 - Safer migration: where users already have a request ctx, replace `hub.CaptureX(...)` with top-level `sentry.CaptureX(ctx, ...)`.
-```go 
+
+```go
 // Before:
 hub := sentry.GetHubFromContext(ctx)
 hub.CaptureException(err)
 
-// After: 
+// After:
 sentry.CaptureException(ctx, err)
 ```
 
 #### Scope mutation APIs
 
 Scope mutation/forking APIs are no longer needed (`ConfigureScope` and `WithScope`). Users instead derive a new ctx:
+
 ```go
   ctx = sentry.SetTag(ctx, "key", "value")
   ctx = sentry.SetUser(ctx, user)
   ctx = sentry.SetAttributes(ctx, attrs)
 ```
+
 - Any helper that currently mutates scope in place would need to return the derived ctx or accept and return ctx.
 - The same applies to helpers such as breadcrumbs or request enrichment, for example:
+
 ```go
 ctx = sentry.AddBreadcrumb(ctx, breadcrumb)
 ctx = sentry.SetRequest(ctx, r)
@@ -255,27 +260,27 @@ ctx = sentry.SetLevel(ctx, sentry.LevelWarning)
 Migration path:
 
 - We keep `WithScope` and `ConfigureScope` as a compatibility wrapper around `fork current
-  scope and pass derived ctx`.
+scope and pass derived ctx`.
   ```go
   // Before:
   hub.WithScope(func(scope *sentry.Scope) {
-		scope.SetTag("unwantedQuery", "someQueryDataMaybe")
-		hub.CaptureMessage("User provided unwanted query string, but we recovered just fine")
-	})
-  // After: 
+  	scope.SetTag("unwantedQuery", "someQueryDataMaybe")
+  	hub.CaptureMessage("User provided unwanted query string, but we recovered just fine")
+  })
+  // After:
   sentry.WithScope(ctx context.Context, func(scope *sentry.Scope) {
   	scope.SetTag("unwantedQuery", "someQueryDataMaybe")
     scope.CaptureMessage("User provided unwanted query string, but we recovered just fine")
   })
-	```
+  ```
 - Easiest first step for many users is to move logic into scope-level methods conceptually (this happens under option 1 as well):
-    - scope.SetTag(...)
-    - scope.SetUser(...)
-    - scope.SetAttributes(...)
+  - scope.SetTag(...)
+  - scope.SetUser(...)
+  - scope.SetAttributes(...)
 - Then replace the mutation site with the ctx-returning equivalent:
-    - ctx = sentry.SetTag(ctx, ...)
-    - ctx = sentry.SetUser(ctx, ...)
-    - ctx = sentry.SetAttributes(ctx, ...)
+  - ctx = sentry.SetTag(ctx, ...)
+  - ctx = sentry.SetUser(ctx, ...)
+  - ctx = sentry.SetAttributes(ctx, ...)
 
 #### Hub-in-context APIs
 
@@ -298,14 +303,15 @@ Migration path:
 
 - Trace propagation helpers that currently depend on Hub would become ctx-based as well.
 - This affects advanced users with custom HTTP/RPC propagation:
-    - ContinueTrace(hub, ...) -> ContinueTrace(ctx, ...)
-    - hub.GetTraceparent() -> sentry.GetTraceparent(ctx)
-    - hub.GetBaggage() -> sentry.GetBaggage(ctx)
+  - ContinueTrace(hub, ...) -> ContinueTrace(ctx, ...)
+  - hub.GetTraceparent() -> sentry.GetTraceparent(ctx)
+  - hub.GetBaggage() -> sentry.GetBaggage(ctx)
 
 #### Manual request-scoped customization
 
 - Framework examples that currently say “get the hub from request context, mutate it, capture through it” would all change.
 - Typical handler code moves from:
+
 ```go
 // Before:
 hub := sentry.GetHubFromContext(r.Context())
@@ -324,12 +330,12 @@ sentry.CaptureException(ctx, err)
 
 - User-defined helpers that currently mutate scope as a side effect often need to change shape.
 - For example:
-    - func annotateUser(user User) becomes func annotateUser(ctx context.Context, user User) context.Context
-    - func capture(err error) becomes func capture(ctx context.Context, err error)
+  - func annotateUser(user User) becomes func annotateUser(ctx context.Context, user User) context.Context
+  - func capture(err error) becomes func capture(ctx context.Context, err error)
 
 ### Integration responsibilities under Option 2
 
-To satisfy the upstream scopes spec requirement, integrations need to create an isolation scope automatically. 
+To satisfy the upstream scopes spec requirement, integrations need to create an isolation scope automatically.
 
 Examples:
 
@@ -352,7 +358,7 @@ This is the Go equivalent of what other SDKs do at async/task boundaries. The im
 
 ### Span API
 
-Separately from the scope model, the SDK also needs a tracing API direction that aligns with Span-First while preserving current functionality.
+Separately from the scope model, the SDK also needs a tracing API direction that aligns with the Sentry span API while preserving Go conventions.
 
 #### Current tracing model
 
@@ -365,47 +371,102 @@ This means the active span is not represented by a single source of truth. Child
 
 #### Target direction
 
-The final tracing API should move toward a span-first model similar to OTel:
+The final tracing API should move toward a span-first model:
 
 - `context.Context` is the canonical carrier of the active span.
-- starting a span derives a new `ctx`.
-- child spans should be parented automatically from the active span in `ctx`.
-- explicit parenting should still be supported for advanced cases.
-- root spans should remain the basis for transaction semantics, but transactions should be treated as root spans rather than a separate long-term API model.
+- starting a span returns a span and, by default, a derived `ctx` where that span is active.
+- child spans should inherit the active span in `ctx` automatically.
+- capture APIs should link errors/messages to the active span found on `ctx`.
+- instrumentation should not mutate or fork the active scope.
 
-#### Final API shape
+#### Proposed Span API shape
+
+The primary manual instrumentation API should look like this:
 
 ```go
 ctx, span := sentry.StartSpan(ctx, "validate-cart",
- 	sentry.WithAttributes(
-		attribute.String("user.id", "123"),
- 	),
+	sentry.WithName("app.validate"),
+	sentry.WithAttributes(attribute.String("user.id", "123")),
 )
 defer span.End()
 
-span.SetAttribute("valid", attribute.BoolValue(true))
+span.SetAttributes(attribute.Bool("cart.valid", true))
 span.SetStatus(sentry.SpanStatusOK)
 ```
 
-The main behavior should be:
+The Go API maps the spec's `active` option to whether the returned `ctx` carries the new span as active:
 
-- StartSpan(ctx, name, ...) returns (context.Context, Span).
-- the returned ctx carries the started span as the active span.
-- if no explicit parent option is passed, the started span should use the currently active span from ctx as parent.
-- if an explicit WithParent(span) option is passed, that span becomes the parent.
-- if an explicit WithNoParent() option is passed, the new span becomes a root/segment span.
+- spans are active by default, so the returned `ctx` carries the new span.
+- `WithParent(span)` starts the span as a child of the passed span and takes precedence over the active span in `ctx`.
+- `WithNoParent()` starts a root/segment span.
+- `StartSpan` always returns a non-nil `Span`. If the span is not recorded, the returned span is a no-op span.
+- optionally a `WithInactive()` method that starts a span but does not make it active on the returned `ctx`.
 
-This should be explicit about mutability semantics. `context.Context` remains immutable, but the returned `Span` is mutable. Methods like `SetAttribute`, `SetStatus` and `End` mutate that span during its lifetime. This is distinct from `SpanContext`, which is immutable propagation data (`trace_id`, `span_id`, `dsc`.) and can be exposed separately for propagation-only use cases.
+A minimal surface could be:
 
-#### Interaction with scope model
+```go
+func StartSpan(ctx context.Context, name string, opts ...SpanOption) (context.Context, Span)
 
-Under the proposed scope model, scope if only an infromation carrier and is no longer responsible for owning tracing state. The `context.Context` carries both the scope and active span state.
-This means that `StartSpan` is also a scope-boundary operation and derived scopes already contain the previously inherited local state. Under this, the SDK does not need to merge separate scopes when a span ends. Semanticaly, the model gets simplified to:
-- global scope remains process-wide fallback/default state.
-- the scope stored on `ctx` is effectively the local scope.
-- span-local changes are represented by deriving a new `ctx` with a forked local scope.
+func SpanFromContext(ctx context.Context) Span
+func ContextWithSpan(ctx context.Context, span Span) context.Context
 
-This distinction matters for concurrency. The proposal removes shared mutable scope state from `ctx`, which is the main source of request/task isolation problems today. It does not forbid multiple code paths from mutating the same span handle concurrently if they intentionally share that span. That is acceptable tracing behavior and is a much narrower concern than storing mutable scope state in `ctx`.
+func WithAttributes(attrs ...attribute.KeyValue) SpanOption
+func WithParent(span Span) SpanOption
+func WithNoParent() SpanOption
+func WithInactive() SpanOption
+```
+
+The `Span` interface should follow the Sentry span API, adjusted to Go naming and types:
+
+```go
+type Span interface {
+	End()
+	EndAt(ts time.Time)
+
+	SetAttributes(attrs ...attribute.KeyValue)
+	RemoveAttribute(key attribute.Key)
+
+	SetStatus(status SpanStatus)
+	SetName(name string)
+
+	AddLink(link SpanLink)
+	AddLinks(links ...SpanLink)
+
+	Name() string
+	Attributes() []attribute.KeyValue
+	Context() SpanContext
+}
+```
+
+`context.Context` remains immutable, but the returned `Span` is mutable. All `Span` methods MUST be safe for concurrent use. No-op spans implement the full interface: mutating methods are no-ops, getters return default values, and callers do not need nil checks or sampling checks.
+
+#### Interaction with the scope model
+
+Under the proposed scope model, scope is only an information carrier and is no longer responsible for owning tracing state. `context.Context` carries both values independently:
+
+- Sentry scope state: immutable event enrichment state such as tags, user, level, request, breadcrumbs, and attributes.
+- Active span state: the currently active mutable span handle used for tracing and trace/error linking.
+
+`StartSpan` only stores the active span on the returned `ctx` and does not mutate scope data. Derived Go contexts inherit parent values, so the returned `ctx` can still read the parent scope without copying it. If code later changes scope data, it uses the normal CoW `ctx = sentry.SetX(ctx, ...)` APIs. When the span ends, there is no scope merge or restore step because the parent `ctx` was never mutated.
+
+Example:
+
+```go
+func handleCheckout(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	ctx = sentry.SetUser(ctx, sentry.User{ID: userID(r)})
+
+	ctx, span := sentry.StartSpan(ctx, "reserve inventory")
+	defer span.End()
+
+	ctx = sentry.SetTag(ctx, "inventory.warehouse", "eu-west-1")
+
+	if err := reserveInventory(ctx); err != nil {
+		sentry.CaptureException(ctx, err)
+		return
+	}
+}
+```
 
 ## Supporting Data
 
@@ -416,11 +477,10 @@ This distinction matters for concurrency. The proposal removes shared mutable sc
 - Lock contention
   - The main runtime cost is lock acquisition on every mutation that touches the scope state.
 - Performance wise: lock contention vs allocations
-    - lock impact is (probably?) worse on performance (pending benchmarks)
-    - allocations can be alleviated while locks would always be there due to design
-    - locks would always apply vs allocations (might?) become a problem if users are setting many attributes.
-    - even with mutable scope we still allocate when every isolated code segment finishes.
-
+  - lock impact is (probably?) worse on performance (pending benchmarks)
+  - allocations can be alleviated while locks would always be there due to design
+  - locks would always apply vs allocations (might?) become a problem if users are setting many attributes.
+  - even with mutable scope we still allocate when every isolated code segment finishes.
 
 ### Recommendation
 
@@ -430,7 +490,7 @@ Option 2 would be my personal recommendation. It maps the upstream scopes spec t
 
 ### CaptureX
 
-Whichever option we decide to go with, we need to migrate `CaptureX(error)`  to `CaptureX(ctx, error)` , since everything would be `context` related and we would need to strictly type the API. The main benefits would be: 
+Whichever option we decide to go with, we need to migrate `CaptureX(error)` to `CaptureX(ctx, error)` , since everything would be `context` related and we would need to strictly type the API. The main benefits would be:
 
 - Remove custom [workaround](https://github.com/getsentry/sentry-go/blob/340c142cf974aaba7dcb6545101fe125a7d8ad7c/scope.go#L577) since tracing/scopes are divergent currently
 - Improve user experience with some integrations (eg. [sentry.EventHint](https://docs.sentry.io/platforms/go/tracing/instrumentation/opentelemetry/#linking-errors-to-transactions)).
