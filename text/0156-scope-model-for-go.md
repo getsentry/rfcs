@@ -498,6 +498,13 @@ Whichever option we decide to go with, we need to migrate `CaptureX(error)` to `
 
 Today we effectively maintain two propagation systems: `context.Context` for tracing and `Hub`/`Scope` for event state. Moving capture APIs to `ctx` lets OTel span state and Sentry scope state travel through the same propagation channel.
 
+At capture time, event data should be merged from most local to more global:
+1. active span from `ctx`
+2. scope from `ctx`
+3. global scope 
+ 
+If the provided `ctx` does not carry a Sentry scope, capture falls back to the global scope, so `sentry.CaptureException(context.Background(), err)` still produces an event enriched with global data.
+
 ### General API deprecation
 
 Whichever approach we go with we should make `ctx` mandatory on our APIs. We already mandate `ctx` usage for logs and metrics.
@@ -520,10 +527,10 @@ This preserves the intent of `WithScope` for local instrumentation while alignin
 
 ## Unresolved questions
 
-If an API receives a `context.Context` that does not carry a Sentry scope, should the SDK:
+Should the immutable scope value carried on `context.Context` be exposed as public API, or should it remain an internal implementation detail?
 
-- no-op
-- fallback to global scope
-- create a fresh isolation scope
+Open questions:
 
-This matters because the upstream scopes spec expects captures to conceptually merge global, isolation and current scopes.
+- Should users ever receive or pass around a `Scope` value directly? The spec already offers public API for setting data `ctx = SetAttributes(ctx)`, so `Scope` can be an internal implementation detail.
+- If exposed, should it be read-only?
+- Should APIs like `SetScopeOnContext` / `GetScopeFromContext` exist publicly, or should users only interact through `ctx = sentry.SetX(ctx, ...)` helpers?
