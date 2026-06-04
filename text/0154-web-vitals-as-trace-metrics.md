@@ -26,7 +26,7 @@ Having said that, these are the work items with their own expected timelines:
 
 Web vitals are measurements, not execution traces. The current span-based implementation carries structural overhead that doesn't serve the data:
 
-- **Span overhead.** Current default browser tracing emits INP as a standalone web vital span and keeps LCP, CLS, FCP, and TTFB on the pageload transaction. With span streaming enabled, LCP and CLS also become web vital spans. The pageload span itself remains either way, so metrics only eliminate standalone web vital spans, not the pageload carrier. The savings depend on whether span streaming is enabled or not.
+- **Span overhead.** Current default browser tracing emits INP as a standalone web vital span and keeps LCP, CLS, FCP, and TTFB on the pageload transaction. The pageload span itself remains either way, so metrics only eliminate standalone web vital spans, not the pageload carrier. The savings depend on the user's configured sample rate.
 - **Cost to customers.** Metrics are cheaper per item, but produce 5 unsampled metric items per pageload while the pageload span remains. For some customers, metrics will be cheaper at a high enough sample rate (~34%) but more expensive than sampled spans at low sample rates. The tradeoff is cost vs 100% web vital coverage.
 - **Metrics use-cases.** The browser does not have any OOTB metrics use-cases. By moving web vitals to metrics, it encourages metric adoption by customers.
 - **Metrics are not SDK-sampled.** Metrics are not subject to trace sampling at either the SDK level. This means trace metrics capture 100% of emissions while still carrying `trace_id` for correlation.
@@ -127,7 +127,7 @@ Per-item, metrics are ~213-240 B (13-17%) smaller than the equivalent span becau
 
 The cost argument is not about bytes per pageload, it's about billing category and coverage. Metrics are billed at $0.50/GB vs per-span pricing, and are not SDK-sampled, so they capture 100% of emissions at any `tracesSampleRate`.
 
-To calculate the span to metric ratio here, we have 2 relevant spans that are sent (pageload + INP), but only 1 standalone web vital span is eliminated. The migration produces 5 metrics per pageload. So at the same sample rate they are 5:1 (5 spans per pageload vs 1 metric per pageload), this can be skewed further by the user's own sample rate.
+To calculate the span to metric ratio here, we have 2 relevant spans that are sent (pageload + INP), but only 1 standalone web vital span is eliminated. The migration produces 5 metrics per pageload. So at the same sample rate they are 5:1 (5 metrics per pageload vs 1 span per pageload), this can be skewed further by the user's own sample rate.
 
 # Supporting Data
 
@@ -200,13 +200,13 @@ _Note: v1 spans send out non-sentry standard attributes that carry additional in
 
 **v2 detection (streamed spans):**
 
-| Vital | Match                                                                                                    | Metric name              | Value source                                      | Unit          | Attributes                                                                            |
-| ----- | -------------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------- |
-| LCP   | `span.op == "pageload"` + `browser.web_vital.lcp.value` attribute present                                | `browser.web_vital.lcp`  | `span.attributes["browser.web_vital.lcp.value"]`  | `millisecond` | `browser.web_vital.lcp.element`, `.id`, `.url`, `.size`, `.load_time`, `.render_time` |
-| CLS   | `span.op == "pageload"` + `browser.web_vital.cls.value` attribute present                                | `browser.web_vital.cls`  | `span.attributes["browser.web_vital.cls.value"]`  | `none`        | `browser.web_vital.cls.source.1`, `.source.2`                                         |
-| INP   | `span.op == "ui.interaction.{click,hover,drag,press}"` + `browser.web_vital.inp.value` attribute present | `browser.web_vital.inp`  | `span.attributes["browser.web_vital.inp.value"]`  | `millisecond` | _(none)_                                                                              |
-| FCP   | `span.op == "pageload"` + `browser.web_vital.fcp.value` attribute present                                | `browser.web_vital.fcp`  | `span.attributes["browser.web_vital.fcp.value"]`  | `millisecond` | _(none)_                                                                              |
-| TTFB  | `span.op == "pageload"` + `browser.web_vital.ttfb.value` attribute present                               | `browser.web_vital.ttfb` | `span.attributes["browser.web_vital.ttfb.value"]` | `millisecond` | `browser.web_vital.ttfb.request_time`                                                 |
+| Vital | Match                                                                                                                     | Metric name              | Value source                                                                                                             | Unit          | Attributes                                                                            |
+| ----- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------- | ------------------------------------------------------------------------------------- |
+| LCP   | `span.op == "pageload"` + `browser.web_vital.lcp.value` attribute present, or experimental `span.op == "ui.webvital.lcp"` | `browser.web_vital.lcp`  | Pageload: `span.attributes["browser.web_vital.lcp.value"]`; standalone: `span.attributes["browser.web_vital.lcp.value"]` | `millisecond` | `browser.web_vital.lcp.element`, `.id`, `.url`, `.size`, `.load_time`, `.render_time` |
+| CLS   | `span.op == "pageload"` + `browser.web_vital.cls.value` attribute present, or experimental `span.op == "ui.webvital.cls"` | `browser.web_vital.cls`  | Pageload: `span.attributes["browser.web_vital.cls.value"]`; standalone: `span.attributes["browser.web_vital.cls.value"]` | `none`        | `browser.web_vital.cls.source.1`, `.source.2`                                         |
+| INP   | `span.op == "ui.interaction.{click,hover,drag,press}"` + `browser.web_vital.inp.value` attribute present                  | `browser.web_vital.inp`  | `span.attributes["browser.web_vital.inp.value"]`                                                                         | `millisecond` | _(none)_                                                                              |
+| FCP   | `span.op == "pageload"` + `browser.web_vital.fcp.value` attribute present                                                 | `browser.web_vital.fcp`  | `span.attributes["browser.web_vital.fcp.value"]`                                                                         | `millisecond` | _(none)_                                                                              |
+| TTFB  | `span.op == "pageload"` + `browser.web_vital.ttfb.value` attribute present                                                | `browser.web_vital.ttfb` | `span.attributes["browser.web_vital.ttfb.value"]`                                                                        | `millisecond` | `browser.web_vital.ttfb.request_time`                                                 |
 
 **Output metric shape:**
 
