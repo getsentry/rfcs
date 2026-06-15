@@ -88,7 +88,7 @@ Docker Hardened Images (DHI) are minimal, hardened base images published by Dock
 - Available for Python, Node.js, and other runtimes we use
 
 **Cons:**
-- Requires Docker login to pull from `dhi.io` directly (mitigated by our [mirroring](https://github.com/getsentry/dhi) approach)
+- Pulling from `dhi.io` directly requires a Docker login — resolved by our public pull-through mirror on GCP Artifact Registry at `us-docker.pkg.dev/sentryio/dhi-mirror`, which serves the `python` and `node` images without authentication ([getsentry/ops#21183](https://github.com/getsentry/ops/pull/21183))
 - Some build systems (e.g. CloudBuild) have issues with hard links in the images — affected workloads should be migrated to GitHub Actions
 
 ## Option 2: Google Distroless
@@ -159,10 +159,10 @@ Some CI/CD build systems have compatibility issues with certain distroless image
 - **Image freshness:** Migrating to distroless is not a one-time fix — base images still need to be updated as new runtime patch versions are released. Corresponding product teams are responsible for bumping base image versions in line with their application's requirements and compatibility constraints.
 - **Smoke tests / image validation in CI:** Ideally, an extra CI step should run basic smoke tests against a newly built distroless image before publishing. This would catch missing runtime dependencies (like the fonts incident) before they reach production.
 - **Standardizing the dev variant:** The `-dev` variant of DHI images (which includes a shell and debugging tools) is useful for development builds and troubleshooting. For multi-stage Dockerfiles, we should use `-dev` at build time and the minimal image at runtime.
+- **Public mirrors for anonymous access:** Pulling directly from `dhi.io` requires a Docker login, which would be disruptive for self-hosted users and complicate CI pipelines and local image builds for contributors. We now maintain a public pull-through mirror on GCP Artifact Registry at `us-docker.pkg.dev/sentryio/dhi-mirror` (`python`/`node`, unauthenticated). It transparently caches from `dhi.io` on demand, so there is no hand-maintained mirroring pipeline and no login requirement for downstream consumers. See [getsentry/ops#21183](https://github.com/getsentry/ops/pull/21183).
 
 # Unresolved questions
 
 - **Snuba and getsentry:** These are the largest remaining Python services. The Snuba PoC (https://github.com/getsentry/snuba/pull/7753, https://github.com/getsentry/snuba/pull/7821, https://github.com/getsentry/snuba/pull/7829, https://github.com/getsentry/ops/pull/19824) showed it is feasible. What is the sequencing and who owns driving this to completion?
 - **Local development compatibility:** Are there any blockers that might disrupt local development workflows when switching to distroless? So far this appears to be a non-issue — for example, Snuba distroless containers work fine in `sentry devservices` (https://github.com/getsentry/snuba/pull/7829).
 - **Services with non-trivial runtime deps:** Some services (e.g. uptime-checker with OpenSSL for certificate validation, or services using external libraries) may need extra work. Are there any blockers that make distroless infeasible for them?
-- **Public mirrors for anonymous access:** Pulling directly from `dhi.io` requires a Docker login, which complicates CI pipelines and local image builds for contributors. Should we commit to maintaining public mirrors at `ghcr.io/getsentry/dhi` to allow unauthenticated pulls? See current PoC: https://github.com/getsentry/dhi.
