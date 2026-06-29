@@ -231,11 +231,16 @@ TraceMetric {
 }
 ```
 
-Whether these metrics are queryable by the customer during the migration is not yet decided. On one hand, it might cause confusion, on the other hand, it might be useful to have the metrics available for the customer to query during the migration.
+> [!NOTE]
+> **Full Attributes Reference:** [web-vitals-metrics-emit / ATTRIBUTES.md](https://github.com/logaretm/web-vitals-metrics-emit/blob/main/ATTRIBUTES.md)
+>
+> Check the file for a full list of per-vital attributes captured from the real `@sentry/browser` metrics pipeline running in a browser, including which span attributes to copy/map, which to ignore, and the SDK-attached defaults. The repo also has a runnable app that emits each vital as a metric so the shape can be re-verified.
 
 ### Making derived metrics free during double-write
 
 During this period, the original span is already billed. The derived metric's billing outcome should be suppressed until we cut the dashboards over then we can either decide to bill them as metrics or keep them free.
+
+Whether these metrics are queryable by the customer during the migration is not yet decided. On one hand, it might cause confusion, on the other hand, it might be useful to have the metrics available for the customer to query during the migration.
 
 ## Dashboard cutover
 
@@ -382,3 +387,4 @@ Keep web vitals as spans. No migration, no metrics conversion.
 # Appendix
 
 - [Absorbed cost estimations and web vital analysis](https://www.notion.so/sentry/Web-Vitals-as-Metrics-Numbers-3568b10e4b5d80a8b802d1370a42c3e2)
+- [Captured trace-metric attribute reference](https://github.com/logaretm/web-vitals-metrics-emit/blob/main/ATTRIBUTES.md) This repo contains an app that emits LCP/CLS/INP/FCP/TTFB through the real SDK metrics pipeline. It also documents the exact metrics' shape, the copy/map/ignore attribute rules, and the spec cross-reference.
