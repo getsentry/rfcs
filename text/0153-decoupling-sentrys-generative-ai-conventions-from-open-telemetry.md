@@ -191,6 +191,7 @@ Describes tool executions.
 | `gen_ai.tool.call.id` | Required if present |
 | `gen_ai.tool.name` | Required |
 | `gen_ai.tool.description` | Required if provided |
+| `gen_ai.tool.type` | Required |
 | `gen_ai.tool.call.arguments` | Required |
 | `gen_ai.tool.call.result` | Required |
 
