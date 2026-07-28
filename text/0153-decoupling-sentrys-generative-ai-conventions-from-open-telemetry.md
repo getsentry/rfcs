@@ -191,7 +191,6 @@ Describes tool executions.
 | `gen_ai.tool.call.id` | Required if present |
 | `gen_ai.tool.name` | Required |
 | `gen_ai.tool.description` | Required if provided |
-| `gen_ai.tool.type` | Required |
 | `gen_ai.tool.call.arguments` | Required |
 | `gen_ai.tool.call.result` | Required |
 
@@ -419,9 +418,9 @@ Finally, if the type is "token_batches", then the value is a 2-dimensional array
 
 ## gen_ai.tool.definitions
 
-Tool definitions are represented as a JSON array with objects whose "name", "description" and "type" properties correspond to the attributes on Execute Tool Spans. The objects also have a "parameters" property, which maps parameter names to their type.
+Tool definitions are represented as a JSON array with objects whose "name", "description" and "type" properties correspond to the attributes on Execute Tool Spans. The objects also have a "parameters" property, whose format is given by [JSON Schema draft-07](https://json-schema.org/draft-07/schema#).
 
-Each tool definition has a name, type, parameters, and an optional description:
+Each tool definition has a name, a type, optionally parameters, and an optional description:
 
 ```json
 [
@@ -430,7 +429,41 @@ Each tool definition has a name, type, parameters, and an optional description:
         "description": "Get the current weather for a given location.",
         "type": "function",
         "parameters": {
-            "location": "string"
+            "type": "object",
+            "properties": {
+                "productId": {
+                    "description": "The unique identifier for a product",
+                    "type": "integer"
+                },
+                "productName": {
+                    "description": "Name of the product",
+                    "type": "string"
+                },
+                "price": {
+                    "description": "The price of the product",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                },
+                "tags": {
+                    "description": "Tags for the product",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true
+                },
+                "dimensions": {
+                    "type": "object",
+                    "properties": {
+                        "length": { "type": "number" },
+                        "width": { "type": "number" },
+                        "height": { "type": "number" }
+                    },
+                    "required": ["length", "width", "height"]
+                }
+            },
+            "required": ["productId", "productName", "price"]
         }
     },
     ...
