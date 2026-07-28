@@ -127,10 +127,10 @@ AI Client Spans represent one request to a provider handled by a single model wi
 | Attribute | Required |
 |---|---|
 | `gen_ai.usage.input_tokens` | Required if in the model response |
-| `gen_ai.usage.input_tokens.cached` | Required if in the model response |
-| `gen_ai.usage.input_tokens.cache_write` | Required if in the model response |
+| `gen_ai.usage.cache_read.input_tokens` | Required if in the model response |
+| `gen_ai.usage.cache_creation.input_tokens` | Required if in the model response |
 | `gen_ai.usage.output_tokens` | Required if in the model response |
-| `gen_ai.usage.output_tokens.reasoning` | Required if in the model response |
+| `gen_ai.usage.reasoning.output_tokens` | Required if in the model response |
 | `gen_ai.usage.total_tokens` | Required if in the model response |
 
 ## Embedding Span
@@ -325,10 +325,10 @@ Sensitive attributes can be controlled by either the `record_inputs` or the `rec
 | Attribute | Type | Gated by |
 |---|---|---|
 | `gen_ai.usage.input_tokens` | integer | - |
-| `gen_ai.usage.input_tokens.cached` | integer | - |
-| `gen_ai.usage.input_tokens.cache_write` | integer | - |
+| `gen_ai.usage.cache_read.input_tokens` | integer | - |
+| `gen_ai.usage.cache_creation.input_tokens` | integer | - |
 | `gen_ai.usage.output_tokens` | integer | - |
-| `gen_ai.usage.output_tokens.reasoning` | integer | - |
+| `gen_ai.usage.reasoning.output_tokens` | integer | - |
 | `gen_ai.usage.total_tokens` | integer | - |
 
 #### Tool Attributes
