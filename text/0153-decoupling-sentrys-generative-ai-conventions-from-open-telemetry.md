@@ -120,7 +120,7 @@ AI Client Spans represent one request to a provider handled by a single model wi
 | `gen_ai.response.model` | Required if in the model response |
 | `gen_ai.response.finish_reasons` | Required if in the model response |
 | `gen_ai.response.streaming` | Required |
-| `gen_ai.response.time_to_first_token` | Required if streaming response |
+| `gen_ai.response.time_to_first_chunk` | Required if streaming response |
 
 #### Token Usage Attribute
 
@@ -318,7 +318,7 @@ Sensitive attributes can be controlled by either the `record_inputs` or the `rec
 | `gen_ai.response.finish_reasons` | string[] | - |
 | `gen_ai.response.id` | string | - |
 | `gen_ai.response.streaming` | boolean | - |
-| `gen_ai.response.time_to_first_token` | double | - |
+| `gen_ai.response.time_to_first_chunk` | double | - |
 
 #### Token Usage Attributes
 
