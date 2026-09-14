@@ -1,7 +1,7 @@
 - Start Date: 2026-03-27
 - RFC Type: decision
 - RFC PR: https://github.com/getsentry/rfcs/pull/157
-- RFC Status: draft
+- RFC Status: approved
 
 # Summary
 
@@ -160,9 +160,3 @@ Some CI/CD build systems have compatibility issues with certain distroless image
 - **Smoke tests / image validation in CI:** Ideally, an extra CI step should run basic smoke tests against a newly built distroless image before publishing. This would catch missing runtime dependencies (like the fonts incident) before they reach production.
 - **Standardizing the dev variant:** The `-dev` variant of DHI images (which includes a shell and debugging tools) is useful for development builds and troubleshooting. For multi-stage Dockerfiles, we should use `-dev` at build time and the minimal image at runtime.
 - **Public mirrors for anonymous access:** Pulling directly from `dhi.io` requires a Docker login, which would be disruptive for self-hosted users and complicate CI pipelines and local image builds for contributors. We now maintain a public pull-through mirror on GCP Artifact Registry at `us-docker.pkg.dev/sentryio/dhi-mirror` (`python`/`node`, unauthenticated). It transparently caches from `dhi.io` on demand, so there is no hand-maintained mirroring pipeline and no login requirement for downstream consumers. See [getsentry/ops#21183](https://github.com/getsentry/ops/pull/21183).
-
-# Unresolved questions
-
-- **Snuba and getsentry:** These are the largest remaining Python services. The Snuba PoC (https://github.com/getsentry/snuba/pull/7753, https://github.com/getsentry/snuba/pull/7821, https://github.com/getsentry/snuba/pull/7829, https://github.com/getsentry/ops/pull/19824) showed it is feasible. What is the sequencing and who owns driving this to completion?
-- **Local development compatibility:** Are there any blockers that might disrupt local development workflows when switching to distroless? So far this appears to be a non-issue — for example, Snuba distroless containers work fine in `sentry devservices` (https://github.com/getsentry/snuba/pull/7829).
-- **Services with non-trivial runtime deps:** Some services (e.g. uptime-checker with OpenSSL for certificate validation, or services using external libraries) may need extra work. Are there any blockers that make distroless infeasible for them?
