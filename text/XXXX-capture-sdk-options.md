@@ -135,6 +135,145 @@ the high-volume event stream.
 For these reasons Option A is preferred; the remaining sections focus on the questions it
 raises.
 
+# Envelope Shape
+
+This section proposes the shape of the dedicated SDK-options payload (question **a** above).
+The goal is a **language-agnostic** shape that works equally for JavaScript, Python, and every other SDK, so the server can handle a single, consistent schema.
+
+## Design principles
+
+- **Primitives only.** The payload contains only JSON-serializable values: strings, numbers,
+  booleans, `null`, arrays, and plain objects. No runtime constructs (functions, class
+  instances, streams, etc.) ever appear literally.
+- **Callbacks and other runtime values are reduced to markers.** We do not care about a
+  callback's implementation, only that _a user-defined callback was set_. Any non-serializable
+  value is normalized to a sentinel. We reuse the normalization convention SDKs already have
+  (e.g. JS `normalize()` turning a function into `"[Function: name]"`). So
+  `beforeSend: (event) => …` becomes `"beforeSend": "[Function]"` (optionally
+  `"[Function: beforeSend]"`), a class instance becomes `"[SomeType]"`, and so on.
+- **Faithful to the init config, and nested.** The `options` block mirrors the structure the
+  user passed to `init()`, preserving nesting rather than flattening it.
+- **Generic representation of integration options.** Integrations are user-configurable
+  (`Sentry.myIntegration({ filter: 'aaa' })`), so we must capture their options generically —
+  keyed by integration name, with their options normalized by the same rules. We do not need
+  to understand any specific integration's options; we just record them.
+- **Room for well-known metadata and for open-ended data.** Alongside the raw options there is
+  space for well-known, structured metadata (SDK identity, release/environment, etc.) and a
+  free-form bucket SDKs can use for anything not yet modeled.
+
+## Proposed shape
+
+```json
+{
+  "sdk": {
+    "name": "sentry.javascript.node",
+    "version": "10.0.0",
+    "packages": [{ "name": "npm:@sentry/node", "version": "10.0.0" }],
+    "integrations": {
+      "InboundFilters": {},
+      "ExpressIntegration": { "active": true },
+      "FastifyIntegration": { "active": false },
+      "KoaIntegration": {},
+      "MyIntegration": {}
+    }
+  },
+
+  "meta": {
+    "release": "my-app@1.2.3",
+    "environment": "production",
+    "dist": "42",
+    "runtime": { "name": "node", "version": "20.11.0" }
+  },
+
+  "options": {
+    "dsn": "https://<public-key>@o0.ingest.sentry.io/0",
+    "sampleRate": 1.0,
+    "tracesSampleRate": 0.2,
+    "sendDefaultPii": true,
+    "debug": false,
+    "beforeSend": "[Function]",
+    "tracesSampler": "[Function]",
+    "denyUrls": ["https://example.com/ignore"],
+    "integrations": ["InboundFilters", "MyIntegration"]
+  },
+
+  "integration_options": {
+    "InboundFilters": {},
+    "MyIntegration": {
+      "filter": "aaa",
+      "shouldLog": "[Function]"
+    }
+  },
+
+  "_other": {}
+}
+```
+
+## Fields
+
+- **`sdk`** — SDK identity metadata: `name`, `version`, and `packages`. This is the same
+  information SDKs attach to error/transaction events today; **this RFC proposes moving it
+  here** so it lives in one canonical place. It also carries the `integrations` map — the set
+  of registered integrations plus their opt-in runtime status (see below). The configured
+  _options_ of each integration live in the separate top-level `integration_options` block;
+  the `sdk.integrations` map is about integration _identity and status_.
+- **`meta`** — well-known, general metadata that we want first-class regardless of how it was
+  set: `release`, `environment`, `dist`, and runtime/platform information (e.g. runtime name
+  and version). These describe the instance producing data, complementing the raw `options`.
+- **`options`** — a normalized snapshot of the configuration passed to `init()`, nested to
+  mirror the user's input, with all values reduced to primitives per the rules above. The
+  `integrations` init option is represented here as a list of names; the details live in the
+  dedicated `integration_options` block to avoid duplicating (and bloating) the raw options.
+- **`integration_options`** — a map of integration name → its normalized options. This is how
+  we generically capture things like `MyIntegration({ filter: 'aaa' })` without understanding
+  any specific integration. Integrations with no options serialize to `{}`.
+- **`_other`** — a free-form, SDK-defined bucket for anything not covered by the well-known
+  fields above. The leading underscore signals that this is arbitrary, unstructured data.
+  Keeps the schema forward-compatible: SDKs can record additional data without a schema change,
+  and useful keys can later be promoted to first-class fields.
+
+## Reflecting which integrations are actually used
+
+Knowing which integrations are _registered_ is not the same as knowing which are actually
+_doing anything_. In the Node SDK, for example, a large set of integrations is added by
+default (`ExpressIntegration`, `FastifyIntegration`, `KoaIntegration`, …), but a given app
+typically uses only one of them. For analytics and audits we care about the difference
+between "this integration is present because it ships by default" and "this integration is
+actually instrumenting this app".
+
+To capture this generically without enumerating every integration, `sdk.integrations` is a
+map keyed by integration name, where the value is a small, **opt-in** status object:
+
+- The **presence of a key** means the integration is registered/enabled.
+- An optional **`active`** boolean means the integration determined at runtime whether it is
+  actually in effect. `ExpressIntegration` sets `active: true` once it successfully patches
+  Express; a defaulted integration whose target framework is absent can report
+  `active: false`. An integration that reports nothing leaves its value as `{}` (`active`
+  simply absent / unknown).
+
+Key properties of this design:
+
+- **Generic.** No integration-specific fields in the schema; any integration can contribute
+  the well-known `active` signal (and we can add further opt-in status keys later).
+- **Opt-in and non-exhaustive.** Integrations are not required to report status. We selectively
+  push this into the integrations where the signal is valuable to us (e.g. the framework
+  integrations), and leave the rest unreported.
+- **Distinct from options.** This map carries identity/status only; configured options remain
+  in the top-level `integration_options` block.
+
+Note there is a timing implication: `active` is often only known slightly after `init()` (once
+instrumentation runs), which influences _when_ the payload is sent or updated. This is
+discussed in the send/store section.
+
+## Cross-SDK naming
+
+Option keys differ across SDKs (JS `tracesSampleRate` vs. Python `traces_sample_rate`). We
+need to decide whether the payload uses each SDK's native option names as-is, or a canonical
+cross-SDK naming so the server can compare the same option across languages. A canonical
+catalog (in the spirit of [0116-sentry-semantic-conventions](./0116-sentry-semantic-conventions.md))
+would make analytics far easier but requires each SDK to map its options; native names are
+simpler but push normalization to the server. This is called out as an open question.
+
 # Drawbacks
 
 <!-- TODO: Why we might not want to do this — added payload/overhead, privacy considerations
