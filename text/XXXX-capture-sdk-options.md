@@ -54,14 +54,39 @@ Ideas of what to eventually do with this data (not all in scope for this initial
 
 # Background
 
-<!-- TODO: Why this is needed now, prior art, related efforts (e.g. existing client reports,
-SDK metadata already sent), and how this differs. Reference the Linear project:
+Today we do not capture the configuration of an SDK instance in any meaningful, first-class
+way. There is no place in Sentry where you can look up "what options was this
+`Sentry.init()` called with", and consequently none of the use cases in the Motivation are
+possible today.
+
+There are, however, a few adjacent things that already exist. They each capture a small
+slice of related information, but none of them gives us the configured options, and none is
+designed for that purpose:
+
+- **SDK metadata on error/transaction events.** Events carry an `sdk` object (name, version,
+  and lists of `integrations` and `packages`), and some settings leak into events
+  indirectly. This tells us _which integrations are present_ and the SDK version, but not
+  _how_ things were configured (sample rates, `beforeSend`, transport options, `debug`,
+  `environment` defaults, `sendDefaultPii`, denyUrls/allowUrls, tracing options, and so on).
+  It is also only present when an event is actually sent — so an instance that is configured
+  but never produces an event (or whose events are all filtered) is invisible. This is the
+  closest existing signal, but it is partial and event-coupled.
+
+- **Client reports.** Client reports are sent as their own, separate envelope item
+  (`client_report`), independent of any error or transaction event. Their _content_ is
+  unrelated to configuration — they report aggregate counts of discarded events by `reason`
+  and `category` (e.g. rate-limited, sample-rate, before-send). But they are a useful
+  precedent for _how_ we might send configuration: they show that we already have a pattern
+  for the SDK to emit a standalone, non-event payload on its own cadence (batched/periodic,
+  flushed on shutdown). A "SDK configuration" report could plausibly follow a similar
+  transport shape rather than being attached to individual events.
+
+In short: what we have today is either a partial, event-coupled snapshot (SDK metadata) or a
+transport precedent with unrelated content (client reports). Neither captures the configured
+options, which is what this RFC is about.
+
+<!-- Reference: Linear project
 https://linear.app/getsentry/project/capture-sdk-options-js-08e8a89c71c9/overview -->
-
-# Supporting Data
-
-<!-- TODO: Any data motivating this (e.g. volume of support cases where configuration was
-unknown, known cases where lack of visibility caused confusion). -->
 
 # Options Considered
 
