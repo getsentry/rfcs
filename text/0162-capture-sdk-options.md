@@ -286,12 +286,21 @@ discussed in the send/store section.
 
 ## Cross-SDK naming
 
-Option keys differ across SDKs (JS `tracesSampleRate` vs. Python `traces_sample_rate`). We
-need to decide whether the payload uses each SDK's native option names as-is, or a canonical
-cross-SDK naming so the server can compare the same option across languages. A canonical
-catalog (in the spirit of [0116-sentry-semantic-conventions](./0116-sentry-semantic-conventions.md))
-would make analytics far easier but requires each SDK to map its options; native names are
-simpler but push normalization to the server. This is called out as an open question.
+Option keys differ across SDKs (JS `tracesSampleRate` vs. Python `traces_sample_rate`). One
+option would be a canonical cross-SDK naming (in the spirit of
+[0116-sentry-semantic-conventions](./0116-sentry-semantic-conventions.md)) so the server can
+compare the same option across languages, but that requires every SDK to map its options to the
+canonical catalog and keep it in sync.
+
+**Recommendation: leave the option names unspecced.** By design, the payload uses each SDK's
+**native option names as-is** — SDKs simply report options as they are named in that SDK, with
+no normalization to a shared vocabulary. This makes cross-SDK analysis harder (the server, or a
+consumer, has to reconcile differently-named-but-equivalent options), but it is far easier to
+reason about and implement in the SDKs: there is nothing to map, nothing to keep in sync, and
+new options are captured automatically without a catalog change. Given the RFC starts with JS
+and the primary near-term value is per-SDK/per-release insight, this trade-off is worth it; a
+canonical mapping can be layered on later (server-side or in analysis) if cross-SDK comparison
+becomes important.
 
 # Sending and Storing
 
@@ -441,4 +450,20 @@ settling on release alone.
 - **Unresolved dedup identity.** Storage relies on a good key to deduplicate by, and it is not
   yet clear that `release` (or any single field) is sufficient (see Storing). Getting this wrong
   means either storing too much or collapsing genuinely different configurations together.
+
+# Not in scope / Follow-up work
+
+This RFC focuses on capturing, transporting, and storing SDK configuration. The following are
+explicitly out of scope here and left as follow-up work:
+
+- **Actually using this data in product.** The downstream use cases from the Motivation
+  (analytics, setup audits/warnings, showing data sources, configuration-over-time views, a UI
+  to change configuration, etc.) are not designed here — they build on top of the data this RFC
+  makes available.
+- **Removing SDK metadata from error/transaction events.** Once `sdk_config` is the canonical
+  home for SDK identity/integration metadata, it makes sense to stop duplicating it on every
+  error/transaction event. This is not free, though: that metadata is currently searchable and
+  used on events, so removing it requires a mechanism to backfill it onto events from the stored
+  `sdk_config` (so events remain searchable/filterable by SDK, version, integrations, etc.).
+  Designing that backfill is follow-up work.
 
