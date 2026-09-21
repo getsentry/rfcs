@@ -140,6 +140,17 @@ raises.
 This section proposes the shape of the dedicated SDK-options payload (question **a** above).
 The goal is a **language-agnostic** shape that works equally for JavaScript, Python, and every other SDK, so the server can handle a single, consistent schema.
 
+## Envelope item type
+
+We propose naming the new envelope item type **`sdk_config`**, following the existing
+snake_case convention for item types (`event`, `transaction`, `client_report`, `session`, …).
+`sdk_config` reads well because the payload is broader than just the raw `init()` options — it
+also carries SDK identity, integration status, and general metadata.
+
+Alternatives considered: `sdk_options` (closest to the literal `init()` arguments, but narrower
+than what the payload actually contains) and `client_config` (risks confusion with Sentry
+"client reports" and with the SDK's internal `Client`). We recommend `sdk_config`.
+
 ## Design principles
 
 - **Primitives only.** The payload contains only JSON-serializable values: strings, numbers,
