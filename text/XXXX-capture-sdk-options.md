@@ -165,6 +165,8 @@ The goal is a **language-agnostic** shape that works equally for JavaScript, Pyt
 
 ```json
 {
+  "timestamp": "2026-09-21T12:00:00Z",
+
   "sdk": {
     "name": "sentry.javascript.node",
     "version": "10.0.0",
@@ -211,6 +213,10 @@ The goal is a **language-agnostic** shape that works equally for JavaScript, Pyt
 
 ## Fields
 
+- **`timestamp`** — when the payload was generated/sent by the SDK. We need to know when a
+  configuration was reported, both to order records and to track configuration changes over
+  time (e.g. "you changed your filtering rules in May"). Format follows the existing Sentry
+  convention (ISO 8601 shown here; could equally be epoch seconds to match event `timestamp`).
 - **`sdk`** — SDK identity metadata: `name`, `version`, and `packages`. This is the same
   information SDKs attach to error/transaction events today; **this RFC proposes moving it
   here** so it lives in one canonical place. It also carries the `integrations` map — the set
@@ -224,6 +230,8 @@ The goal is a **language-agnostic** shape that works equally for JavaScript, Pyt
   mirror the user's input, with all values reduced to primitives per the rules above. The
   `integrations` init option is represented here as a list of names; the details live in the
   dedicated `integration_options` block to avoid duplicating (and bloating) the raw options.
+  Fields in `options` should be **scrubbed server-side** for sensitive data (especially tokens
+  and other secrets); notably, SDKs do **not** perform any client-side scrubbing of these values.
 - **`integration_options`** — a map of integration name → its normalized options. This is how
   we generically capture things like `MyIntegration({ filter: 'aaa' })` without understanding
   any specific integration. Integrations with no options serialize to `{}`.
@@ -274,16 +282,152 @@ catalog (in the spirit of [0116-sentry-semantic-conventions](./0116-sentry-seman
 would make analytics far easier but requires each SDK to map its options; native names are
 simpler but push normalization to the server. This is called out as an open question.
 
+# Sending and Storing
+
+This section covers question **b**: when the SDK emits the options payload, and how it is
+handled server-side. When to send is **not one-size-fits-all** — it differs meaningfully
+between SDK types. Broadly we distinguish **server SDKs** (Node, Python, Java, Go, …) from
+**client SDKs** (browser, mobile, desktop, gaming, …), which have very different lifecycles.
+We start with the server case; the client case is trickier and is covered next.
+
+## Sending — Server SDKs
+
+For server SDKs, the payload is sent **once, shortly after `init()`**, guarded by a short
+**debounce delay**:
+
+- **Debounced send after init.** Rather than sending synchronously at the end of `init()`, the
+  SDK schedules the send after a short delay (default on the order of **2 seconds**). The delay
+  lets the configuration **stabilize**: some values are not known at the exact moment `init()`
+  returns — for example an integration's runtime `active` status (see "Reflecting which
+  integrations are actually used"), lazily-registered integrations, or release/environment
+  detected asynchronously. Debouncing collapses this settling period into a single payload that
+  reflects the effective configuration rather than a half-initialized snapshot.
+- **Configurable wait period.** The delay **MAY be configurable**. Each SDK should pick a
+  sensible default based on **when the data it cares about becomes available** — an SDK that
+  only detects framework instrumentation after the first request may want a longer default than
+  one whose config is fully known almost immediately. Exposing it as an option lets specific
+  setups tune it.
+- **One payload per init.** The goal is a single, stable payload per SDK instance/init, not a
+  stream of updates. If the config meaningfully changes later, that is handled as a separate
+  concern (and mostly matters for long-lived processes); the common case is one send per
+  process start.
+
+**Short-lived processes.** Some server environments (serverless functions, short CLI
+invocations) may exit before the debounce timer fires. In those cases the SDK should flush the
+pending options payload on shutdown / at the same points it already flushes events, so the
+config is not lost. SDKs MAY use the same or a similar approach as to how they flush client
+reports, if applicable. If the process dies before the first flush opportunity, the payload is
+simply not sent for that invocation — acceptable given these instances are typically
+numerous and short, and an equivalent instance will report.
+
+## Sending — Client SDKs (browser, mobile, gaming)
+
+Client SDKs are trickier. Unlike a server process — where one long-lived instance can send a
+single payload that represents a whole fleet's worth of traffic — client instances are
+**numerous and short-lived**: every page load, app launch, or game session is its own `init()`.
+Sending the options payload naively from each one would be dramatically more data than the
+server case. Because of that, the _when_ needs more thought. We propose exploring the following
+options.
+
+### Option I: Send on every init (with debounce)
+
+Do exactly what server SDKs do: send once per `init()`, guarded by the same short debounce.
+
+- **Benefits:** Easy and simple to implement and reason about. Identical mental model and code
+  path to the server case; no sampling logic, no extra configuration. Every instance is
+  represented.
+- **Disadvantages:** Much higher overhead. Sentry has to ingest _much_ more data (one payload
+  per page load / app launch / session, at client-traffic volumes), and it adds a request for
+  users on every init.
+
+### Option II: Sampling
+
+Send the payload only for a random fraction of inits (e.g. **1%**, potentially configurable).
+The intuition is that configuration is essentially **constant per release** — every instance of
+the same release reports roughly the same options — so we do not need it from every init; a
+small sample is enough to reconstruct the config for a release.
+
+- **Benefits:** Much less overhead on both sides, while still capturing the configuration for
+  each release given enough traffic.
+- **Disadvantages:** Sampling is random, so it works better or worse depending on traffic
+  volume — a high-traffic release is well covered, a low-traffic one (or a rarely-hit
+  configuration) may be under-sampled or missed entirely. It also adds configuration surface and
+  is harder to reason about and test than a deterministic approach.
+
+### Serverless
+
+Although serverless functions run "server" SDKs, they share the key constraints of client
+SDKs: instances are **numerous and short-lived**, with an `init()` per invocation rather than
+one long-lived process. We therefore expect similar trade-offs to apply, and the same
+solutions explored here for client SDKs (e.g. sampling) **COULD** be applied to serverless
+environments as well, rather than the plain debounced send-on-every-init used for long-lived
+server processes.
+
+## Storing
+
+Once payloads arrive, we have to decide how much of this data we actually keep. Broadly there
+are two options.
+
+### Option 1: Store every record
+
+Persist every payload we receive as its own record.
+
+- **Benefits:** Complete history; nothing is lost, and we could in principle see every
+  individual instance's config over time.
+- **Disadvantages:** Very high storage cost and volume, especially for client/serverless traffic
+  where near-identical payloads arrive constantly. The vast majority of records are duplicates
+  that add no information.
+
+### Option 2 (recommended): Deduplicate and store a single record
+
+Store only **one** record per configuration and discard the rest. Because configuration is
+essentially constant per release, we need a key to deduplicate by, and we suggest **release**:
+
+- We store the **first** payload seen for a given release.
+- All subsequent payloads for that **same** release are **discarded** (they are expected to be
+  identical).
+- When a payload arrives with a **new/different release**, we store that as the new record for
+  that release.
+
+This keeps storage bounded (roughly one record per release), matches the reality that config
+changes track releases, and naturally gives us a per-release history of configuration over time.
+
+**Open question — is `release` the right dedup key?** We need to verify that release is
+sufficient to identify a distinct configuration. It may not always be: config can differ
+_within_ the same release (e.g. environment-dependent options, feature flags, per-deployment
+overrides, or code paths that call `init()` with different options), and release may be unset
+in some setups. We may need a composite key (e.g. release + environment, or a hash of the
+normalized options) or a different identifier altogether. This needs to be validated before
+settling on release alone.
+
 # Drawbacks
 
-<!-- TODO: Why we might not want to do this — added payload/overhead, privacy considerations
-around reporting configuration, maintenance cost of keeping the captured schema in sync with
-SDK options, risk of leaking sensitive data. -->
+- **Risk of leaking sensitive data.** Configuration can contain secrets and PII — DSNs, auth
+  tokens or custom headers in transport options, tunnel URLs, and user-meaningful values in
+  options like `denyUrls`, `initialScope`, or `serverName`. Even with primitives-only
+  normalization, we are shipping user configuration to Sentry, and redaction is imperfect. Any
+  new field an SDK captures is a potential leak, so the capture surface must be curated
+  carefully.
+- **Ingestion and storage overhead.** This is a brand-new payload type sent at potentially very
+  high volume (every init for client/serverless traffic). Even with sampling and dedup, it adds
+  ingestion load, a new storage model, and server-side processing that did not exist before.
+- **Data may be incomplete or misleading.** The techniques that keep volume down also reduce
+  fidelity: client sampling can under-sample or miss low-traffic releases and rare
+  configurations, and dedup-by-release keeps only the first-seen config per release even when
+  config actually varies within a release. Decisions made on this data (e.g. deprecating an
+  option that "looks unused") could be based on a non-representative picture.
+- **Lossy representation of runtime options.** Reducing callbacks to `"[Function]"` tells us a
+  `beforeSend`/`tracesSampler` exists but nothing about what it does. For audit-style use cases
+  ("warn about confusing behavior") this is a hard limit — we can see that filtering is
+  configured, not what it filters.
+- **Ongoing maintenance burden.** The normalized schema (and any cross-SDK naming catalog) must
+  be kept in sync with evolving options and integrations across every SDK and language. New
+  options are invisible until each SDK is updated to capture them, so the dataset always lags
+  the SDKs, and consistency across SDKs takes continuous effort.
+- **Added SDK complexity and runtime cost.** Every SDK gains new machinery: debounced sending,
+  flush-on-shutdown, opt-in per-integration `active` tracking, normalization, and (for clients)
+  sampling. This is more code, more surface for bugs, and some runtime overhead on every init.
+- **Unresolved dedup identity.** Storage relies on a good key to deduplicate by, and it is not
+  yet clear that `release` (or any single field) is sufficient (see Storing). Getting this wrong
+  means either storing too much or collapsing genuinely different configurations together.
 
-# Unresolved questions
-
-- What is the minimum viable set of options to capture for the initial project?
-- What is the serialization format and how do we handle function/integration options?
-- How do we prevent leaking secrets or PII contained in configuration?
-- What is the transport and storage model, and how do we deduplicate across many clients?
-- How does this generalize beyond JS to other SDKs?
