@@ -90,15 +90,50 @@ https://linear.app/getsentry/project/capture-sdk-options-js-08e8a89c71c9/overvie
 
 # Options Considered
 
-<!-- TODO: Propose one primary option and alternatives. Open questions to work through here:
-- What exactly do we capture? (raw init options vs. effective/normalized config)
-- How do we avoid capturing sensitive values (tokens, DSNs, PII in beforeSend, etc.)?
-- How is it transported? (new envelope item type vs. attached to existing payloads vs.
-  separate periodic "SDK config" report)
-- How often is it sent? (once per init, on change, periodically)
-- Where and how is it stored and deduplicated server-side?
-- How do we represent non-serializable options (functions like beforeSend, integrations)?
-- Cross-SDK consistency: this starts with JS, but the format should generalize. -->
+Broadly, there are two ways to get configuration data from the SDK to Sentry. Both assume
+the SDK can produce a serialized view of its options; they differ in _how that view is
+transported and handled_.
+
+## Option A (preferred): A dedicated envelope item for SDK options
+
+Introduce a new, first-class envelope item type dedicated to SDK configuration. The SDK
+serializes its options and sends them as a standalone payload, handled on its own path
+server-side rather than being coupled to error/transaction events.
+
+This is the preferred option because it decouples "what is this instance configured with"
+from "did this instance send an event". It gives us a clean, purpose-built payload we can
+version, store, and reason about independently, and it is not dependent on an error ever
+being produced. It also follows the transport precedent set by client reports (a separate,
+non-event envelope item on its own cadence; see Background).
+
+With this option, the design work is mostly about two questions, which we will dive into in
+more detail:
+
+- **a) The shape of the envelope** — what exactly we put into the payload: which options we
+  capture, how we represent non-serializable options (functions like `beforeSend`,
+  integration instances), how we normalize/redact sensitive values, and how we keep the
+  schema consistent and generalizable across SDKs (this starts with JS).
+- **b) How/when to send it, and how/when to store it** — the send cadence (once per init, on
+  change, periodically, flushed on shutdown), and the server-side handling: where it lands,
+  how we group instances, how we deduplicate identical configs, and how we track changes over
+  time.
+
+## Option B: Expand error events to carry SDK options
+
+Alternatively, we could piggyback on error (and transaction) events — for example by
+expanding the existing `sdk` key on the event to carry the full configured options, and then
+doing the work server-side to infer, group, and store this out of the event stream.
+
+This avoids a new envelope type and reuses an existing, well-understood transport. However,
+it inherits the drawbacks of being event-coupled: configuration is only observed when (and
+as often as) events are sent, an instance that never produces an event is invisible,
+identical config is re-sent on every event (wasteful, needs server-side dedup), and we
+overload the event schema and pipeline with data that is not really about the event. The
+server-side grouping/storage problem also becomes harder because the signal is buried inside
+the high-volume event stream.
+
+For these reasons Option A is preferred; the remaining sections focus on the questions it
+raises.
 
 # Drawbacks
 
