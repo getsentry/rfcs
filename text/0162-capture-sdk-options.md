@@ -40,18 +40,6 @@ creates gaps in several areas:
   data into a project, understand the sources of their data, and see the filtering, sampling,
   and other configuration that affects it — including changes over time.
 
-Ideas of what to eventually do with this data (not all in scope for this initial project):
-
-- Analytics of which options are used, for decision-making about docs, deprecations, and majors.
-- Flagging configuration changes that might affect trends over time when querying.
-- Auditing `init()` setups to suggest helpful changes or warn about confusing behavior.
-- Showing users a list of all the `Sentry.init()`s producing data into each project, so they
-  can understand their data sources and any filtering/sampling/config that affects them.
-- Showing changes to configuration over time.
-- A UI for turning sources on and off and making configuration changes (e.g. via Seer PRs).
-- A clear discoverability element — showing which data sources are configured to produce (and
-  not produce) which telemetry types.
-
 # Background
 
 Today we do not capture the configuration of an SDK instance in any meaningful, first-class
