@@ -288,14 +288,12 @@ The shape below is the **stored** payload. SDKs send everything here **except**
   secrets); notably, SDKs do **not** perform any client-side scrubbing of these values.
 - **`options_set_by_user`** — a flat array of the **native option keys the user explicitly set**
   in `init()` (as opposed to values that came from defaults, env vars, or integrations). This is
-  the signal that lets us distinguish "the user chose this" from "this is just a
-  default" — essential for adoption analytics and setup audits, where a defaulted value is not
-  "usage". The SDK produces it by diffing the keys of the raw `init()` argument against the
-  effective `options`. It lists **top-level native keys only** (no nested paths); if nested
-  provenance is ever needed it can be added later. Keys here always correspond to keys present in
-  `options`. This array is the **single, uniform source of provenance**: to ask "did the user set
-  option X?" for _any_ option (normalized or not), check whether its native key is a member —
-  `normalized_options` deliberately does **not** duplicate this signal.
+  the signal that lets us distinguish default values from user-set values 
+  — essential for adoption analytics and setup audits, where a default value is not
+  "usage". This is effectively similar to `Object.keys(options)` where `options` are the user-provided options for `Sentry.init(options)`.
+   It lists **top-level native keys only** (no nested paths); if nested
+  keys are ever needed they can be added later. Keys here always correspond to keys present in
+  `options`.
 - **`normalized_options`** — a **Relay-derived** subset of `options`, keyed by canonical
   cross-SDK names, produced at ingestion (see below). SDKs never send this block. Each entry maps
   a canonical key to `{ "key": <native option name>, "value": <normalized value> }`, so consumers
