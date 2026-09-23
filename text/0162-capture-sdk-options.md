@@ -146,10 +146,9 @@ than what the payload actually contains) and `client_config` (risks confusion wi
   instances, streams, etc.) ever appear literally.
 - **Callbacks and other runtime values are reduced to markers.** We do not care about a
   callback's implementation, only that _a user-defined callback was set_. Any non-serializable
-  value is normalized to a sentinel. We reuse the normalization convention SDKs already have
-  (e.g. JS `normalize()` turning a function into `"[Function: name]"`). So
-  `beforeSend: (event) => …` becomes `"beforeSend": "[Function]"` (optionally
-  `"[Function: beforeSend]"`), a class instance becomes `"[SomeType]"`, and so on.
+  value is normalized to a sentinel, following the exact rules in
+  [Options serialization rules](#options-serialization-rules) below (functions → `"[Function]"`,
+  integrations → their name, other runtime constructs → a type marker).
 - **Faithful to the init config, and nested.** The `options` block mirrors the structure the
   user passed to `init()`, preserving nesting rather than flattening it.
 - **Generic representation of integration options.** Integrations are user-configurable
@@ -160,7 +159,38 @@ than what the payload actually contains) and `client_config` (risks confusion wi
   space for well-known, structured metadata (SDK identity, release/environment, etc.) and a
   free-form bucket SDKs can use for anything not yet modeled.
 
+## Options serialization rules
+
+When serializing the `options` block (and `integration_options`), SDKs apply the following rules,
+top to bottom, to every value. The goal is a deterministic, primitives-only representation that is
+consistent across SDKs.
+
+- **Primitives pass through.** Strings, numbers, booleans, and `null` are emitted as-is. Arrays
+  and plain objects are emitted structurally, with each element/value serialized by these same
+  rules (nesting is preserved).
+- **Functions become `"[Function]"`.** Any callback (`beforeSend`, `tracesSampler`,
+  `beforeBreadcrumb`, transport factories, etc.) is replaced by the literal string `"[Function]"`.
+  SDKs MAY include the function name when readily available (`"[Function: beforeSend]"`), but the
+  bare `"[Function]"` marker is the required baseline — consumers must not depend on the name.
+- **Integrations are replaced by their name.** In the `options.integrations` list, each configured
+  integration is serialized to its **integration name string** (e.g. `MyIntegration` →
+  `"MyIntegration"`), never the integration instance/object. The integration's _own_ configured
+  options are captured separately, keyed by that same name, in the top-level `integration_options`
+  block. So `Sentry.init({ integrations: [Sentry.myIntegration({ filter: 'aaa' })] })` yields
+  `"integrations": ["MyIntegration"]` in `options` and
+  `"MyIntegration": { "filter": "aaa" }` in `integration_options`.
+- **Other runtime constructs become a type marker.** Any remaining non-serializable value (a class
+  instance, stream, socket, etc.) is replaced by a bracketed type marker, e.g. `"[SomeType]"`,
+  reusing each SDK's existing normalization convention (e.g. JS `normalize()`).
+
+These rules are what "normalized" means throughout this document. SDKs do **not** scrub sensitive
+values as part of serialization — redaction is a separate, server-side concern (see `options`).
+
 ## Proposed shape
+
+The shape below is the **stored** payload. SDKs send everything here **except**
+`normalized_options`, which Relay derives at ingestion time from `options` (see
+[Normalization at ingestion](#normalization-at-ingestion)).
 
 ```json
 {
@@ -198,6 +228,14 @@ than what the payload actually contains) and `client_config` (risks confusion wi
     "integrations": ["InboundFilters", "MyIntegration"]
   },
 
+  "normalized_options": {
+    "sample_rate": { "key": "sampleRate", "value": 1.0 },
+    "traces_sample_rate": { "key": "tracesSampleRate", "value": 0.2 },
+    "send_default_pii": { "key": "sendDefaultPii", "value": true },
+    "debug": { "key": "debug", "value": false },
+    "before_send": { "key": "beforeSend", "value": "[Function]" }
+  },
+
   "integration_options": {
     "InboundFilters": {},
     "MyIntegration": {
@@ -231,6 +269,10 @@ than what the payload actually contains) and `client_config` (risks confusion wi
   dedicated `integration_options` block to avoid duplicating (and bloating) the raw options.
   Fields in `options` should be **scrubbed server-side** for sensitive data (especially tokens
   and other secrets); notably, SDKs do **not** perform any client-side scrubbing of these values.
+- **`normalized_options`** — a **Relay-derived** subset of `options`, keyed by canonical
+  cross-SDK names, produced at ingestion (see below). SDKs never send this block. Each entry maps
+  a canonical key to `{ "key": <native option name>, "value": <normalized value> }`, so consumers
+  can compare the same option across SDKs while still seeing what it was called natively.
 - **`integration_options`** — a map of integration name → its normalized options. This is how
   we generically capture things like `MyIntegration({ filter: 'aaa' })` without understanding
   any specific integration. Integrations with no options serialize to `{}`.
@@ -274,21 +316,66 @@ discussed in the send/store section.
 
 ## Cross-SDK naming
 
-Option keys differ across SDKs (JS `tracesSampleRate` vs. Python `traces_sample_rate`). One
-option would be a canonical cross-SDK naming (in the spirit of
-[0116-sentry-semantic-conventions](./0116-sentry-semantic-conventions.md)) so the server can
-compare the same option across languages, but that requires every SDK to map its options to the
-canonical catalog and keep it in sync.
+Option keys differ across SDKs (JS `tracesSampleRate` vs. Python `traces_sample_rate`). To
+compare the same option across languages we want a canonical cross-SDK vocabulary (in the spirit
+of [0116-sentry-semantic-conventions](./0116-sentry-semantic-conventions.md)), but we do **not**
+want every SDK to own that mapping and keep it in sync.
 
-**Recommendation: leave the option names unspecced.** By design, the payload uses each SDK's
-**native option names as-is** — SDKs simply report options as they are named in that SDK, with
-no normalization to a shared vocabulary. This makes cross-SDK analysis harder (the server, or a
-consumer, has to reconcile differently-named-but-equivalent options), but it is far easier to
-reason about and implement in the SDKs: there is nothing to map, nothing to keep in sync, and
-new options are captured automatically without a catalog change. Given the RFC starts with JS
-and the primary near-term value is per-SDK/per-release insight, this trade-off is worth it; a
-canonical mapping can be layered on later (server-side or in analysis) if cross-SDK comparison
-becomes important.
+**Recommendation: SDKs send native names; Relay normalizes a defined subset.** The `options`
+block keeps each SDK's **native option names as-is** — SDKs report options exactly as they are
+named in that SDK, with no normalization to a shared vocabulary. This keeps the SDK side dumb and
+maintenance-free: there is nothing to map, nothing to keep in sync, and new options are captured
+automatically. The canonical mapping lives **server-side in Relay**, which reads a fixed set of
+well-known options out of `options` and emits them into `normalized_options` under canonical keys
+(see below).
+
+This gets us the best of both: full, native fidelity in `options`, plus a normalized,
+cross-SDK-comparable view in `normalized_options` — without pushing catalog upkeep into every SDK.
+
+## Normalization at ingestion
+
+`normalized_options` is produced by **Relay at ingestion time**, never sent by the SDK. For each
+option in the normalization catalog, Relay looks it up in the incoming `options` (by the native
+key registered for that SDK) and, if present, emits an entry:
+
+```json
+"normalized_options": {
+  "traces_sample_rate": { "key": "tracesSampleRate", "value": 0.5 }
+}
+```
+
+- The **outer key** is the canonical, cross-SDK name (snake_case).
+- **`key`** is the native option name it was normalized from, so the original naming is not lost.
+- **`value`** is the value of this options.
+
+Only options in the catalog are normalized; everything else remains available under `options`.
+Because the mapping is Relay-side, **extending the catalog is a Relay change only** — no SDK
+release or rollout is needed to start normalizing a new option, and back-data already stored as
+raw `options` can be re-normalized.
+
+### Which options we normalize
+
+We start with a small, curated set of high-value options that are meaningful across SDKs. The
+canonical key is the same across languages; only the native `key` differs.
+
+| Canonical key          | Meaning                          | Native examples (JS → Python)             |
+| ---------------------- | -------------------------------- | ----------------------------------------- |
+| `sample_rate`          | Error sample rate                | `sampleRate` → `sample_rate`              |
+| `traces_sample_rate`   | Tracing sample rate              | `tracesSampleRate` → `traces_sample_rate` |
+| `profiles_sample_rate` | Profiling sample rate            | `profilesSampleRate` → `profiles_sample_rate` |
+| `send_default_pii`     | Whether default PII is sent      | `sendDefaultPii` → `send_default_pii`     |
+| `debug`                | Debug logging enabled            | `debug` → `debug`                         |
+| `enabled`              | Whether the SDK is enabled       | `enabled` → `enabled`                     |
+| `before_send`          | Whether a `before_send` hook is set (marker) | `beforeSend` → `before_send`  |
+| `before_send_transaction` | Whether a `before_send_transaction` hook is set (marker) | `beforeSendTransaction` → `before_send_transaction` |
+| `before_send_span`     | Whether a `before_send_span` hook is set (marker) | `beforeSendSpan` → `before_send_span` |
+| `ignore_spans`         | Span-ignore rules                | `ignoreSpans` → `ignore_spans`            |
+| `traces_sampler`       | Whether a `traces_sampler` hook is set (marker) | `tracesSampler` → `traces_sampler` |
+
+`release`, `environment`, and `dist` are deliberately **not** in this catalog — they are already
+promoted to first-class fields under `meta`. The catalog is intended to grow over time; the list
+above is the initial, deliberately-conservative set, and the exact registry (canonical key ↔
+per-SDK native key) is maintained alongside Relay.
 
 # Sending and Storing
 
