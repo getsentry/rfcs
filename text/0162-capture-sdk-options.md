@@ -139,6 +139,15 @@ Alternatives considered: `sdk_options` (closest to the literal `init()` argument
 than what the payload actually contains) and `client_config` (risks confusion with Sentry
 "client reports" and with the SDK's internal `Client`). We recommend `sdk_config`.
 
+**Backward compatibility with older ingest / self-hosted.** Introducing a new envelope item type
+is safe for older infrastructure. Envelopes are designed so that unknown item types are simply
+**ignored**: an older Relay / self-hosted Sentry that predates `sdk_config` will not recognize the
+item and will **discard it**, while still processing the other items in the same envelope (errors,
+transactions, etc.) as usual. That is the desired behavior here — SDKs can start emitting
+`sdk_config` unconditionally, and setups that cannot yet handle it lose only this
+new-and-supplementary payload, with no impact on existing data. No SDK-side version gating is
+required.
+
 ## Design principles
 
 - **Primitives only.** The payload contains only JSON-serializable values: strings, numbers,
@@ -185,8 +194,9 @@ consistent across SDKs.
   instance, stream, socket, etc.) is replaced by a bracketed type marker, e.g. `"[SomeType]"`,
   reusing each SDK's existing normalization convention (e.g. JS `normalize()`).
 
-These rules are what "normalized" means throughout this document. SDKs do **not** scrub sensitive
-values as part of serialization — redaction is a separate, server-side concern (see `options`).
+These rules are what "normalized" means throughout this document. Scrubbing sensitive values is a
+**separate, primarily server-side concern** (see `options`) — SDKs **MAY** scrub values they know
+to be sensitive, but they do not attempt to guarantee fully-scrubbed data.
 
 ## Proposed shape
 
@@ -204,8 +214,8 @@ The shape below is the **stored** payload. SDKs send everything here **except**
     "packages": [{ "name": "npm:@sentry/node", "version": "10.0.0" }],
     "integrations": {
       "InboundFilters": {},
-      "ExpressIntegration": { "active": true },
-      "FastifyIntegration": { "active": false },
+      "ExpressIntegration": { "applied": true },
+      "FastifyIntegration": { "applied": false },
       "KoaIntegration": {},
       "MyIntegration": {}
     }
@@ -283,9 +293,11 @@ The shape below is the **stored** payload. SDKs send everything here **except**
   effect", "is it enabled"); it also reads directly off the SDK's existing options object with no
   extra plumbing, and reflects the settled state at send time (see the debounce in Sending). The
   `integrations` option is represented here as a list of names; the details live in the dedicated
-  `integration_options` block to avoid duplicating (and bloating) the raw options. Fields in
-  `options` should be **scrubbed server-side** for sensitive data (especially tokens and other
-  secrets); notably, SDKs do **not** perform any client-side scrubbing of these values.
+  `integration_options` block to avoid duplicating (and bloating) the raw options. Sensitive data
+  (especially tokens and other secrets) is **primarily scrubbed server-side**; SDKs **MAY**
+  additionally scrub values they know to be sensitive (e.g. a field that always holds a secret),
+  but this is a best-effort defense-in-depth measure — SDKs do **not** attempt to guarantee
+  fully-scrubbed data, and the server-side scrubbing remains the mechanism we rely on.
 - **`options_set_by_user`** — a flat array of the **native option keys the user explicitly set**
   in `init()` (as opposed to values that came from defaults, env vars, or integrations). This is
   the signal that lets us distinguish default values from user-set values 
@@ -347,23 +359,25 @@ To capture this generically without enumerating every integration, `sdk.integrat
 map keyed by integration name, where the value is a small, **opt-in** status object:
 
 - The **presence of a key** means the integration is registered/enabled.
-- An optional **`active`** boolean means the integration determined at runtime whether it is
-  actually in effect. `ExpressIntegration` sets `active: true` once it successfully patches
+- An optional **`applied`** boolean means the integration determined at runtime whether it
+  actually took effect. `ExpressIntegration` sets `applied: true` once it successfully patches
   Express; a defaulted integration whose target framework is absent can report
-  `active: false`. An integration that reports nothing leaves its value as `{}` (`active`
-  simply absent / unknown).
+  `applied: false`. An integration that reports nothing leaves its value as `{}` (`applied`
+  simply absent / unknown). We chose `applied` over `active` because "active" reads as
+  enabled/disabled — which the key's mere presence already conveys — whereas `applied` names the
+  distinct signal we want: the integration ran and took effect at runtime.
 
 Key properties of this design:
 
 - **Generic.** No integration-specific fields in the schema; any integration can contribute
-  the well-known `active` signal (and we can add further opt-in status keys later).
+  the well-known `applied` signal (and we can add further opt-in status keys later).
 - **Opt-in and non-exhaustive.** Integrations are not required to report status. We selectively
   push this into the integrations where the signal is valuable to us (e.g. the framework
   integrations), and leave the rest unreported.
 - **Distinct from options.** This map carries identity/status only; configured options remain
   in the top-level `integration_options` block.
 
-Note there is a timing implication: `active` is often only known slightly after `init()` (once
+Note there is a timing implication: `applied` is often only known slightly after `init()` (once
 instrumentation runs), which influences _when_ the payload is sent or updated. This is
 discussed in the send/store section.
 
@@ -462,25 +476,34 @@ We start with the server case; the client case is trickier and is covered next.
 
 ## Sending — Server SDKs
 
-For server SDKs, the payload is sent **once, shortly after `init()`**, guarded by a short
-**debounce delay**:
+For server SDKs, the payload is sent **once, shortly after `init()`**, but only once the
+configuration has **settled**. The hard requirement is only this:
 
-- **Debounced send after init.** Rather than sending synchronously at the end of `init()`, the
-  SDK schedules the send after a short delay (default on the order of **2 seconds**). The delay
-  lets the configuration **stabilize**: some values are not known at the exact moment `init()`
-  returns — for example an integration's runtime `active` status (see "Reflecting which
-  integrations are actually used"), lazily-registered integrations, or release/environment
-  detected asynchronously. Debouncing collapses this settling period into a single payload that
-  reflects the effective configuration rather than a half-initialized snapshot.
-- **Configurable wait period.** The delay **MAY be configurable**. Each SDK should pick a
-  sensible default based on **when the data it cares about becomes available** — an SDK that
-  only detects framework instrumentation after the first request may want a longer default than
-  one whose config is fully known almost immediately. Exposing it as an option lets specific
-  setups tune it.
+- **Send the final, settled options — not a half-initialized snapshot.** Some values are not
+  known at the exact moment `init()` returns — for example an integration's runtime `applied`
+  status (see "Reflecting which integrations are actually used"), lazily-registered integrations,
+  or release/environment detected asynchronously. The SDK must wait until it can reasonably expect
+  these to have settled before capturing and sending the payload.
 - **One payload per init.** The goal is a single, stable payload per SDK instance/init, not a
   stream of updates. If the config meaningfully changes later, that is handled as a separate
   concern (and mostly matters for long-lived processes); the common case is one send per
   process start.
+
+**How to wait is up to each SDK.** We deliberately do not mandate a single mechanism — each SDK
+**MAY** use whatever hook or mechanism fits its runtime and lifecycle, as long as it reasonably
+captures the final options. A few examples:
+
+- **A short debounce delay** (a reasonable default, e.g. on the order of **2 seconds**): schedule
+  the send a short time after `init()` rather than synchronously, letting the settling period
+  collapse into one payload. The delay **MAY be configurable** so setups that settle slower (e.g.
+  an SDK that only detects framework instrumentation after the first request) can tune it.
+- **A lifecycle hook** the SDK already has — e.g. sending after the first request/transaction is
+  processed, on an "SDK ready"/post-init hook, or when the event loop first goes idle.
+- **Any equivalent trigger** that reliably fires after the config the SDK cares about is known.
+
+Debouncing is the simplest baseline and a fine default, but it is an example, not a rule: an SDK
+with a natural hook that guarantees settled options should prefer that. What matters is the
+outcome — the payload reflects the effective configuration.
 
 **Short-lived processes.** Some server environments (serverless functions, short CLI
 invocations) may exit before the debounce timer fires. In those cases the SDK should flush the
@@ -570,6 +593,28 @@ in some setups. We may need a composite key (e.g. release + environment, or a ha
 normalized options) or a different identifier altogether. This needs to be validated before
 settling on release alone.
 
+# Open Questions
+
+- **What does standing up a new envelope item type actually require?** Introducing `sdk_config`
+  is not just an SDK + storage change; it needs first-class handling in the ingest pipeline, and
+  we need to enumerate what that entails before committing. At least:
+  - **Relay / ingest support.** Registering the new item type, routing it to its own handler,
+    and any validation/normalization (the `normalized_options` derivation lands here).
+  - **Rate limiting.** Does `sdk_config` need its own rate-limit category, or does it share an
+    existing one? How does rate limiting interact with the send cadence (debounced server sends,
+    client sampling)? What is communicated back to the SDK (e.g. `429` / `Retry-After`) and how
+    does the SDK back off?
+  - **Payload / size limits.** What per-item and per-envelope size limits apply, and what happens
+    when a config exceeds them — reject, or truncate (and if so, how, given nested `options`)?
+  - **Data category, quota & billing.** Which data category does it map to for
+    quotas/outcomes/billing? The intent is that this is supplementary telemetry, so it most
+    likely should **not** be billed like events — but that needs to be decided explicitly.
+  - **Outcomes / observability.** How are dropped or rejected `sdk_config` items recorded
+    (outcomes, reasons) so we can see ingestion health for this new type?
+- **Is `release` the right dedup key?** (See [Storing](#storing) above.) Whether release alone
+  identifies a distinct configuration, or we need a composite key / options hash, still needs
+  validation.
+
 # Drawbacks
 
 - **Risk of leaking sensitive data.** Configuration can contain secrets and PII — DSNs, auth
@@ -595,7 +640,7 @@ settling on release alone.
   options are invisible until each SDK is updated to capture them, so the dataset always lags
   the SDKs, and consistency across SDKs takes continuous effort.
 - **Added SDK complexity and runtime cost.** Every SDK gains new machinery: debounced sending,
-  flush-on-shutdown, opt-in per-integration `active` tracking, normalization, and (for clients)
+  flush-on-shutdown, opt-in per-integration `applied` tracking, normalization, and (for clients)
   sampling. This is more code, more surface for bugs, and some runtime overhead on every init.
 - **Unresolved dedup identity.** Storage relies on a good key to deduplicate by, and it is not
   yet clear that `release` (or any single field) is sufficient (see Storing). Getting this wrong
