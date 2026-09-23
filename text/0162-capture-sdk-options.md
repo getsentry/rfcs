@@ -149,8 +149,10 @@ than what the payload actually contains) and `client_config` (risks confusion wi
   value is normalized to a sentinel, following the exact rules in
   [Options serialization rules](#options-serialization-rules) below (functions → `"[Function]"`,
   integrations → their name, other runtime constructs → a type marker).
-- **Faithful to the init config, and nested.** The `options` block mirrors the structure the
-  user passed to `init()`, preserving nesting rather than flattening it.
+- **Effective config, natively shaped and nested.** The `options` block carries the SDK's final,
+  effective options (after defaults and derivation), keyed by native option names and preserving
+  the nesting the user would recognize rather than flattening it. Which of those keys the user
+  explicitly set is recorded separately in `options_set_by_user`.
 - **Generic representation of integration options.** Integrations are user-configurable
   (`Sentry.myIntegration({ filter: 'aaa' })`), so we must capture their options generically —
   keyed by integration name, with their options normalized by the same rules. We do not need
@@ -222,11 +224,21 @@ The shape below is the **stored** payload. SDKs send everything here **except**
     "tracesSampleRate": 0.2,
     "sendDefaultPii": true,
     "debug": false,
+    "environment": "production",
     "beforeSend": "[Function]",
     "tracesSampler": "[Function]",
     "denyUrls": ["https://example.com/ignore"],
     "integrations": ["InboundFilters", "MyIntegration"]
   },
+
+  "options_set_by_user": [
+    "dsn",
+    "tracesSampleRate",
+    "sendDefaultPii",
+    "beforeSend",
+    "tracesSampler",
+    "denyUrls"
+  ],
 
   "normalized_options": {
     "sample_rate": { "key": "sampleRate", "value": 1.0 },
@@ -263,16 +275,32 @@ The shape below is the **stored** payload. SDKs send everything here **except**
 - **`meta`** — well-known, general metadata that we want first-class regardless of how it was
   set: `release`, `environment`, `dist`, and runtime/platform information (e.g. runtime name
   and version). These describe the instance producing data, complementing the raw `options`.
-- **`options`** — a normalized snapshot of the configuration passed to `init()`, nested to
-  mirror the user's input, with all values reduced to primitives per the rules above. The
-  `integrations` init option is represented here as a list of names; the details live in the
-  dedicated `integration_options` block to avoid duplicating (and bloating) the raw options.
-  Fields in `options` should be **scrubbed server-side** for sensitive data (especially tokens
-  and other secrets); notably, SDKs do **not** perform any client-side scrubbing of these values.
+- **`options`** — a normalized snapshot of the SDK's **final, effective** configuration (i.e. the
+  options object the SDK actually runs with, after defaults, env-var resolution, and any
+  derived/integration-injected values), nested to mirror the user's input, with all values reduced
+  to primitives per the rules above. Sending the effective config — rather than only the literal
+  `init()` arguments — is what lets us answer behavior questions ("what sample rate is actually in
+  effect", "is it enabled"); it also reads directly off the SDK's existing options object with no
+  extra plumbing, and reflects the settled state at send time (see the debounce in Sending). The
+  `integrations` option is represented here as a list of names; the details live in the dedicated
+  `integration_options` block to avoid duplicating (and bloating) the raw options. Fields in
+  `options` should be **scrubbed server-side** for sensitive data (especially tokens and other
+  secrets); notably, SDKs do **not** perform any client-side scrubbing of these values.
+- **`options_set_by_user`** — a flat array of the **native option keys the user explicitly set**
+  in `init()` (as opposed to values that came from defaults, env vars, or integrations). This is
+  the signal that lets us distinguish "the user chose this" from "this is just a
+  default" — essential for adoption analytics and setup audits, where a defaulted value is not
+  "usage". The SDK produces it by diffing the keys of the raw `init()` argument against the
+  effective `options`. It lists **top-level native keys only** (no nested paths); if nested
+  provenance is ever needed it can be added later. Keys here always correspond to keys present in
+  `options`. This array is the **single, uniform source of provenance**: to ask "did the user set
+  option X?" for _any_ option (normalized or not), check whether its native key is a member —
+  `normalized_options` deliberately does **not** duplicate this signal.
 - **`normalized_options`** — a **Relay-derived** subset of `options`, keyed by canonical
   cross-SDK names, produced at ingestion (see below). SDKs never send this block. Each entry maps
   a canonical key to `{ "key": <native option name>, "value": <normalized value> }`, so consumers
-  can compare the same option across SDKs while still seeing what it was called natively.
+  can compare the same option across SDKs while still seeing what it was called natively. Whether
+  the user set it is answered the same way as for any other option — via `options_set_by_user`.
 - **`integration_options`** — a map of integration name → its normalized options. This is how
   we generically capture things like `MyIntegration({ filter: 'aaa' })` without understanding
   any specific integration. Integrations with no options serialize to `{}`.
@@ -280,6 +308,33 @@ The shape below is the **stored** payload. SDKs send everything here **except**
   fields above. The leading underscore signals that this is arbitrary, unstructured data.
   Keeps the schema forward-compatible: SDKs can record additional data without a schema change,
   and useful keys can later be promoted to first-class fields.
+
+## Why effective options plus a flat set-by-user array
+
+We deliberately split configuration into two SDK-sent pieces — the full **effective `options`**
+and a flat **`options_set_by_user`** array — rather than, say, shipping both a user-provided and an
+effective options tree, or wrapping every option value in a `{ value, source }` object. The
+benefits:
+
+- **Easy to implement in SDKs.** `options` is essentially the SDK's existing effective options
+  object, serialized — most SDKs can read it straight from an existing API (e.g. JS
+  `client.getOptions()`, or the equivalent effective-options accessor in other SDKs), so there is
+  no second config snapshot to capture or keep around. `options_set_by_user` is produced by a
+  single diff of the raw `init()` argument's keys against that object. No per-option plumbing, no
+  wrapper types, no bookkeeping threaded through the option system.
+- **Easy to reason about.** `options` means exactly one thing — the configuration the SDK actually
+  runs with — and `options_set_by_user` means exactly one thing — which of those the user chose.
+  There is no ambiguity about whether a given block is "before" or "after" defaults, and no mixed
+  value/metadata shape to interpret. What each field represents is obvious from its name.
+- **Can be joined as needed.** Keeping provenance as a separate flat set means any consumer can
+  answer "was this user-set?" for _any_ option with a simple membership check, and can just as
+  easily ignore provenance entirely when it does not care. The two pieces compose on demand
+  (including for `normalized_options`, which joins against the same array) instead of being
+  pre-fused into one heavier structure that every consumer pays for whether or not they need it.
+
+The trade-off is that provenance is not co-located with each value (you look it up rather than
+reading it inline), and the array is top-level-only. Both are acceptable given how much simpler
+this keeps the SDK side and the schema.
 
 ## Reflecting which integrations are actually used
 
@@ -332,6 +387,26 @@ well-known options out of `options` and emits them into `normalized_options` und
 This gets us the best of both: full, native fidelity in `options`, plus a normalized,
 cross-SDK-comparable view in `normalized_options` — without pushing catalog upkeep into every SDK.
 
+**Why Relay, not the SDK.** Doing the normalization server-side is a deliberate choice, for
+several reinforcing reasons:
+
+- **Simpler SDKs.** Each SDK only has to serialize and send its own native options (something it
+  effectively already has). It does not need to know the canonical vocabulary, map its keys onto
+  it, or reason about equivalence across languages — that logic never ships in the SDK at all.
+- **Nothing to keep aligned across SDKs.** A canonical mapping owned by the SDKs would have to be
+  implemented, and kept consistent, in _every_ SDK and language independently. Any drift (a
+  mismatched canonical key, a missed option, an inconsistent value normalization) would silently
+  corrupt cross-SDK comparisons. Centralizing removes that entire class of cross-SDK
+  synchronization problem.
+- **One place to implement and maintain.** The normalization logic and the knowledge of which
+  canonical keys exist live in a **single system (Relay)** rather than being duplicated across N
+  SDKs. There is one implementation to write, test, review, and reason about — not one per SDK.
+- **Changeable over time without SDK releases.** What we choose to normalize will evolve. Because
+  the catalog lives in Relay, we can add, rename, or refine normalized keys — and re-normalize
+  already-ingested `options` — as a Relay change alone, with **no SDK update, release, or user
+  upgrade** required. If normalization lived in the SDKs, every change would mean shipping every
+  SDK and waiting for the ecosystem to upgrade, so the normalized dataset would always lag.
+
 ## Normalization at ingestion
 
 `normalized_options` is produced by **Relay at ingestion time**, never sent by the SDK. For each
@@ -346,12 +421,14 @@ key registered for that SDK) and, if present, emits an entry:
 
 - The **outer key** is the canonical, cross-SDK name (snake_case).
 - **`key`** is the native option name it was normalized from, so the original naming is not lost.
-- **`value`** is the value of this options.
+- **`value`** is the value of this option (the effective value from `options`).
+
+Provenance is intentionally not repeated here: to check whether a normalized option was user-set,
+look up its native `key` in `options_set_by_user`, exactly as you would for any raw option.
 
 Only options in the catalog are normalized; everything else remains available under `options`.
-Because the mapping is Relay-side, **extending the catalog is a Relay change only** — no SDK
-release or rollout is needed to start normalizing a new option, and back-data already stored as
-raw `options` can be re-normalized.
+Because the mapping is Relay-side (see [Why Relay, not the SDK](#cross-sdk-naming)), the catalog
+can be extended without an SDK release, and already-stored raw `options` can be re-normalized.
 
 ### Which options we normalize
 
