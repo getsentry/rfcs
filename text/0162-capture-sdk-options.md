@@ -597,27 +597,78 @@ Persist every payload we receive as its own record.
   where near-identical payloads arrive constantly. The vast majority of records are duplicates
   that add no information.
 
-### Option 2 (recommended): Deduplicate and store a single record
+### Option 2 (recommended): Deduplicate and store one record per configuration
 
-Store only **one** record per configuration and discard the rest. Because configuration is
-essentially constant per release, we need a key to deduplicate by, and we suggest **release**:
+Store one record per distinct configuration and discard the rest. The vast majority of incoming
+payloads are duplicates, so dedup is what keeps this feature affordable. The question is what counts
+as a "distinct configuration" — i.e. what we deduplicate by. We propose a **single dedup key with an
+optional component**:
 
-- We store the **first** payload seen for a given release.
-- All subsequent payloads for that **same** release are **discarded** (they are expected to be
-  identical).
-- When a payload arrives with a **new/different release**, we store that as the new record for
-  that release.
+> **`release` + `environment` + `dist` + (optional) SDK-set options hash.**
 
-This keeps storage bounded (roughly one record per release), matches the reality that config
-changes track releases, and naturally gives us a per-release history of configuration over time.
+#### The composite natural key (`release` + `environment` + `dist`)
 
-**Open question — is `release` the right dedup key?** We need to verify that release is
-sufficient to identify a distinct configuration. It may not always be: config can differ
-_within_ the same release (e.g. environment-dependent options, feature flags, per-deployment
-overrides, or code paths that call `init()` with different options), and release may be unset
-in some setups. We may need a composite key (e.g. release + environment, or a hash of the
-normalized options) or a different identifier altogether. This needs to be validated before
-settling on release alone.
+This is the always-available baseline. Release alone is **not** sufficient — configuration can
+legitimately differ across environments and builds within the same release (per-environment
+options, per-deployment overrides, env-var-driven values) — so the minimum key is
+`release` + `environment` + `dist`.
+
+- It is **bounded and predictable** (roughly one record per tuple), **human-readable and directly
+  queryable** ("show the config for release X in production"), **cheap** (a few stable top-level
+  fields, no whole-payload processing), and every event already carries these fields.
+- Its weakness is `release`: `environment` effectively always has a value (it defaults to
+  `production`), `dist` is normally absent, so `release` is the load-bearing part — and it has **no
+  default** and is frequently unset. When it is, the key degrades to roughly `environment` alone
+  (almost always `production`), collapsing distinct configs into one bucket. It is also blind to
+  differences _within_ a tuple: two instances sharing release+environment+dist but differing in some
+  option are stored as one (first-seen) record, so genuine variation is silently lost.
+
+The optional hash exists to address exactly that last weakness.
+
+#### The optional SDK-set options hash
+
+SDKs **MAY** additionally set a **hash of their options that is stable across instances sharing the
+same configuration** (same config → same hash; the hash changes when the config changes). When a
+payload carries this hash, **the server includes it in the dedup key**; when it is absent, dedup
+falls back to the composite key alone.
+
+Including the hash means two instances with the same release+environment+dist but genuinely
+different options (different hash) are stored as **distinct records** — so within-release variation
+and drift become visible instead of being collapsed into the first-seen config.
+
+- **We recommend hashing the (normalized) options** to produce this value, but SDKs **MAY** choose a
+  different hashing strategy if it makes more sense for them. The only hard requirement is
+  stability: the hash must be **identical across instances that share a configuration** and
+  **differ when the configuration differs**. It does not need to be comparable _across_ SDKs.
+- **The hash is computed SDK-side, by design.** Otherwise, we cannot reliable relate events to their respective config.
+- **If a hash is used, it MUST also be attached to every event the SDK produces**, so events can be
+  correlated back to the exact config that produced them:
+  - as an **attribute** on spans, logs, and other attribute-carrying items. We propose `sentry.config_hash` as a semantic attribute.
+  - as a **context field** on error and transaction events. We propose `sdk_config.hash` as a new context with a single field for now.
+
+#### Correlating an event to its config
+
+This falls directly out of the dedup key:
+
+- **Without a hash:** correlate via the composite key the event already carries
+  (`release` + `environment` + `dist`). This is free and needs no event changes, but is only
+  **bucket-level** — if config varied within the tuple, the event resolves to the bucket (a single
+  first-seen record, or the set of stored variants), not necessarily the exact config that produced
+  it.
+- **With a hash:** correlation is **exact** — the event's stamped hash matches exactly one stored
+  `sdk_config` record. This is the whole reason the hash must also live on events.
+
+#### Trade-offs and caveats of the hash
+
+- **Per-event overhead.** Stamping the hash adds a field to every event, at full event volume.
+- **Timing.** The config is not fully settled the instant `init()` returns (debounce window,
+  `applied` known late). The SDK must ensure the hash it stamps on events matches the config it
+  reports — e.g. by hashing only config that is stable from `init()`, or by not stamping until the
+  config has settled. Events emitted before that point may carry no hash (falling back to
+  bucket-level correlation).
+- **Sampling gaps.** For client/serverless SDKs we _may_ sample `sdk_config` (see Sending), so an
+  event's hash can reference a config that was **never stored** — correlation then fails for exactly
+  the instances we chose not to persist.
 
 # Open Questions
 
@@ -637,9 +688,10 @@ settling on release alone.
     likely should **not** be billed like events — but that needs to be decided explicitly.
   - **Outcomes / observability.** How are dropped or rejected `sdk_config` items recorded
     (outcomes, reasons) so we can see ingestion health for this new type?
-- **Is `release` the right dedup key?** (See [Storing](#storing) above.) Whether release alone
-  identifies a distinct configuration, or we need a composite key / options hash, still needs
-  validation.
+- **Finalizing the dedup key.** (See [Storing](#storing) above.) We recommend
+  `release` + `environment` + `dist` plus an optional SDK-set options hash, but the exact field set,
+  the fallback for the common release-less case, and what SDKs should hash (and how they keep it
+  stable) still need to be nailed down.
 
 # Drawbacks
 
@@ -654,9 +706,10 @@ settling on release alone.
   ingestion load, a new storage model, and server-side processing that did not exist before.
 - **Data may be incomplete or misleading.** The techniques that keep volume down also reduce
   fidelity: client sampling can under-sample or miss low-traffic releases and rare
-  configurations, and dedup-by-release keeps only the first-seen config per release even when
-  config actually varies within a release. Decisions made on this data (e.g. deprecating an
-  option that "looks unused") could be based on a non-representative picture.
+  configurations, and when no options hash is set, dedup keeps only the first-seen config per
+  `release`+`environment`+`dist` bucket even when config actually varies within it. Decisions made
+  on this data (e.g. deprecating an option that "looks unused") could be based on a
+  non-representative picture.
 - **Lossy representation of runtime options.** Reducing callbacks to `"[Function]"` tells us a
   `beforeSend`/`tracesSampler` exists but nothing about what it does. For audit-style use cases
   ("warn about confusing behavior") this is a hard limit — we can see that filtering is
@@ -668,9 +721,11 @@ settling on release alone.
 - **Added SDK complexity and runtime cost.** Every SDK gains new machinery: debounced sending,
   flush-on-shutdown, opt-in per-integration `applied` tracking, normalization, and (for clients)
   sampling. This is more code, more surface for bugs, and some runtime overhead on every init.
-- **Unresolved dedup identity.** Storage relies on a good key to deduplicate by, and it is not
-  yet clear that `release` (or any single field) is sufficient (see Storing). Getting this wrong
-  means either storing too much or collapsing genuinely different configurations together.
+- **Unresolved dedup identity.** Storage relies on a good key to deduplicate by. The composite key
+  (`release`+`environment`+`dist`) is coarse when `release` is absent, and the finer-grained
+  optional options hash is only as good as each SDK's hashing (and is not always present). Getting
+  this wrong means either storing too much or collapsing genuinely different configurations
+  together (see Storing).
 
 # Not in scope / Follow-up work
 
