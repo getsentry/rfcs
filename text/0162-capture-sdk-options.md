@@ -158,10 +158,11 @@ required.
   value is normalized to a sentinel, following the exact rules in
   [Options serialization rules](#options-serialization-rules) below (functions → `"[Function]"`,
   integrations → their name, other runtime constructs → a type marker).
-- **Effective config, natively shaped and nested.** The `options` block carries the SDK's final,
-  effective options (after defaults and derivation), keyed by native option names and preserving
-  the nesting the user would recognize rather than flattening it. Which of those keys the user
-  explicitly set is recorded separately in `options_set_by_user`.
+- **Effective config, natively named but flat.** The `options` block carries the SDK's final,
+  effective options (after defaults and derivation), keyed by native option names. Nested objects
+  are **flattened with dot notation** (e.g. `dataCollection.http.bodies`) rather than kept as nested
+  objects, so the structure stays flat and uniform (see the serialization rules). Which of those
+  keys the user explicitly set is recorded separately in `options_set_by_user`.
 - **Generic representation of integration options.** Integrations are user-configurable
   (`Sentry.myIntegration({ filter: 'aaa' })`), so we must capture their options generically —
   keyed by integration name, with their options normalized by the same rules. We do not need
@@ -176,9 +177,14 @@ When serializing the `options` block (and each integration's `options`), SDKs ap
 rules, top to bottom, to every value. The goal is a deterministic, primitives-only representation
 that is consistent across SDKs.
 
-- **Primitives pass through.** Strings, numbers, booleans, and `null` are emitted as-is. Arrays
-  and plain objects are emitted structurally, with each element/value serialized by these same
-  rules (nesting is preserved).
+- **Primitives pass through.** Strings, numbers, booleans, and `null` are emitted as-is. Arrays are
+  emitted as arrays, with each element serialized by these same rules.
+- **Nested objects are flattened with dot notation.** We deliberately keep the structure **flat**:
+  a nested option object is not emitted as a nested object but as dotted keys joining the path, e.g.
+  `dataCollection: { http: { bodies: true } }` becomes `"dataCollection.http.bodies": true`. The
+  same applies inside each integration's `options`. This gives a single, flat, uniform key space
+  that is easy to store, query, and normalize; the leaf values are serialized by the other rules
+  here. (Arrays are not flattened — they are kept as arrays.)
 - **Functions become `"[Function]"`.** Any callback (`beforeSend`, `tracesSampler`,
   `beforeBreadcrumb`, transport factories, etc.) is replaced by the literal string `"[Function]"`.
   SDKs MAY include the function name when readily available (`"[Function: beforeSend]"`), but the
@@ -231,6 +237,8 @@ The shape below is the **stored** payload. SDKs send everything here **except**
     "beforeSend": "[Function]",
     "tracesSampler": "[Function]",
     "denyUrls": ["https://example.com/ignore"],
+    "dataCollection.http.bodies": true,
+    "dataCollection.http.headers": false,
     "integrations": ["InboundFilters", "MyIntegration"]
   },
 
@@ -291,8 +299,8 @@ The shape below is the **stored** payload. SDKs send everything here **except**
   and version). These describe the instance producing data, complementing the raw `options`.
 - **`options`** — a normalized snapshot of the SDK's **final, effective** configuration (i.e. the
   options object the SDK actually runs with, after defaults, env-var resolution, and any
-  derived/integration-injected values), nested to mirror the user's input, with all values reduced
-  to primitives per the rules above. Sending the effective config — rather than only the literal
+  derived/integration-injected values), keyed by native names and flattened with dot notation, with
+  all values reduced to primitives per the rules above. Sending the effective config — rather than only the literal
   `init()` arguments — is what lets us answer behavior questions ("what sample rate is actually in
   effect", "is it enabled"); it also reads directly off the SDK's existing options object with no
   extra plumbing, and reflects the settled state at send time (see the debounce in Sending). The
@@ -308,9 +316,9 @@ The shape below is the **stored** payload. SDKs send everything here **except**
   the signal that lets us distinguish default values from user-set values 
   — essential for adoption analytics and setup audits, where a default value is not
   "usage". This is effectively similar to `Object.keys(options)` where `options` are the user-provided options for `Sentry.init(options)`.
-   It lists **top-level native keys only** (no nested paths); if nested
-  keys are ever needed they can be added later. Keys here always correspond to keys present in
-  `options`.
+   Keys here use the **same flattened dot-notation as `options`**, so a user-set nested value is
+  listed by its dotted leaf key (e.g. `dataCollection.http.bodies`) and always corresponds 1:1 to a
+  key present in `options`.
 - **`normalized_options`** — a **Relay-derived** subset of `options`, keyed by canonical
   cross-SDK names, produced at ingestion (see below). SDKs never send this block. Each entry maps
   a canonical key to `{ "key": <native option name>, "value": <normalized value> }`, so consumers
@@ -486,6 +494,11 @@ canonical key is the same across languages; only the native `key` differs.
 | `before_send_span`     | Whether a `before_send_span` hook is set (marker) | `beforeSendSpan` → `before_send_span` |
 | `ignore_spans`         | Span-ignore rules                | `ignoreSpans` → `ignore_spans`            |
 | `traces_sampler`       | Whether a `traces_sampler` hook is set (marker) | `tracesSampler` → `traces_sampler` |
+| `data_collection.*`    | Data-collection settings (all flattened sub-keys) | `dataCollection.*` → `data_collection.*` |
+
+A trailing `.*` (e.g. `data_collection.*`) denotes a **family of flattened sub-keys**: every dotted
+key under that path (`dataCollection.http.bodies`, `dataCollection.http.headers`, …) is normalized,
+each becoming its own `normalized_options` entry under the canonical dotted key.
 
 `release`, `environment`, and `dist` are deliberately **not** in this catalog — they are already
 promoted to first-class fields under `meta`. The catalog is intended to grow over time; the list
@@ -682,7 +695,8 @@ This falls directly out of the dedup key:
     client sampling)? What is communicated back to the SDK (e.g. `429` / `Retry-After`) and how
     does the SDK back off?
   - **Payload / size limits.** What per-item and per-envelope size limits apply, and what happens
-    when a config exceeds them — reject, or truncate (and if so, how, given nested `options`)?
+    when a config exceeds them — reject, or truncate (and if so, which flattened `options` keys to
+    drop)?
   - **Data category, quota & billing.** Which data category does it map to for
     quotas/outcomes/billing? The intent is that this is supplementary telemetry, so it most
     likely should **not** be billed like events — but that needs to be decided explicitly.
