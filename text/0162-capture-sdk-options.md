@@ -172,9 +172,9 @@ required.
 
 ## Options serialization rules
 
-When serializing the `options` block (and `integration_options`), SDKs apply the following rules,
-top to bottom, to every value. The goal is a deterministic, primitives-only representation that is
-consistent across SDKs.
+When serializing the `options` block (and each integration's `options`), SDKs apply the following
+rules, top to bottom, to every value. The goal is a deterministic, primitives-only representation
+that is consistent across SDKs.
 
 - **Primitives pass through.** Strings, numbers, booleans, and `null` are emitted as-is. Arrays
   and plain objects are emitted structurally, with each element/value serialized by these same
@@ -186,10 +186,10 @@ consistent across SDKs.
 - **Integrations are replaced by their name.** In the `options.integrations` list, each configured
   integration is serialized to its **integration name string** (e.g. `MyIntegration` →
   `"MyIntegration"`), never the integration instance/object. The integration's _own_ configured
-  options are captured separately, keyed by that same name, in the top-level `integration_options`
-  block. So `Sentry.init({ integrations: [Sentry.myIntegration({ filter: 'aaa' })] })` yields
-  `"integrations": ["MyIntegration"]` in `options` and
-  `"MyIntegration": { "filter": "aaa" }` in `integration_options`.
+  options are captured separately, keyed by that same name, in the top-level `integrations` block.
+  So `Sentry.init({ integrations: [Sentry.myIntegration({ filter: 'aaa' })] })` yields
+  `"integrations": ["MyIntegration"]` in `options` and, in the `integrations` block,
+  `"MyIntegration": { "options": { "filter": "aaa" } }`.
 - **Other runtime constructs become a type marker.** Any remaining non-serializable value (a class
   instance, stream, socket, etc.) is replaced by a bracketed type marker, e.g. `"[SomeType]"`,
   reusing each SDK's existing normalization convention (e.g. JS `normalize()`).
@@ -211,13 +211,16 @@ The shape below is the **stored** payload. SDKs send everything here **except**
   "sdk": {
     "name": "sentry.javascript.node",
     "version": "10.0.0",
-    "packages": [{ "name": "npm:@sentry/node", "version": "10.0.0" }],
-    "integrations": {
-      "InboundFilters": {},
-      "ExpressIntegration": { "applied": true },
-      "FastifyIntegration": { "applied": false },
-      "KoaIntegration": {},
-      "MyIntegration": {}
+    "packages": [{ "name": "npm:@sentry/node", "version": "10.0.0" }]
+  },
+
+  "integrations": {
+    "InboundFilters": { "options": {} },
+    "ExpressIntegration": { "applied": true, "options": {} },
+    "FastifyIntegration": { "applied": false, "options": {} },
+    "KoaIntegration": { "options": {} },
+    "MyIntegration": {
+      "options": { "filter": "aaa", "shouldLog": "[Function]" }
     }
   },
 
@@ -258,14 +261,6 @@ The shape below is the **stored** payload. SDKs send everything here **except**
     "before_send": { "key": "beforeSend", "value": "[Function]" }
   },
 
-  "integration_options": {
-    "InboundFilters": {},
-    "MyIntegration": {
-      "filter": "aaa",
-      "shouldLog": "[Function]"
-    }
-  },
-
   "_other": {}
 }
 ```
@@ -278,10 +273,19 @@ The shape below is the **stored** payload. SDKs send everything here **except**
   convention (ISO 8601 shown here; could equally be epoch seconds to match event `timestamp`).
 - **`sdk`** — SDK identity metadata: `name`, `version`, and `packages`. This is the same
   information SDKs attach to error/transaction events today; **this RFC proposes moving it
-  here** so it lives in one canonical place. It also carries the `integrations` map — the set
-  of registered integrations plus their opt-in runtime status (see below). The configured
-  _options_ of each integration live in the separate top-level `integration_options` block;
-  the `sdk.integrations` map is about integration _identity and status_.
+  here** so it lives in one canonical place. (The set of integrations, previously part of the
+  event's `sdk` object as a list of names, is captured more richly in the top-level
+  `integrations` block below.)
+- **`integrations`** — a map keyed by integration name, where each entry holds everything we know
+  about that integration in one place: its runtime status and its configured options. This
+  consolidates what would otherwise be two parallel name-keyed maps. Per entry:
+  - The **presence of the key** means the integration is registered/enabled.
+  - An optional, opt-in **`applied`** boolean records whether the integration determined at runtime
+    that it actually took effect (see "Reflecting which integrations are actually used").
+  - **`options`** is the integration's own normalized options, nested under this key so arbitrary
+    user options can never collide with well-known status keys like `applied`. Integrations with no
+    options report `"options": {}`. This is how we generically capture things like
+    `MyIntegration({ filter: 'aaa' })` without understanding any specific integration.
 - **`meta`** — well-known, general metadata that we want first-class regardless of how it was
   set: `release`, `environment`, `dist`, and runtime/platform information (e.g. runtime name
   and version). These describe the instance producing data, complementing the raw `options`.
@@ -292,8 +296,9 @@ The shape below is the **stored** payload. SDKs send everything here **except**
   `init()` arguments — is what lets us answer behavior questions ("what sample rate is actually in
   effect", "is it enabled"); it also reads directly off the SDK's existing options object with no
   extra plumbing, and reflects the settled state at send time (see the debounce in Sending). The
-  `integrations` option is represented here as a list of names; the details live in the dedicated
-  `integration_options` block to avoid duplicating (and bloating) the raw options. Sensitive data
+  `integrations` option is represented here as a list of names; each integration's identity,
+  runtime status, and configured options live in the dedicated top-level `integrations` block, to
+  avoid duplicating (and bloating) the raw options. Sensitive data
   (especially tokens and other secrets) is **primarily scrubbed server-side**; SDKs **MAY**
   additionally scrub values they know to be sensitive (e.g. a field that always holds a secret),
   but this is a best-effort defense-in-depth measure — SDKs do **not** attempt to guarantee
@@ -311,9 +316,6 @@ The shape below is the **stored** payload. SDKs send everything here **except**
   a canonical key to `{ "key": <native option name>, "value": <normalized value> }`, so consumers
   can compare the same option across SDKs while still seeing what it was called natively. Whether
   the user set it is answered the same way as for any other option — via `options_set_by_user`.
-- **`integration_options`** — a map of integration name → its normalized options. This is how
-  we generically capture things like `MyIntegration({ filter: 'aaa' })` without understanding
-  any specific integration. Integrations with no options serialize to `{}`.
 - **`_other`** — a free-form, SDK-defined bucket for anything not covered by the well-known
   fields above. The leading underscore signals that this is arbitrary, unstructured data.
   Keeps the schema forward-compatible: SDKs can record additional data without a schema change,
@@ -346,6 +348,32 @@ The trade-off is that provenance is not co-located with each value (you look it 
 reading it inline), and the array is top-level-only. Both are acceptable given how much simpler
 this keeps the SDK side and the schema.
 
+### Known limitation: user-provided _form_ is not preserved
+
+Because we send the **effective** options, we lose information when the user expressed a value in a
+form that the SDK coerces into something else before it lands on the effective options. The value
+we report is the coerced result, and `options_set_by_user` only tells us the option _was_ set — not
+_how_ it was written. Concretely: a user can pass `integrations` as either an array or a
+**function** (`(defaults) => Integration[]`), but the client always ends up holding a resolved
+array — so we cannot tell, from the payload, whether the user configured integrations via a
+function. We therefore cannot answer questions like "how many users pass `integrations` as a
+function".
+
+We accept this limitation for now:
+
+- **It is rare.** In the JS SDK, the option type system pins genuine user-vs-effective _shape_
+  divergence to essentially two options: `integrations` (array-or-function → array) and
+  `stackParser` (array-or-function → function). Everything else keeps the same shape; only defaults
+  or env values get filled in, which the effective `options` already captures faithfully.
+- **`integrations` is the main case that matters**, and even there the question ("was it a
+  function?") is a nice-to-have, not core to the primary use cases.
+
+If we later decide this signal is worth capturing, we can layer it on **without reworking the
+shape** — e.g. an optional, sparse `options_user_provided` block that records the user-provided
+(serialized) value _only_ for the few keys whose provided form differs from the effective one (so
+it would carry `{ "integrations": "[Function]" }` and otherwise be empty). We deliberately leave
+that out of the initial design and revisit it only if a concrete need arises.
+
 ## Reflecting which integrations are actually used
 
 Knowing which integrations are _registered_ is not the same as knowing which are actually
@@ -355,17 +383,14 @@ typically uses only one of them. For analytics and audits we care about the diff
 between "this integration is present because it ships by default" and "this integration is
 actually instrumenting this app".
 
-To capture this generically without enumerating every integration, `sdk.integrations` is a
-map keyed by integration name, where the value is a small, **opt-in** status object:
+This is captured generically, without enumerating any specific integration, via the `applied` key
+on each entry of the top-level `integrations` map:
 
 - The **presence of a key** means the integration is registered/enabled.
 - An optional **`applied`** boolean means the integration determined at runtime whether it
   actually took effect. `ExpressIntegration` sets `applied: true` once it successfully patches
   Express; a defaulted integration whose target framework is absent can report
-  `applied: false`. An integration that reports nothing leaves its value as `{}` (`applied`
-  simply absent / unknown). We chose `applied` over `active` because "active" reads as
-  enabled/disabled — which the key's mere presence already conveys — whereas `applied` names the
-  distinct signal we want: the integration ran and took effect at runtime.
+  `applied: false`. An integration that reports nothing simply omits `applied` (absent / unknown).
 
 Key properties of this design:
 
@@ -374,8 +399,9 @@ Key properties of this design:
 - **Opt-in and non-exhaustive.** Integrations are not required to report status. We selectively
   push this into the integrations where the signal is valuable to us (e.g. the framework
   integrations), and leave the rest unreported.
-- **Distinct from options.** This map carries identity/status only; configured options remain
-  in the top-level `integration_options` block.
+- **Namespaced from options.** `applied` (and any future status key) sits at the top of the entry,
+  while the integration's own configured options are nested under the entry's `options` key, so
+  the two never collide.
 
 Note there is a timing implication: `applied` is often only known slightly after `init()` (once
 instrumentation runs), which influences _when_ the payload is sent or updated. This is
