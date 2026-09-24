@@ -251,6 +251,8 @@ The shape below is the **stored** payload. SDKs send everything here **except**
     "denyUrls"
   ],
 
+  "options_hash": "9f2c1a7e",
+
   "normalized_options": {
     "sample_rate": { "key": "sampleRate", "value": 1.0 },
     "traces_sample_rate": { "key": "tracesSampleRate", "value": 0.2 },
@@ -319,6 +321,15 @@ The shape below is the **stored** payload. SDKs send everything here **except**
    Keys here use the **same flattened dot-notation as `options`**, so a user-set nested value is
   listed by its dotted leaf key (e.g. `dataCollection.http.bodies`) and always corresponds 1:1 to a
   key present in `options`.
+- **`options_hash`** (optional) — an SDK-computed hash of the options that is **stable across
+  instances sharing the same configuration** (same config → same hash). It is the optional
+  component of the dedup key: when present, the server folds it in so genuinely different configs
+  within the same `release`+`environment`+`dist` are stored as distinct records; when absent, dedup
+  falls back to the composite key alone. If an SDK sets it, the **same value must also be stamped on
+  every event** (attribute on spans/logs, context field on errors/transactions) so events correlate
+  exactly to their config. See [Storing](#storing) for the full rules and caveats. We recommend
+  hashing the normalized options, but SDKs may use another stable strategy; it need not be
+  comparable across SDKs.
 - **`normalized_options`** — a **Relay-derived** subset of `options`, keyed by canonical
   cross-SDK names, produced at ingestion (see below). SDKs never send this block. Each entry maps
   a canonical key to `{ "key": <native option name>, "value": <normalized value> }`, so consumers
@@ -640,10 +651,10 @@ The optional hash exists to address exactly that last weakness.
 
 #### The optional SDK-set options hash
 
-SDKs **MAY** additionally set a **hash of their options that is stable across instances sharing the
-same configuration** (same config → same hash; the hash changes when the config changes). When a
-payload carries this hash, **the server includes it in the dedup key**; when it is absent, dedup
-falls back to the composite key alone.
+SDKs **MAY** additionally set the `options_hash` field on the `sdk_config` payload — a **hash of
+their options that is stable across instances sharing the same configuration** (same config → same
+hash; the hash changes when the config changes). When a payload carries this hash, **the server
+includes it in the dedup key**; when it is absent, dedup falls back to the composite key alone.
 
 Including the hash means two instances with the same release+environment+dist but genuinely
 different options (different hash) are stored as **distinct records** — so within-release variation
