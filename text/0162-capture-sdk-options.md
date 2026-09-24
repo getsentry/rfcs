@@ -214,16 +214,6 @@ The shape below is the **stored** payload. SDKs send everything here **except**
     "packages": [{ "name": "npm:@sentry/node", "version": "10.0.0" }]
   },
 
-  "integrations": {
-    "InboundFilters": { "options": {} },
-    "ExpressIntegration": { "applied": true, "options": {} },
-    "FastifyIntegration": { "applied": false, "options": {} },
-    "KoaIntegration": { "options": {} },
-    "MyIntegration": {
-      "options": { "filter": "aaa", "shouldLog": "[Function]" }
-    }
-  },
-
   "meta": {
     "release": "my-app@1.2.3",
     "environment": "production",
@@ -259,6 +249,16 @@ The shape below is the **stored** payload. SDKs send everything here **except**
     "send_default_pii": { "key": "sendDefaultPii", "value": true },
     "debug": { "key": "debug", "value": false },
     "before_send": { "key": "beforeSend", "value": "[Function]" }
+  },
+
+  "integrations": {
+    "InboundFilters": { "options": {} },
+    "ExpressIntegration": { "applied": true, "options": {} },
+    "FastifyIntegration": { "applied": false, "options": {} },
+    "KoaIntegration": { "options": {} },
+    "MyIntegration": {
+      "options": { "filter": "aaa", "shouldLog": "[Function]" }
+    }
   },
 
   "_other": {}
