@@ -139,7 +139,7 @@ The key fields (see [Appendix A](#appendix-a-payload-details) for all fields and
 - **`options`:** the **effective** configuration that the SDK runs with (after defaults, environment
   variables, and derived values), under native option names. Values are reduced to JSON primitives:
   nested objects become dot-notation keys, callbacks become `"[Function]"`, and integrations move to
-  the `integrations` block.
+  the `integrations` block. Option names should reflect the names a user would use to set the values.
 - **`options_set_by_user`:** the keys that the user explicitly set in `init()`, to tell actual usage
   apart from defaults.
 - **`integrations`:** the serialized options of each registered integration, plus an optional
@@ -249,10 +249,11 @@ when `release` is unset.
 - `meta`: `release`, `environment`, `dist`, and runtime information, regardless of how they were set.
 - `options_set_by_user`: uses the flattened keys of `options`; each key corresponds 1:1 to a key in
   `options`.
-- `integrations`: each integration's options are nested under `options`, so they cannot collide with
+- `integrations`: each integration's options are optionally nested under `options`, so they cannot collide with
   status keys. `applied` is `true` if the integration took effect (e.g. patched Express), `false` if
   not (e.g. its framework is absent), and omitted if unknown. It is opt-in, added where the signal is
-  useful, such as framework integrations.
+  useful, such as framework integrations. `options` MAY also be omitted if no options are sent, 
+  if they are hard to access in a given SDK, or if they are low-value.
 - `normalized_options`: entries are `{ "key": <native name>, "value": <effective value> }`; whether
   the user set an option is checked in `options_set_by_user`.
 - `_other`: free-form, SDK-specific data; useful keys can later become first-class fields.
@@ -262,6 +263,7 @@ deterministic and consistent across SDKs:
 
 1. Primitives are sent unchanged. Arrays stay arrays, with each element serialized by these same
    rules.
+   a. An SDK MAY normalize specific options if it makes sense, e.g. stripping out user-specific paths or similar.
 2. Nested objects are flattened: `dataCollection: { http: { bodies: true } }` becomes
    `"dataCollection.http.bodies": true`.
 3. Functions become `"[Function]"`. SDKs MAY include the name (`"[Function: beforeSend]"`), but
