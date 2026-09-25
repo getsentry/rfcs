@@ -317,15 +317,17 @@ The shape below is the **stored** payload. SDKs send everything here **except**
    Keys here use the **same flattened dot-notation as `options`**, so a user-set nested value is
   listed by its dotted leaf key (e.g. `dataCollection.http.bodies`) and always corresponds 1:1 to a
   key present in `options`.
-- **`options_hash`** (optional) — an SDK-computed hash of the options that is **stable across
-  instances sharing the same configuration** (same config → same hash). It is the optional
-  component of the dedup key: when present, the server folds it in so genuinely different configs
-  within the same `release`+`environment`+`dist` are stored as distinct records; when absent, dedup
-  falls back to the composite key alone. If an SDK sets it, the **same value must also be stamped on
-  every event** (attribute on spans/logs, context field on errors/transactions) so events correlate
-  exactly to their config. See [Storing](#storing) for the full rules and caveats. It is computed
-  off the normalized `options` block (the serialized options as defined in the serialization rules),
-  which makes it deterministic and stable across instances; it need not be comparable across SDKs.
+- **`options_hash`** — an SDK-computed hash of the options that is **stable across
+  instances sharing the same configuration** (same config → same hash). SDKs **MUST** compute and
+  send it, and **MUST** stamp the **same value on every event** (attribute on spans/logs, context
+  field on errors/transactions) so events correlate exactly to their config. It is the fine-grained
+  component of the dedup key: the server folds it in so genuinely different configs within the same
+  `release`+`environment`+`dist` are stored as distinct records. See [Storing](#storing) for the
+  full rules and caveats, including the correlation fallback when no matching stored config exists.
+  It is computed off the serialized `options` & `integrations` blocks (both normalized
+  by the same [serialization rules](#options-serialization-rules)), so a change to either — including
+  an integration's own options or its `applied` status — produces a different hash. This makes it
+  deterministic and stable across instances; it does not need to be comparable across SDKs.
 - **`normalized_options`** — a **Relay-derived** subset of `options`, keyed by canonical
   cross-SDK names, produced at ingestion (see below). SDKs never send this block. Each entry maps
   a canonical key to `{ "key": <native option name>, "value": <normalized value> }`, so consumers
@@ -621,16 +623,43 @@ Persist every payload we receive as its own record.
 
 Store one record per distinct configuration and discard the rest. The vast majority of incoming
 payloads are duplicates, so dedup is what keeps this feature affordable. The question is what counts
-as a "distinct configuration" — i.e. what we deduplicate by. We propose a **single dedup key with an
-optional component**:
+as a "distinct configuration" — i.e. what we deduplicate by. We propose a **dedup key built from the
+SDK-set options hash, with the composite natural key as a fallback**:
 
-> **`release` + `environment` + `dist` + (optional) SDK-set options hash.**
+> **SDK-set options hash (primary) + `release` + `environment` + `dist` (fallback).**
 
-#### The composite natural key (`release` + `environment` + `dist`)
+#### The required SDK-set options hash
 
-This is the always-available baseline. Release alone is **not** sufficient — configuration can
-legitimately differ across environments and builds within the same release (per-environment
-options, per-deployment overrides, env-var-driven values) — so the minimum key is
+SDKs **MUST** set the `options_hash` field on the `sdk_config` payload — a **hash of their options
+that is stable across instances sharing the same configuration** (same config → same hash; the hash
+changes when the config changes). The server uses it as the primary dedup key, so two instances with
+the same release+environment+dist but genuinely different options (different hash) are stored as
+**distinct records** — within-release variation and drift are visible instead of being collapsed
+into the first-seen config.
+
+- **The hash is computed off both the serialized `options` block and the `integrations` block**,
+  each normalized by the same [serialization rules](#options-serialization-rules). Since integrations
+  no longer live in `options`, they must be folded into the hash explicitly and in the same way as
+  the options — so a change to which integrations are registered, to an integration's own options, or
+  to its `applied` status yields a different hash. This makes it deterministic and
+  stable: it is **identical across instances that share a configuration** and **differs when the
+  configuration differs**. It does not need to be comparable _across_ SDKs, so the specific hash
+  algorithm is up to each SDK.
+- **The hash is computed SDK-side, by design.** Otherwise, we cannot reliably relate events to their
+  respective config.
+- **The hash MUST also be attached to every event the SDK produces**, so events can be
+  correlated back to the exact config that produced them:
+  - as an **attribute** on spans, logs, and other attribute-carrying items. We propose `sentry.config_hash` as a semantic attribute.
+  - as a **context field** on error and transaction events. We propose `sdk_config.hash` as a new context with a single field for now.
+
+#### The composite natural key (`release` + `environment` + `dist`) — fallback
+
+Although the hash is required on the wire, a matching stored `sdk_config` record is **not
+guaranteed** to exist for a given event's hash (see the caveats below — the config may have been
+dropped, sampled out, or stamped before it settled). For those cases we keep the composite natural
+key as a fallback lookup. Release alone is **not** sufficient — configuration can legitimately
+differ across environments and builds within the same release (per-environment options,
+per-deployment overrides, env-var-driven values) — so the fallback key is
 `release` + `environment` + `dist`.
 
 - It is **bounded and predictable** (roughly one record per tuple), **human-readable and directly
@@ -640,44 +669,22 @@ options, per-deployment overrides, env-var-driven values) — so the minimum key
   `production`), `dist` is normally absent, so `release` is the load-bearing part — and it has **no
   default** and is frequently unset. When it is, the key degrades to roughly `environment` alone
   (almost always `production`), collapsing distinct configs into one bucket. It is also blind to
-  differences _within_ a tuple: two instances sharing release+environment+dist but differing in some
-  option are stored as one (first-seen) record, so genuine variation is silently lost.
-
-The optional hash exists to address exactly that last weakness.
-
-#### The optional SDK-set options hash
-
-SDKs **MAY** additionally set the `options_hash` field on the `sdk_config` payload — a **hash of
-their options that is stable across instances sharing the same configuration** (same config → same
-hash; the hash changes when the config changes). When a payload carries this hash, **the server
-includes it in the dedup key**; when it is absent, dedup falls back to the composite key alone.
-
-Including the hash means two instances with the same release+environment+dist but genuinely
-different options (different hash) are stored as **distinct records** — so within-release variation
-and drift become visible instead of being collapsed into the first-seen config.
-
-- **The hash is computed off the serialized options block as defined
-  in the [serialization rules](#options-serialization-rules) — which makes it deterministic and
-  stable: it is **identical across instances that share a configuration** and **differs when the
-  configuration differs**. It does not need to be comparable _across_ SDKs, so the specific hash
-  algorithm is up to each SDK.
-- **The hash is computed SDK-side, by design.** Otherwise, we cannot reliable relate events to their respective config.
-- **If a hash is used, it MUST also be attached to every event the SDK produces**, so events can be
-  correlated back to the exact config that produced them:
-  - as an **attribute** on spans, logs, and other attribute-carrying items. We propose `sentry.config_hash` as a semantic attribute.
-  - as a **context field** on error and transaction events. We propose `sdk_config.hash` as a new context with a single field for now.
+  differences _within_ a tuple: instances sharing release+environment+dist but differing in some
+  option resolve to one (first-seen) record, so genuine variation is not distinguishable at this
+  level. This is exactly why the hash is the primary key and this is only the fallback.
 
 #### Correlating an event to its config
 
 This falls directly out of the dedup key:
 
-- **Without a hash:** correlate via the composite key the event already carries
+- **By hash (primary):** correlation is **exact** — the event's stamped hash matches exactly one
+  stored `sdk_config` record. This is the whole reason the hash must also live on events.
+- **By composite key (fallback):** when no stored config matches the event's hash — or the event
+  carries no hash yet (see Timing below) — correlate via the composite key the event already carries
   (`release` + `environment` + `dist`). This is free and needs no event changes, but is only
   **bucket-level** — if config varied within the tuple, the event resolves to the bucket (a single
   first-seen record, or the set of stored variants), not necessarily the exact config that produced
   it.
-- **With a hash:** correlation is **exact** — the event's stamped hash matches exactly one stored
-  `sdk_config` record. This is the whole reason the hash must also live on events.
 
 #### Trade-offs and caveats of the hash
 
@@ -710,10 +717,10 @@ This falls directly out of the dedup key:
     likely should **not** be billed like events — but that needs to be decided explicitly.
   - **Outcomes / observability.** How are dropped or rejected `sdk_config` items recorded
     (outcomes, reasons) so we can see ingestion health for this new type?
-- **Finalizing the dedup key.** (See [Storing](#storing) above.) We recommend
-  `release` + `environment` + `dist` plus an optional SDK-set options hash, but the exact field set,
-  the fallback for the common release-less case, and what SDKs should hash (and how they keep it
-  stable) still need to be nailed down.
+- **Finalizing the dedup key.** (See [Storing](#storing) above.) We recommend a required SDK-set
+  options hash as the primary key, with `release` + `environment` + `dist` as the fallback lookup,
+  but the exact field set, the fallback behavior when no stored config matches an event's hash, and
+  what SDKs should hash (and how they keep it stable) still need to be nailed down.
 
 # Drawbacks
 
@@ -728,10 +735,10 @@ This falls directly out of the dedup key:
   ingestion load, a new storage model, and server-side processing that did not exist before.
 - **Data may be incomplete or misleading.** The techniques that keep volume down also reduce
   fidelity: client sampling can under-sample or miss low-traffic releases and rare
-  configurations, and when no options hash is set, dedup keeps only the first-seen config per
-  `release`+`environment`+`dist` bucket even when config actually varies within it. Decisions made
-  on this data (e.g. deprecating an option that "looks unused") could be based on a
-  non-representative picture.
+  configurations, and when an event has to fall back to the composite key (no stored config matches
+  its hash), it resolves only to the first-seen config per `release`+`environment`+`dist` bucket even
+  when config actually varies within it. Decisions made on this data (e.g. deprecating an option that
+  "looks unused") could be based on a non-representative picture.
 - **Lossy representation of runtime options.** Reducing callbacks to `"[Function]"` tells us a
   `beforeSend`/`tracesSampler` exists but nothing about what it does. For audit-style use cases
   ("warn about confusing behavior") this is a hard limit — we can see that filtering is
@@ -743,11 +750,10 @@ This falls directly out of the dedup key:
 - **Added SDK complexity and runtime cost.** Every SDK gains new machinery: debounced sending,
   flush-on-shutdown, opt-in per-integration `applied` tracking, normalization, and (for clients)
   sampling. This is more code, more surface for bugs, and some runtime overhead on every init.
-- **Unresolved dedup identity.** Storage relies on a good key to deduplicate by. The composite key
-  (`release`+`environment`+`dist`) is coarse when `release` is absent, and the finer-grained
-  optional options hash is only as good as each SDK's hashing (and is not always present). Getting
-  this wrong means either storing too much or collapsing genuinely different configurations
-  together (see Storing).
+- **Unresolved dedup identity.** Storage relies on a good key to deduplicate by. The required options
+  hash is only as good as each SDK's hashing, and the composite fallback key
+  (`release`+`environment`+`dist`) is coarse when `release` is absent. Getting this wrong means
+  either storing too much or collapsing genuinely different configurations together (see Storing).
 
 # Not in scope / Follow-up work
 
