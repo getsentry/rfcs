@@ -660,7 +660,7 @@ Including the hash means two instances with the same release+environment+dist bu
 different options (different hash) are stored as **distinct records** — so within-release variation
 and drift become visible instead of being collapsed into the first-seen config.
 
-- **The hash is computed off the normalized `options`** — the serialized options block as defined
+- **The hash is computed off the serialized options block as defined
   in the [serialization rules](#options-serialization-rules) — which makes it deterministic and
   stable: it is **identical across instances that share a configuration** and **differs when the
   configuration differs**. It does not need to be comparable _across_ SDKs, so the specific hash
