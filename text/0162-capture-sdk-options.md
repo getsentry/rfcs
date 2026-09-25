@@ -211,6 +211,7 @@ The shape below is the **stored** payload. SDKs send everything here **except**
 
 ```json
 {
+  "version": 1,
   "timestamp": "2026-09-21T12:00:00Z",
 
   "sdk": {
@@ -275,6 +276,13 @@ The shape below is the **stored** payload. SDKs send everything here **except**
 
 ## Fields
 
+- **`version`** — the schema version of the `sdk_config` payload itself, as an integer starting at
+  `1`. This is distinct from the SDK version (`sdk.version`) and the item-type name; it versions the
+  _shape_ described here. It lets us evolve the payload — add, rename, or restructure fields, or
+  change the serialization/normalization rules — in a way the server can detect and handle
+  explicitly (route to the right parser, migrate on read, or reject unknown majors) rather than
+  guessing from the field set. We bump it only for changes that a consumer must know about;
+  purely additive, forward-compatible fields (e.g. new `_other` keys) do not require a bump.
 - **`timestamp`** — when the payload was generated/sent by the SDK. We need to know when a
   configuration was reported, both to order records and to track configuration changes over
   time (e.g. "you changed your filtering rules in May"). Format follows the existing Sentry
