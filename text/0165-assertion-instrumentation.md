@@ -1,6 +1,6 @@
 - Start Date: 2026-09-25
 - RFC Type: feature
-- RFC PR: <link once opened>
+- RFC PR: https://github.com/getsentry/rfcs/pull/165
 - RFC Status: draft
 - RFC Author: @antonis
 - RFC Approver: <TBD, Mobile/SDK TSC>
