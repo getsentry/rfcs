@@ -327,9 +327,9 @@ The shape below is the **stored** payload. SDKs send everything here **except**
   within the same `release`+`environment`+`dist` are stored as distinct records; when absent, dedup
   falls back to the composite key alone. If an SDK sets it, the **same value must also be stamped on
   every event** (attribute on spans/logs, context field on errors/transactions) so events correlate
-  exactly to their config. See [Storing](#storing) for the full rules and caveats. We recommend
-  hashing the normalized options, but SDKs may use another stable strategy; it need not be
-  comparable across SDKs.
+  exactly to their config. See [Storing](#storing) for the full rules and caveats. It is computed
+  off the normalized `options` block (the serialized options as defined in the serialization rules),
+  which makes it deterministic and stable across instances; it need not be comparable across SDKs.
 - **`normalized_options`** — a **Relay-derived** subset of `options`, keyed by canonical
   cross-SDK names, produced at ingestion (see below). SDKs never send this block. Each entry maps
   a canonical key to `{ "key": <native option name>, "value": <normalized value> }`, so consumers
@@ -660,10 +660,11 @@ Including the hash means two instances with the same release+environment+dist bu
 different options (different hash) are stored as **distinct records** — so within-release variation
 and drift become visible instead of being collapsed into the first-seen config.
 
-- **We recommend hashing the (normalized) options** to produce this value, but SDKs **MAY** choose a
-  different hashing strategy if it makes more sense for them. The only hard requirement is
-  stability: the hash must be **identical across instances that share a configuration** and
-  **differ when the configuration differs**. It does not need to be comparable _across_ SDKs.
+- **The hash is computed off the normalized `options`** — the serialized options block as defined
+  in the [serialization rules](#options-serialization-rules) — which makes it deterministic and
+  stable: it is **identical across instances that share a configuration** and **differs when the
+  configuration differs**. It does not need to be comparable _across_ SDKs, so the specific hash
+  algorithm is up to each SDK.
 - **The hash is computed SDK-side, by design.** Otherwise, we cannot reliable relate events to their respective config.
 - **If a hash is used, it MUST also be attached to every event the SDK produces**, so events can be
   correlated back to the exact config that produced them:
