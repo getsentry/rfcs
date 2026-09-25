@@ -274,6 +274,14 @@ The shape below is the **stored** payload. SDKs send everything here **except**
 }
 ```
 
+> **Note on EAP storage.** EAP (our events analytics platform) prefers a single top-level
+> `attributes` field with everything nested inside it, rather than the multiple structured top-level
+> blocks shown above. If we need to conform to that, we would have to adapt this shape into a semantic
+> attribute shape with JSON-valued fields — e.g. `options` becomes one attribute (a JSON blob),
+> `integrations` another, and so on — and make sure we can still **query effectively** across those
+> JSON attributes (filtering on a specific option, a normalized key, or the options hash). Whether we
+> store in EAP and thus adopt this shape is an open question to resolve with the ingest/storage design.
+
 ## Fields
 
 - **`version`** — the schema version of the `sdk_config` payload itself, as an integer starting at
