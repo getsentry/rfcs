@@ -156,7 +156,7 @@ required.
   callback's implementation, only that _a user-defined callback was set_. Any non-serializable
   value is normalized to a sentinel, following the exact rules in
   [Options serialization rules](#options-serialization-rules) below (functions → `"[Function]"`,
-  integrations → their name, other runtime constructs → a type marker).
+  other runtime constructs → a type marker).
 - **Effective config, natively named but flat.** The `options` block carries the SDK's final,
   effective options (after defaults and derivation), keyed by native option names. Nested objects
   are **flattened with dot notation** (e.g. `dataCollection.http.bodies`) rather than kept as nested
@@ -188,13 +188,13 @@ that is consistent across SDKs.
   `beforeBreadcrumb`, transport factories, etc.) is replaced by the literal string `"[Function]"`.
   SDKs MAY include the function name when readily available (`"[Function: beforeSend]"`), but the
   bare `"[Function]"` marker is the required baseline — consumers must not depend on the name.
-- **Integrations are replaced by their name.** In the `options.integrations` list, each configured
-  integration is serialized to its **integration name string** (e.g. `MyIntegration` →
-  `"MyIntegration"`), never the integration instance/object. The integration's _own_ configured
-  options are captured separately, keyed by that same name, in the top-level `integrations` block.
-  So `Sentry.init({ integrations: [Sentry.myIntegration({ filter: 'aaa' })] })` yields
-  `"integrations": ["MyIntegration"]` in `options` and, in the `integrations` block,
-  `"MyIntegration": { "options": { "filter": "aaa" } }`.
+- **Integrations are omitted from `options` entirely.** The `integrations` option is not emitted in
+  the `options` block at all — everything we capture about integrations (their identity, runtime
+  status, and own configured options) lives in the dedicated top-level `integrations` block, keyed by
+  integration name. So `Sentry.init({ integrations: [Sentry.myIntegration({ filter: 'aaa' })] })`
+  yields no `integrations` key in `options`, and in the `integrations` block
+  `"MyIntegration": { "options": { "filter": "aaa" } }`. This avoids duplicating the integration
+  data in two places.
 - **Other runtime constructs become a type marker.** Any remaining non-serializable value (a class
   instance, stream, socket, etc.) is replaced by a bracketed type marker, e.g. `"[SomeType]"`,
   reusing each SDK's existing normalization convention (e.g. JS `normalize()`).
@@ -237,8 +237,7 @@ The shape below is the **stored** payload. SDKs send everything here **except**
     "tracesSampler": "[Function]",
     "denyUrls": ["https://example.com/ignore"],
     "dataCollection.http.bodies": true,
-    "dataCollection.http.headers": false,
-    "integrations": ["InboundFilters", "MyIntegration"]
+    "dataCollection.http.headers": false
   },
 
   "options_set_by_user": [
@@ -304,10 +303,8 @@ The shape below is the **stored** payload. SDKs send everything here **except**
   all values reduced to primitives per the rules above. Sending the effective config — rather than only the literal
   `init()` arguments — is what lets us answer behavior questions ("what sample rate is actually in
   effect", "is it enabled"); it also reads directly off the SDK's existing options object with no
-  extra plumbing, and reflects the settled state at send time (see the debounce in Sending). The
-  `integrations` option is represented here as a list of names; each integration's identity,
-  runtime status, and configured options live in the dedicated top-level `integrations` block, to
-  avoid duplicating (and bloating) the raw options. Sensitive data
+  extra plumbing, and reflects the settled state at send time (see the debounce in Sending). `integrations` are omitted here. 
+  Sensitive data
   (especially tokens and other secrets) is **primarily scrubbed server-side**; SDKs **MAY**
   additionally scrub values they know to be sensitive (e.g. a field that always holds a secret),
   but this is a best-effort defense-in-depth measure — SDKs do **not** attempt to guarantee
@@ -373,9 +370,9 @@ form that the SDK coerces into something else before it lands on the effective o
 we report is the coerced result, and `options_set_by_user` only tells us the option _was_ set — not
 _how_ it was written. Concretely: a user can pass `integrations` as either an array or a
 **function** (`(defaults) => Integration[]`), but the client always ends up holding a resolved
-array — so we cannot tell, from the payload, whether the user configured integrations via a
-function. We therefore cannot answer questions like "how many users pass `integrations` as a
-function".
+array — which is what the top-level `integrations` block reflects — so we cannot tell, from the
+payload, whether the user configured integrations via a function. We therefore cannot answer
+questions like "how many users pass `integrations` as a function".
 
 We accept this limitation for now:
 
