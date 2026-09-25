@@ -18,6 +18,8 @@ A working React Native reference implementation (Metro/Babel) exists in getsentr
 
 # Motivation
 
+A React Native app crashes in a release build. The stack trace ends inside an `invariant` call with a minified error code and no message, so nobody can tell which invariant broke or with what values. The check the developer wrote to catch exactly this case ran, but its meaning was stripped.
+
 Developers write assertions to encode invariants, then the toolchain deletes that intent before it reaches production, which is where it matters most:
 
 * JS/RN: `invariant` and `console.assert` are dead-code-eliminated from release bundles.
@@ -80,18 +82,7 @@ An SDK implements Part B only if both hold:
 1. The ecosystem has an idiomatic assertion mechanism that is stripped or disabled in release.
 2. The SDK already owns a build-instrumentation pathway, so marginal cost is low.
 
-| SDK | Fit | Why |
-|---|---|---|
-| Android (Java/Kotlin) | Strongest | `assert` off without `-ea`; gradle plugin already does bytecode weaving |
-| React Native | Strong | idioms stripped by DCE; Metro/Babel (reference impl) |
-| Flutter/Dart | Strong | `assert` stripped in release; Dart build hooks |
-| .NET / MAUI / Unity | Strong | `Debug.Assert` removed in Release; Roslyn/IL tooling |
-| Cocoa/Swift | Medium | idiomatic but only Swift macros, opt-in not existing sites |
-| Browser/Node JS | Medium | bundler DCE; Node `assert` already throws |
-| Python | Low | `assert` stripped, but AST/import hooks are invasive |
-| Go | N/A | no assert idiom |
-
-Rollout: RN (pilot, done), then Android, Flutter, .NET. Part A ships first and independently.
+By this test the strong fits are RN (pilot, done), Android, Flutter, and .NET. Part A ships first and independently. See [Appendix A](#appendix-a-part-b-sdk-fit) for the per-SDK assessment.
 
 # Open problems
 
@@ -115,3 +106,16 @@ Rollout: RN (pilot, done), then Android, Flutter, .NET. Part A ships first and i
 
 * [RFC 0062](https://github.com/getsentry/rfcs/blob/main/text/0062-controlling-pii-and-credentials-in-sd-ks.md), [RFC 0038](https://github.com/getsentry/rfcs/blob/main/text/0038-scrubbing-sensitive-data.md): PII and data scrubbing.
 * [RFC 0148](https://github.com/getsentry/rfcs/blob/main/text/0148-logs-for-crashes.md): logs for crashes, which informed the events-vs-logs decision.
+
+# Appendix A: Part B SDK fit
+
+| SDK | Fit | Why |
+|---|---|---|
+| Android (Java/Kotlin) | Strongest | `assert` off without `-ea`; gradle plugin already does bytecode weaving |
+| React Native | Strong | idioms stripped by DCE; Metro/Babel (reference impl) |
+| Flutter/Dart | Strong | `assert` stripped in release; Dart build hooks |
+| .NET / MAUI / Unity | Strong | `Debug.Assert` removed in Release; Roslyn/IL tooling |
+| Cocoa/Swift | Medium | idiomatic but only Swift macros, opt-in not existing sites |
+| Browser/Node JS | Medium | bundler DCE; Node `assert` already throws |
+| Python | Low | `assert` stripped, but AST/import hooks are invasive |
+| Go | N/A | no assert idiom |
