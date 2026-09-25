@@ -569,6 +569,15 @@ reports, if applicable. If the process dies before the first flush opportunity, 
 simply not sent for that invocation — acceptable given these instances are typically
 numerous and short, and an equivalent instance will report.
 
+**Periodic re-send for long-lived processes.** Sending the config exactly once per init assumes the
+one send reliably lands. That may not hold: if Relay **cannot guarantee that a `200` response means
+the `sdk_config` was actually accepted and persisted** (e.g. it is dropped later in the pipeline, lost
+to a transient downstream failure, sampled, or rate-limited after the ack), a long-lived server that
+sent once at startup and then ran for days would show **no config at all** — a single lost send
+becomes a permanent gap for the whole lifetime of that process. To bound that risk, server SDKs
+**MAY periodically re-send** the (unchanged) config on a slow cadence — e.g. **once an hour** — so a
+missed send self-heals on the next interval instead of being lost until the next restart.
+
 ## Sending — Client SDKs (browser, mobile, gaming)
 
 Client SDKs are trickier. Unlike a server process — where one long-lived instance can send a
@@ -602,6 +611,33 @@ small sample is enough to reconstruct the config for a release.
   volume — a high-traffic release is well covered, a low-traffic one (or a rarely-hit
   configuration) may be under-sampled or missed entirely. It also adds configuration surface and
   is harder to reason about and test than a deterministic approach.
+
+### Option III: Piggyback on the first outgoing envelope
+
+Rather than sending the `sdk_config` payload as its own request, **attach it as an additional item on
+the first envelope the SDK sends anyway** (the first error, transaction, span, log, etc.). No traffic
+means no `sdk_config`; as soon as the instance sends its first real payload, the config rides along in
+the same envelope. This is a cross-cutting transport strategy — it can be combined with the
+send-on-every-init or sampling decision above, and it applies equally to **server SDKs** (as an
+alternative to the standalone debounced send).
+
+- **Benefits:** **Saves an extra request** — the config is delivered on an envelope that was already
+  going out, adding no network round-trip. It also naturally scopes reporting to instances that
+  actually produce data (an instance that never sends anything never sends its config either, which is
+  often exactly what we want).
+- **Disadvantages:**
+  - **Trickier to implement.** The SDK has to hold the (possibly not-yet-finalized) config and hook
+    into envelope construction to append it to the first outgoing envelope, rather than just
+    scheduling a self-contained send.
+  - **The first event can fire before the config has settled.** If the first error/span/log is
+    emitted very early — before the debounce/settle window (see the `applied` and async-detection
+    timing above) — the SDK either has to attach an incomplete snapshot, or delay/skip attaching to
+    that first envelope and wait for a later one, which erodes the "one extra-free send" benefit.
+  - **Instances that never send an event are invisible.** If nothing is ever sent — including the
+    case where a **misconfiguration prevents any event from being sent at all** — the config is never
+    reported. That is precisely one of the situations we most want visibility into ("is this set up
+    wrong?"), and this approach cannot surface it. A standalone send (Option I/II) does not have this
+    blind spot.
 
 ### Serverless
 
