@@ -7,7 +7,7 @@
 
 # Summary
 
-Today, we have no visibility into which options a given Sentry SDK instance was configured
+Today, we have very little visibility into which options a given Sentry SDK instance was configured
 with. This RFC proposes a mechanism for SDKs to report the configuration they were
 initialized with (the arguments passed to `Sentry.init()`, plus relevant derived/effective
 values) to Sentry, so that this information can be stored, surfaced, and acted upon.
