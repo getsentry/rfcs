@@ -502,6 +502,7 @@ canonical key is the same across languages; only the native `key` differs.
 | `before_send`          | Whether a `before_send` hook is set (marker) | `beforeSend` → `before_send`  |
 | `before_send_transaction` | Whether a `before_send_transaction` hook is set (marker) | `beforeSendTransaction` → `before_send_transaction` |
 | `before_send_span`     | Whether a `before_send_span` hook is set (marker) | `beforeSendSpan` → `before_send_span` |
+| `before_send_log`      | Whether a `before_send_log` hook is set (marker) | `beforeSendLog` → `before_send_log` |
 | `ignore_spans`         | Span-ignore rules                | `ignoreSpans` → `ignore_spans`            |
 | `traces_sampler`       | Whether a `traces_sampler` hook is set (marker) | `tracesSampler` → `traces_sampler` |
 | `data_collection.*`    | Data-collection settings (all flattened sub-keys) | `dataCollection.*` → `data_collection.*` |
