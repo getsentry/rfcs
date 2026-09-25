@@ -135,9 +135,10 @@ snake_case convention for item types (`event`, `transaction`, `client_report`, `
 `sdk_config` reads well because the payload is broader than just the raw `init()` options — it
 also carries SDK identity, integration status, and general metadata.
 
-Alternatives considered: `sdk_options` (closest to the literal `init()` arguments, but narrower
-than what the payload actually contains) and `client_config` (risks confusion with Sentry
-"client reports" and with the SDK's internal `Client`). We recommend `sdk_config`.
+Ideas for envelope item name, TBD:
+* `sdk_config`
+* `sdk_metadata`
+* `sdk_options`
 
 **Backward compatibility with older ingest / self-hosted.** Introducing a new envelope item type
 is safe for older infrastructure. Envelopes are designed so that unknown item types are simply
