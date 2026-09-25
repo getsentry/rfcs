@@ -499,7 +499,6 @@ canonical key is the same across languages; only the native `key` differs.
 | `profiles_sample_rate` | Profiling sample rate            | `profilesSampleRate` → `profiles_sample_rate` |
 | `send_default_pii`     | Whether default PII is sent      | `sendDefaultPii` → `send_default_pii`     |
 | `debug`                | Debug logging enabled            | `debug` → `debug`                         |
-| `enabled`              | Whether the SDK is enabled       | `enabled` → `enabled`                     |
 | `before_send`          | Whether a `before_send` hook is set (marker) | `beforeSend` → `before_send`  |
 | `before_send_transaction` | Whether a `before_send_transaction` hook is set (marker) | `beforeSendTransaction` → `before_send_transaction` |
 | `before_send_span`     | Whether a `before_send_span` hook is set (marker) | `beforeSendSpan` → `before_send_span` |
