@@ -151,8 +151,7 @@ required.
 ## Design principles
 
 - **Primitives only.** The payload contains only JSON-serializable values: strings, numbers,
-  booleans, `null`, arrays, and plain objects. No runtime constructs (functions, class
-  instances, streams, etc.) ever appear literally.
+  booleans, `null`, arrays, and plain objects.
 - **Callbacks and other runtime values are reduced to markers.** We do not care about a
   callback's implementation, only that _a user-defined callback was set_. Any non-serializable
   value is normalized to a sentinel, following the exact rules in
