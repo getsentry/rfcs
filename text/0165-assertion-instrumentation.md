@@ -59,6 +59,8 @@ Public API, with idiom-neutral naming:
 captureAssertionViolation(condition, { pragma, message, values })
 ```
 
+The concept and base name are shared across SDKs; each applies its own language casing (for example `capture_assertion_violation` in Python), the same convention as `captureException`.
+
 Event shape:
 
 * `mechanism.type = "assertion"`, uniform so the class is filterable regardless of idiom.
@@ -74,6 +76,7 @@ An opt-in build transform rewrites assertion call sites to report before their o
 * First-party code by default, dependencies via an explicit allowlist.
 * Lazy evaluation of message and values, so no cost on the passing path and no side effects on the reporting path.
 * Original semantics preserved: hard preconditions still abort after reporting, report-only stays report-only.
+* Reports in release builds only by default, configurable. Dev builds already surface assertions loudly, so reporting there is opt-in.
 
 ## Which SDKs implement Part B
 
@@ -86,7 +89,7 @@ By this test the strong fits are RN (pilot, done), Android, Flutter, and .NET. P
 
 # Open problems
 
-* **Volume.** Since everything is an error event, this is the critical one. Defenses: call-site grouping (N firings become 1 issue), per-call-site throttle or dedupe, and conservative sampling.
+* **Volume.** Since everything is an error event, this is the critical one. The SDK throttles per call site on the client: the first occurrence is always captured, repeats are rate-limited, so a hot-path assertion never serializes or sends thousands of events. Call-site grouping collapses what does send into one issue. Server-side quotas remain the backstop. We prefer throttling over random sampling so a rare but important violation is never dropped.
 * **PII.** Capturing runtime values is high risk. Default: primitives inline only, object and array snapshots behind `sendDefaultPii`, plus a redaction hook. Inherits [RFC 0062](https://github.com/getsentry/rfcs/blob/main/text/0062-controlling-pii-and-credentials-in-sd-ks.md) and [RFC 0038](https://github.com/getsentry/rfcs/blob/main/text/0038-scrubbing-sensitive-data.md).
 * **Performance.** Part B re-adds cost that stripping removed. Off by default, ideally release-configurable, zero cost on the passing path.
 
@@ -98,9 +101,7 @@ By this test the strong fits are RN (pilot, done), Android, Flutter, and .NET. P
 
 # Unresolved questions
 
-* Default sampling rate, and whether throttle/dedupe lives in the SDK or relay.
-* Whether the public API name is standardized cross-SDK or left idiomatic per SDK.
-* Whether dev builds report at all, or release-only by default.
+* Final `mechanism.data` schema and the exact value-capture type policy, pending security and PII review (see Open problems).
 
 # Prior art
 
