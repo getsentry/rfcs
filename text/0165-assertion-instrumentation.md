@@ -7,7 +7,7 @@
 
 # Summary
 
-Turn assertion violations (`invariant`, `assert`, `precondition`, `Debug.Assert`, `console.assert`, and similar) into grouped, non-fatal Sentry error events, instead of letting them be stripped from release builds or crash with unreadable minified messages.
+Turn assertion violations (`invariant`, `assert`, `precondition`, `Debug.Assert`, `console.assert`, and similar) into grouped, non-fatal Sentry error events, instead of letting them be stripped from release builds or crash as ordinary errors without the condition and values.
 
 The proposal has two parts:
 
@@ -18,11 +18,11 @@ A working React Native reference implementation (Metro/Babel) exists in getsentr
 
 # Motivation
 
-A React Native app crashes in a release build. The stack trace ends inside an `invariant` call with a minified error code and no message, so nobody can tell which invariant broke or with what values. The check the developer wrote to catch exactly this case ran, but its meaning was stripped.
+A React Native app crashes in a release build. The stack trace ends inside an `invariant` call, and the event looks like any other error: it does not carry the condition that failed or the runtime values, and nothing marks it as a violated invariant. Other checks, like `console.assert`, fail without reaching Sentry at all.
 
 Developers write assertions to encode invariants, then the toolchain deletes that intent before it reaches production, which is where it matters most:
 
-* JS/RN: `invariant` and `console.assert` are dead-code-eliminated from release bundles.
+* JS/RN: checks behind `__DEV__` are dead-code-eliminated from release bundles, and `console.assert` failures only reach the device log.
 * Android/Java: `assert` is disabled unless the JVM runs with `-ea`, so every `assert` is silent in production.
 * Swift/Cocoa: `assert` and `assertionFailure` are removed under `-O`.
 * .NET: `Debug.Assert` is removed in Release builds.
@@ -31,17 +31,19 @@ Developers write assertions to encode invariants, then the toolchain deletes tha
 
 So a large class of correctness checks produces zero production signal. This feature recovers it as grouped non-fatal events carrying the failed condition, the values involved, and a precise stack.
 
+This matters more as more code is generated than reviewed: assertions are a durable record of intended behavior, and a violation that carries the condition and values is structured input for automated repair.
+
 # Supporting Data
 
 Measured against React Native 0.87.1 and a sample app's dependency tree:
 
-* The `react-native` framework ships ~186 `invariant()` call sites (179 in `Libraries/`) and 103 `__DEV__` guards. `@react-native/*` adds ~26 more invariants and 38 `console.assert()`.
+* The `react-native` framework ships ~186 `invariant()` call sites (179 in `Libraries/`) and 103 `__DEV__` guards. `@react-native/virtualized-lists` adds 26 more invariants.
 * Across a full app dependency tree: 317 `invariant()` and 174 `console.assert()` call sites in 16 packages (excluding build-only tooling like metro and babel, which never ships to the device).
 
 Two distinct signals fall out of this:
 
-* **Resurrection.** `console.assert` and `__DEV__`-guarded checks are stripped entirely from release, so they produce zero production signal today.
-* **Readability.** RN strips only the *message* from `invariant`, so an invariant that fires in release still crashes, but with a minified code and no context. This feature restores the condition and runtime values.
+* **Resurrection.** `__DEV__`-guarded checks are stripped from release and `console.assert` failures only reach the device log, so by default neither reaches Sentry today.
+* **Readability.** An `invariant` that fires in release still crashes, but as an ordinary error without the condition or runtime values. This feature adds them.
 
 These are source call sites, not runtime firings; most never fire. The point is that the ones that do fire in production currently produce nothing useful.
 
@@ -65,7 +67,7 @@ Event shape:
 
 * `mechanism.type = "assertion"`, uniform so the class is filterable regardless of idiom.
 * `mechanism.data.pragma` records the specific idiom, so flavors stay separable.
-* `mechanism.handled` is `false` for hard preconditions that abort, `true` for report-only. We set this ourselves and do not block on any pending mechanism-types work.
+* `mechanism.handled` is `true` for every violation. A hard precondition still aborts after reporting, and that abort must not be reported a second time. We set this ourselves and do not block on any pending mechanism-types work.
 * Grouping key is pragma plus call site, so a noisy site collapses into one issue.
 
 ## Part B: build-time instrumentation (select SDKs)
@@ -85,7 +87,7 @@ An SDK implements Part B only if both hold:
 1. The ecosystem has an idiomatic assertion mechanism that is stripped or disabled in release.
 2. The SDK already owns a build-instrumentation pathway, so marginal cost is low.
 
-By this test the strong fits are RN (pilot, done), Android, Flutter, and .NET. Part A ships first and independently. See [Appendix A](#appendix-a-part-b-sdk-fit) for the per-SDK assessment.
+By this test the strong fits are RN (pilot, done), Android, and .NET. Part A ships first and independently. See [Appendix A](#appendix-a-part-b-sdk-fit) for the per-SDK assessment.
 
 # Open problems
 
@@ -114,9 +116,9 @@ By this test the strong fits are RN (pilot, done), Android, Flutter, and .NET. P
 |---|---|---|
 | Android (Java/Kotlin) | Strongest | `assert` off without `-ea`; gradle plugin already does bytecode weaving |
 | React Native | Strong | idioms stripped by DCE; Metro/Babel (reference impl) |
-| Flutter/Dart | Strong | `assert` stripped in release; Dart build hooks |
 | .NET / MAUI / Unity | Strong | `Debug.Assert` removed in Release; Roslyn/IL tooling |
 | Cocoa/Swift | Medium | idiomatic but only Swift macros, opt-in not existing sites |
 | Browser/Node JS | Medium | bundler DCE; Node `assert` already throws |
+| Flutter/Dart | Low | `assert` stripped in release; Dart build hooks only produce native assets, no source transform |
 | Python | Low | `assert` stripped, but AST/import hooks are invasive |
 | Go | N/A | no assert idiom |
