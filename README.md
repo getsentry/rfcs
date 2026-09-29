@@ -74,3 +74,4 @@ This repository contains RFCs and DACIs. Lost?
 - [0152-sdk-symbolicated-frames](text/0152-sdk-symbolicated-frames.md): This RFC proposes a mechanism for SDKs to mark stack frames as already symbolicated on the client side, so that the backend (processing/symbolicator) can skip symbolication for those frames
 - [0153-decoupling-sentrys-generative-ai-conventions-from-open-telemetry](text/0153-decoupling-sentrys-generative-ai-conventions-from-open-telemetry.md): Decoupling Sentry's Generative AI conventions from OpenTelemetry
 - [0157-distroless-base-images](text/0157-distroless-base-images.md): Distroless base images
+- [0165-assertion-instrumentation](text/0165-assertion-instrumentation.md): Capture assertion violations as non-fatal error events
