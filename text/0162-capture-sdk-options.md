@@ -141,7 +141,8 @@ The key fields (see [Appendix A](#appendix-a-payload-details) for all fields and
   nested objects become dot-notation keys, callbacks become `"[Function]"`, and integrations move to
   the `integrations` block. Option names should reflect the names a user would use to set the values.
 - **`options_set_by_user`:** the keys that the user explicitly set in `init()`, to tell actual usage
-  apart from defaults.
+  apart from defaults. This should be best-effort - it MAY be incomplete if users add configuration 
+  in alternate paths or similar.
 - **`integrations`:** the serialized options of each registered integration, plus an optional
   `applied` flag that records whether the integration took effect at runtime. For example, the Node
   SDK registers Express, Fastify, Koa, and more by default, but an app typically uses only one.
