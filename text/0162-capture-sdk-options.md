@@ -127,7 +127,7 @@ attribute in this example except `sentry.sdk_config.normalized.*`, which Relay a
 }
 ```
 
-The key fields (see [Appendix A](#appendix-a-payload-details) for all fields and exact rules):
+The key fields (see [Appendix A](#appendix-a-payload-details) for more details on serialization and normalization):
 
 - **`sentry.sdk_config.option.<key>`:** the **effective** configuration that the SDK runs with (after
   defaults, environment variables, and derived values), under native option names. Values are reduced
