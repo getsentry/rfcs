@@ -179,24 +179,17 @@ sensitive, but they do not guarantee fully scrubbed data.
 
 ## Sending
 
-**Server SDKs** (Node, Python, Java, Go, …) send one payload per `init()` once the configuration has
+We propose to send one payload per `init()` once the configuration has
 settled, because values such as `applied` are only known after `init()` returns. Each SDK MAY choose
-how to wait, for example with a short debounce (about 2 seconds) or a lifecycle hook. Short-lived
-processes flush the payload on shutdown, and long-lived processes MAY re-send it at a slow interval
-(e.g. hourly) in case a send was lost. [Appendix B](#appendix-b-sending-and-storage-details) has the
+how to wait, for example with a short debounce (e.g. 5 seconds) or a lifecycle hook. Short-lived
+processes MAY flush the payload on shutdown. [Appendix B](#appendix-b-sending-and-storage-details) has the
 details.
 
-**Client SDKs** (browser, mobile, desktop, gaming, …) call `init()` on every page load, app launch,
-or session, so sending from every instance produces far more data. We propose exploring:
+We propose to do this for all kindes of SDKs - while client SDKs will send more redundant data than server SDKs,
+the overall volume will still be low compared to e.g. metrics, spans or logs, and we'll server-side dedupe the records for storage.
 
-| Option                                                                                                            | Pros                                                       | Cons                                                                                                                                                 |
-| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **I: Send on every `init()`**                                                                                     | Simple, same as server SDKs; every instance is represented | Much more data to ingest; an extra request per `init()`                                                                                              |
-| **II: Sample** a fraction of `init()` calls (e.g. 1%), assuming configuration is essentially constant per release | Much less overhead                                         | Low-traffic releases and rare configurations may be missed; more configuration surface; harder to reason about and test                              |
-| **III: Attach to the first outgoing envelope**; combinable with I or II, also usable by server SDKs               | No extra request; only instances that produce data report  | Harder to implement; the first envelope may leave before the configuration settles; instances that never send, e.g. misconfigured ones, never report |
-
-**Serverless** functions run server SDKs but have one `init()` per short-lived invocation, like
-clients, so client strategies such as sampling COULD apply to them.
+**Server SDKs** (Node, Python, Java, Go, …) MAY re-send it at a slow interval
+(e.g. hourly) in case a send was lost, and to account for data retention dropping old records for very long-lived processes. 
 
 ## Storage
 
@@ -236,13 +229,10 @@ when `release` is unset.
   normalized attributes), rate limiting (own or shared category, interaction with the send cadence,
   `429`/`Retry-After` and SDK backoff), size limits (reject or truncate), data category, quota
   consumption, and billing (likely not billed like events), and outcomes for dropped items.
-- **Deduplication key:** the exact fields, the fallback behavior, and what SDKs hash and how they keep
-  the hash stable.
 - **EAP storage:** a new `TraceItemType` (sentry-protos, Snuba, Relay, Sentry search). EAP items
   expire after their retention period, so long-running processes must re-send within it. EAP could
   deduplicate via a deterministic `item_id` from the hash plus a bucketed `timestamp` (as preprod
   does), to be confirmed with the EAP team. Limits on attribute count and size per item.
-- **Item type name** and **client SDK send strategy** (Options I to III).
 
 ## Out of scope
 
@@ -260,7 +250,7 @@ deterministic and consistent across SDKs:
 
 1. Primitives are sent unchanged. Arrays of one primitive type stay arrays; other arrays have each
    element converted to a string by these same rules.
-   a. An SDK MAY normalize specific options if it makes sense, e.g. stripping out user-specific paths or similar.
+   a. An SDK MAY normalize specific options if it makes sense, e.g. stripping out user-specific paths, unstable options or similar.
 2. Nested objects are flattened: `dataCollection: { http: { bodies: true } }` becomes
    `sentry.sdk_config.option.dataCollection.http.bodies`.
 3. Functions become `"[Function]"`. SDKs MAY include the name (`"[Function: beforeSend]"`), but
@@ -295,17 +285,22 @@ deterministic and consistent across SDKs:
   configurable for setups that settle later. A lifecycle hook that guarantees settled options (e.g.
   after the first request, a post-init hook, or the first idle event loop) is preferable. The goal is
   one stable payload, not a stream of updates; later configuration changes are a separate concern.
+  This should be best-effort, it is understood that late config changes MAY not be correctly captured.
 - **Short-lived processes** (serverless, CLI) flush wherever they already flush events, and MAY reuse
   their client report flushing. If a process dies first, an equivalent instance will report.
-- **Periodic re-send:** if Relay cannot guarantee that a `200` response means the payload was
-  persisted, a single lost send would leave a long-running server without stored configuration.
+- **Periodic re-send:** Relay cannot guarantee that a `200` response means the payload was
+  persisted. To accomodate this, as well as retention period dropping config after longer time periods, 
+  a single lost send would leave a long-running server without stored configuration.
 - **Hash:** identical configurations produce identical hashes, and any change to the options, the
   registered integrations, their options, or `applied` changes the hash. Algorithms do not need to
   match across SDKs. The hash is computed SDK-side so that events can carry it.
 - **Hash caveats:** it adds a field to every event. Because configuration settles after `init()`, the
   hash on events must match the reported configuration (e.g. by hashing only values that are stable
   from `init()`, or by stamping events only after settling), so early events may lack it. Payloads that
-  were sampled out leave hashes without a stored record.
+  were sampled out leave hashes without a stored record. 
+  The current hash should be put on other telemetry items, even if the sdk_config has not been sent yet.
+  It is understood that this means that the final hash MAY differ from the one attached to early records. 
+  Those may be linked by fallback key only (see below).
 - **Fallback key:** `release` alone is insufficient, because configuration can differ by environment
   and build. The composite key is bounded, human-readable, and cheap, but `environment` defaults to
   `production` and `dist` is usually absent, so the key depends on `release`, which is often unset. It
