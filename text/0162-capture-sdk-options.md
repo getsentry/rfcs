@@ -211,7 +211,7 @@ release separate.
 If no stored record matches an event's hash (e.g. because the payload was lost or sampled out), or
 the event has no hash, correlation falls back to `release` + `environment` + `dist`, which every
 event already carries. The fallback resolves only to the records of that combination and is coarse
-when `release` is unset.
+when `release` is unset. It should use the newest matching config in this case.
 
 # Drawbacks
 
