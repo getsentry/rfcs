@@ -162,7 +162,6 @@ New attributes to add to Sentry conventions:
 | `sentry.sdk_config.integration.<name>.option.<key>` | any      | `...MyIntegration.option.filter="aaa"`                           |
 | `sentry.sdk_config.normalized.<key>`                | any      | `...normalized.traces_sample_rate=0.2`                           |
 | `sentry.sdk_config.normalized.<key>.original`       | string   | `sentry.sdk_config.normalized.sample_rate.original="sampleRate"` |
-| `sentry.sdk_config.other.<key>`                     | any      | `sentry.sdk_config.other.foo="bar"`                              |
 
 Reused as-is: `sentry.sdk.name`, `sentry.sdk.version`, `sentry.sdk.integrations`, `sentry.release`,
 `sentry.environment`, `sentry.dist`, `process.runtime.name`, `process.runtime.version`.
@@ -254,29 +253,7 @@ when `release` is unset.
 
 # Appendix A: Payload details
 
-**Fields**
-
-- `timestamp`: top-level item field; when the SDK sent the payload, in epoch seconds, used to order
-  records and track changes.
-- `trace_id`: EAP requires one, but a configuration belongs to no trace. SDKs omit it, and Relay
-  derives a stable one (e.g. from the hash).
-- `sentry.sdk_config.version`: integer payload schema version, starting at `1` and independent of
-  `sentry.sdk.version`. It is bumped only for changes that consumers must know about, so the server
-  can select the right parser instead of guessing from the attribute set.
-- `sentry.sdk.*`: the same data as the `sdk` object on events today; `sdk_config` becomes its
-  canonical place. Events keep their existing metadata for now (see [Out of scope](#out-of-scope)).
-- `sentry.release`, `sentry.environment`, `sentry.dist`, `process.runtime.*`: the effective values,
-  regardless of how they were set.
-- `sentry.sdk_config.options_set_by_user`: each entry corresponds 1:1 to a
-  `sentry.sdk_config.option.<key>` attribute.
-- `sentry.sdk_config.integration.<name>.applied`: `true` if the integration took effect (e.g. patched
-  Express), `false` if not (e.g. its framework is absent), and omitted if unknown. It is opt-in,
-  added where the signal is useful, such as framework integrations. Integration options MAY be
-  omitted if there are none, if they are hard to access in a given SDK, or if they are low-value.
-- `sentry.sdk_config.normalized.<key>`: holds the effective value; the native name is known from the
-  catalog, and whether the user set it is checked in `options_set_by_user`.
-- `sentry.sdk_config.other.<key>`: free-form, SDK-specific data; useful keys can later become
-  first-class attributes.
+For payload fields, see [Payload](#payload).
 
 **Serialization rules** for option and integration option attributes, which make the output
 deterministic and consistent across SDKs:
@@ -288,7 +265,7 @@ deterministic and consistent across SDKs:
    `sentry.sdk_config.option.dataCollection.http.bodies`.
 3. Functions become `"[Function]"`. SDKs MAY include the name (`"[Function: beforeSend]"`), but
    consumers must not rely on it.
-4. The `integrations` option is omitted; its data is in the integration attributes.
+4. The `integrations` option is omitted; its data is in the `sentry.sdk.integrations` attributes.
 5. `null` and `undefined` values are omitted, since attributes have no null type.
 6. Other non-serializable values become type markers such as `"[SomeType]"`, following the SDK's
    existing normalization convention.
