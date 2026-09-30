@@ -206,7 +206,8 @@ SDKs MUST compute the hash from the serialized option and integration attributes
 to every event: as the same `sentry.sdk_config.hash` attribute on spans, logs, and other items with
 attributes, and in a new `sdk_config.hash` context field on errors and transactions. The
 hash links each event to its exact configuration and keeps configurations that differ within one
-release separate.
+release separate. The hash MAY be generated based off the full `attributes` hash (minus the `sentry.sdk_config.hash` attribute), 
+or from a subset if that makes more sense for an SDK.
 
 If no stored record matches an event's hash (e.g. because the payload was lost or sampled out), or
 the event has no hash, correlation falls back to `release` + `environment` + `dist`, which every
