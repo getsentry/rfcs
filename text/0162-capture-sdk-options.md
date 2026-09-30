@@ -238,6 +238,7 @@ when `release` is unset. It should use the newest matching config in this case.
   expire after their retention period, so long-running processes must re-send within it. EAP could
   deduplicate via a deterministic `item_id` from the hash plus a bucketed `timestamp` (as preprod
   does), to be confirmed with the EAP team. Limits on attribute count and size per item.
+- **Custom filtering:** do we need SDK side filtering, e.g. `beforeSendSdkConfig`, to allow manual PII stripping?
 
 ## Out of scope
 
