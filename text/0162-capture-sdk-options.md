@@ -3,7 +3,7 @@
 - RFC PR: https://github.com/getsentry/rfcs/pull/162
 - RFC Status: draft
 - RFC Author: @mydea
-- RFC Approver: 
+- RFC Approver:
 
 # Summary
 
@@ -67,90 +67,105 @@ one language-agnostic schema for all SDKs, starting with JavaScript. Older Relay
 versions discard unknown item types without affecting the rest of the envelope, so SDKs can send
 `sdk_config` unconditionally.
 
-SDKs send every field in this example except `normalized_options`, which Relay adds at ingestion:
+The item follows the EAP format, so it can be stored in EAP as a new
+trace item type: a container with `items`, each with a `timestamp` and typed `attributes`. Existing
+[Sentry conventions](https://getsentry.github.io/sentry-conventions/attributes/) are reused where
+they fit; everything else lives under `sentry.sdk_config.*` in dot notation. SDKs send every
+attribute in this example except `sentry.sdk_config.normalized.*`, which Relay adds at ingestion:
 
 ```json
+{"type":"sdk_config","item_count":1,"content_type":"application/vnd.sentry.items.sdk-config+json"}
 {
-  "version": 1,
-  "timestamp": "2026-09-21T12:00:00Z",
+  "items": [
+    {
+      "timestamp": 1790000000.0,
+      "attributes": {
+        "sentry.sdk.name": { "type": "string", "value": "sentry.javascript.node" },
+        "sentry.sdk.version": { "type": "string", "value": "10.0.0" },
+        "sentry.sdk.packages": { "type": "array", "value": ["npm:@sentry/node@10.0.0"] },
+        "sentry.sdk.integrations": {
+          "type": "array",
+          "value": ["InboundFilters", "Express", "Fastify", "Koa", "MyIntegration"]
+        },
+        "sentry.release": { "type": "string", "value": "my-app@1.2.3" },
+        "sentry.environment": { "type": "string", "value": "production" },
+        "sentry.dist": { "type": "string", "value": "42" },
+        "process.runtime.name": { "type": "string", "value": "node" },
+        "process.runtime.version": { "type": "string", "value": "20.11.0" },
 
-  "sdk": {
-    "name": "sentry.javascript.node",
-    "version": "10.0.0",
-    "packages": [{ "name": "npm:@sentry/node", "version": "10.0.0" }]
-  },
+        "sentry.sdk_config.version": { "type": "integer", "value": 1 },
+        "sentry.sdk_config.hash": { "type": "string", "value": "9f2c1a7e" },
 
-  "meta": {
-    "release": "my-app@1.2.3",
-    "environment": "production",
-    "dist": "42",
-    "runtime": { "name": "node", "version": "20.11.0" }
-  },
+        "sentry.sdk_config.option.dsn": { "type": "string", "value": "https://<public-key>@o0.ingest.sentry.io/0" },
+        "sentry.sdk_config.option.sampleRate": { "type": "double", "value": 1.0 },
+        "sentry.sdk_config.option.tracesSampleRate": { "type": "double", "value": 0.2 },
+        "sentry.sdk_config.option.sendDefaultPii": { "type": "boolean", "value": true },
+        "sentry.sdk_config.option.beforeSend": { "type": "string", "value": "[Function]" },
+        "sentry.sdk_config.option.denyUrls": { "type": "array", "value": ["https://example.com/ignore"] },
+        "sentry.sdk_config.option.dataCollection.http.bodies": { "type": "boolean", "value": true },
+        "sentry.sdk_config.options_set_by_user": {
+          "type": "array",
+          "value": ["dsn", "tracesSampleRate", "sendDefaultPii", "beforeSend", "denyUrls"]
+        },
 
-  "options": {
-    "dsn": "https://<public-key>@o0.ingest.sentry.io/0",
-    "sampleRate": 1.0,
-    "tracesSampleRate": 0.2,
-    "sendDefaultPii": true,
-    "debug": false,
-    "environment": "production",
-    "beforeSend": "[Function]",
-    "tracesSampler": "[Function]",
-    "denyUrls": ["https://example.com/ignore"],
-    "dataCollection.http.bodies": true,
-    "dataCollection.http.headers": false
-  },
+        "sentry.sdk_config.integration.Express.applied": { "type": "boolean", "value": true },
+        "sentry.sdk_config.integration.Fastify.applied": { "type": "boolean", "value": false },
+        "sentry.sdk_config.integration.MyIntegration.option.filter": { "type": "string", "value": "aaa" },
+        "sentry.sdk_config.integration.MyIntegration.option.shouldLog": { "type": "string", "value": "[Function]" },
 
-  "options_set_by_user": [
-    "dsn",
-    "tracesSampleRate",
-    "sendDefaultPii",
-    "beforeSend",
-    "tracesSampler",
-    "denyUrls"
-  ],
-
-  "options_hash": "9f2c1a7e",
-
-  "normalized_options": {
-    "sample_rate": { "key": "sampleRate", "value": 1.0 },
-    "traces_sample_rate": { "key": "tracesSampleRate", "value": 0.2 },
-    "send_default_pii": { "key": "sendDefaultPii", "value": true },
-    "debug": { "key": "debug", "value": false },
-    "before_send": { "key": "beforeSend", "value": "[Function]" }
-  },
-
-  "integrations": {
-    "InboundFilters": { "options": {} },
-    "ExpressIntegration": { "applied": true, "options": {} },
-    "FastifyIntegration": { "applied": false, "options": {} },
-    "KoaIntegration": { "options": {} },
-    "MyIntegration": {
-      "options": { "filter": "aaa", "shouldLog": "[Function]" }
+        "sentry.sdk_config.normalized.sample_rate": { "type": "double", "value": 1.0 },
+        "sentry.sdk_config.normalized.sample_rate.original": { "type": "string", "value": "sampleRate" },
+        "sentry.sdk_config.normalized.traces_sample_rate": { "type": "double", "value": 0.2 },
+        "sentry.sdk_config.normalized.traces_sample_rate.original": { "type": "string", "value": "tracesSampleRate" },
+        "sentry.sdk_config.normalized.send_default_pii": { "type": "boolean", "value": true },
+        "sentry.sdk_config.normalized.send_default_pii.original": { "type": "string", "value": "sendDefaultPii" },
+        "sentry.sdk_config.normalized.before_send": { "type": "string", "value": "[Function]" },
+        "sentry.sdk_config.normalized.before_send.original": { "type": "string", "value": "beforeSend" }
+      }
     }
-  },
-
-  "_other": {}
+  ]
 }
 ```
 
 The key fields (see [Appendix A](#appendix-a-payload-details) for all fields and exact rules):
 
-- **`options`:** the **effective** configuration that the SDK runs with (after defaults, environment
-  variables, and derived values), under native option names. Values are reduced to JSON primitives:
-  nested objects become dot-notation keys, callbacks become `"[Function]"`, and integrations move to
-  the `integrations` block. Option names should reflect the names a user would use to set the values.
-- **`options_set_by_user`:** the keys that the user explicitly set in `init()`, to tell actual usage
-  apart from defaults. This should be best-effort - it MAY be incomplete if users add configuration 
-  in alternate paths or similar. If it is not possible to enumerate options automatically, SDKs MAY
-  send a hand-picked subset of options here only.
-- **`integrations`:** the serialized options of each registered integration, plus an optional
-  `applied` flag that records whether the integration took effect at runtime. For example, the Node
-  SDK registers Express, Fastify, Koa, and more by default, but an app typically uses only one.
-- **`options_hash`:** a required hash of the configuration (see [Storage](#storage)).
-- **`normalized_options`:** a small catalog of options under canonical cross-SDK names (JS
-  `tracesSampleRate` → `traces_sample_rate`), derived by Relay in the spirit of
-  [0116-sentry-semantic-conventions](./0116-sentry-semantic-conventions.md).
+- **`sentry.sdk_config.option.<key>`:** the **effective** configuration that the SDK runs with (after
+  defaults, environment variables, and derived values), under native option names. Values are reduced
+  to attribute types: nested objects become dot-notation keys, callbacks become `"[Function]"`, and
+  integrations are covered by the integration attributes. Option names should reflect the names a
+  user would use to set the values.
+- **`sentry.sdk_config.options_set_by_user`:** the option keys that the user explicitly set in
+  `init()`, to tell actual usage apart from defaults. This should be best-effort - it MAY be
+  incomplete if users add configuration in alternate paths or similar. If it is not possible to
+  enumerate options automatically, SDKs MAY send a hand-picked subset of options here only.
+- **Integrations:** `sentry.sdk.integrations` lists every registered integration. Per integration,
+  `sentry.sdk_config.integration.<name>.option.<key>` holds its serialized options, and an optional
+  `sentry.sdk_config.integration.<name>.applied` records whether it took effect at runtime. For
+  example, the Node SDK registers Express, Fastify, Koa, and more by default, but an app typically
+  uses only one.
+- **`sentry.sdk_config.hash`:** a required hash of the configuration (see [Storage](#storage)).
+- **`sentry.sdk_config.normalized.<key>`:** a small catalog of options under canonical cross-SDK
+  names (JS `tracesSampleRate` → `traces_sample_rate`), derived by Relay.
+- **`sentry.sdk_config.normalized.<key>.original`:** the name that this property is called in the `options` (JS `tracesSampleRate`)
+  to allow display of the value in a way that makes sense for a user.
+
+New attributes to add to Sentry conventions:
+
+| Attribute                                           | Type     | Example                                                          |
+| --------------------------------------------------- | -------- | ---------------------------------------------------------------- |
+| `sentry.sdk.packages`                               | string[] | `["npm:@sentry/node@10.0.0"]`                                    |
+| `sentry.sdk_config.version`                         | integer  | `1`                                                              |
+| `sentry.sdk_config.hash`                            | string   | `"9f2c1a7e"`                                                     |
+| `sentry.sdk_config.option.<key>`                    | any      | `sentry.sdk_config.option.sampleRate=1.0`                        |
+| `sentry.sdk_config.options_set_by_user`             | string[] | `["dsn", "tracesSampleRate"]`                                    |
+| `sentry.sdk_config.integration.<name>.applied`      | boolean  | `true`                                                           |
+| `sentry.sdk_config.integration.<name>.option.<key>` | any      | `...MyIntegration.option.filter="aaa"`                           |
+| `sentry.sdk_config.normalized.<key>`                | any      | `...normalized.traces_sample_rate=0.2`                           |
+| `sentry.sdk_config.normalized.<key>.original`       | string   | `sentry.sdk_config.normalized.sample_rate.original="sampleRate"` |
+| `sentry.sdk_config.other.<key>`                     | any      | `sentry.sdk_config.other.foo="bar"`                              |
+
+Reused as-is: `sentry.sdk.name`, `sentry.sdk.version`, `sentry.sdk.integrations`, `sentry.release`,
+`sentry.environment`, `sentry.dist`, `process.runtime.name`, `process.runtime.version`.
 
 The design keeps SDKs simple: they serialize their existing options object (e.g. JS
 `client.getOptions()`), diff its keys against the `init()` argument, and ship no name mapping. New options are captured
@@ -188,11 +203,11 @@ clients, so client strategies such as sampling COULD apply to them.
 
 Storing every payload (**Option 1**) keeps a complete history, but mostly stores duplicates at a very
 high cost. We recommend **Option 2: store one record per distinct configuration**, deduplicated by
-**`options_hash` (primary) + `release` + `environment` + `dist` (fallback)**.
+**`sentry.sdk_config.hash` (primary) + `release` + `environment` + `dist` (fallback)**.
 
-SDKs MUST compute `options_hash` from the serialized `options` and `integrations` blocks, and MUST
-attach it to every event: as the proposed `sentry.config_hash` attribute on spans, logs, and other
-items with attributes, and in a new `sdk_config.hash` context field on errors and transactions. The
+SDKs MUST compute the hash from the serialized option and integration attributes, and MUST attach it
+to every event: as the same `sentry.sdk_config.hash` attribute on spans, logs, and other items with
+attributes, and in a new `sdk_config.hash` context field on errors and transactions. The
 hash links each event to its exact configuration and keeps configurations that differ within one
 release separate.
 
@@ -219,14 +234,15 @@ when `release` is unset.
 # Unresolved questions
 
 - **Ingest requirements for a new item type:** Relay support (routing, validation, deriving
-  `normalized_options`), rate limiting (own or shared category, interaction with the send cadence,
+  normalized attributes), rate limiting (own or shared category, interaction with the send cadence,
   `429`/`Retry-After` and SDK backoff), size limits (reject or truncate), data category, quota
   consumption, and billing (likely not billed like events), and outcomes for dropped items.
 - **Deduplication key:** the exact fields, the fallback behavior, and what SDKs hash and how they keep
   the hash stable.
-- **EAP storage:** EAP prefers a single top-level `attributes` field, which would mean storing blocks
-  such as `options` as JSON-valued attributes that remain efficiently queryable. Whether to use EAP is
-  decided with the storage design.
+- **EAP storage:** a new `TraceItemType` (sentry-protos, Snuba, Relay, Sentry search). EAP items
+  expire after their retention period, so long-running processes must re-send within it. EAP could
+  deduplicate via a deterministic `item_id` from the hash plus a bucketed `timestamp` (as preprod
+  does), to be confirmed with the EAP team. Limits on attribute count and size per item.
 - **Item type name** and **client SDK send strategy** (Options I to III).
 
 ## Out of scope
@@ -240,42 +256,45 @@ when `release` is unset.
 
 **Fields**
 
-- `version`: integer payload schema version, starting at `1` and independent of `sdk.version`. It is
-  bumped only for changes that consumers must know about, so the server can select the right parser
-  instead of guessing from the field set.
-- `timestamp`: when the SDK sent the payload, used to order records and track changes. ISO 8601 or
-  epoch seconds, following Sentry conventions.
-- `sdk`: the same data as on events today; `sdk_config` becomes its canonical place. The `integrations`
-  block captures integration information in more detail than the event's list of integration names;
-  events keep their existing metadata for now (see [Out of scope](#out-of-scope)).
-- `meta`: `release`, `environment`, `dist`, and runtime information, regardless of how they were set.
-- `options_set_by_user`: uses the flattened keys of `options`; each key corresponds 1:1 to a key in
-  `options`.
-- `integrations`: each integration's options are optionally nested under `options`, so they cannot collide with
-  status keys. `applied` is `true` if the integration took effect (e.g. patched Express), `false` if
-  not (e.g. its framework is absent), and omitted if unknown. It is opt-in, added where the signal is
-  useful, such as framework integrations. `options` MAY also be omitted if no options are sent, 
-  if they are hard to access in a given SDK, or if they are low-value.
-- `normalized_options`: entries are `{ "key": <native name>, "value": <effective value> }`; whether
-  the user set an option is checked in `options_set_by_user`.
-- `_other`: free-form, SDK-specific data; useful keys can later become first-class fields.
+- `timestamp`: top-level item field; when the SDK sent the payload, in epoch seconds, used to order
+  records and track changes.
+- `trace_id`: EAP requires one, but a configuration belongs to no trace. SDKs omit it, and Relay
+  derives a stable one (e.g. from the hash).
+- `sentry.sdk_config.version`: integer payload schema version, starting at `1` and independent of
+  `sentry.sdk.version`. It is bumped only for changes that consumers must know about, so the server
+  can select the right parser instead of guessing from the attribute set.
+- `sentry.sdk.*`: the same data as the `sdk` object on events today; `sdk_config` becomes its
+  canonical place. Events keep their existing metadata for now (see [Out of scope](#out-of-scope)).
+- `sentry.release`, `sentry.environment`, `sentry.dist`, `process.runtime.*`: the effective values,
+  regardless of how they were set.
+- `sentry.sdk_config.options_set_by_user`: each entry corresponds 1:1 to a
+  `sentry.sdk_config.option.<key>` attribute.
+- `sentry.sdk_config.integration.<name>.applied`: `true` if the integration took effect (e.g. patched
+  Express), `false` if not (e.g. its framework is absent), and omitted if unknown. It is opt-in,
+  added where the signal is useful, such as framework integrations. Integration options MAY be
+  omitted if there are none, if they are hard to access in a given SDK, or if they are low-value.
+- `sentry.sdk_config.normalized.<key>`: holds the effective value; the native name is known from the
+  catalog, and whether the user set it is checked in `options_set_by_user`.
+- `sentry.sdk_config.other.<key>`: free-form, SDK-specific data; useful keys can later become
+  first-class attributes.
 
-**Serialization rules** for `options` and each integration's `options`, which make the output
+**Serialization rules** for option and integration option attributes, which make the output
 deterministic and consistent across SDKs:
 
-1. Primitives are sent unchanged. Arrays stay arrays, with each element serialized by these same
-   rules.
+1. Primitives are sent unchanged. Arrays of one primitive type stay arrays; other arrays have each
+   element converted to a string by these same rules.
    a. An SDK MAY normalize specific options if it makes sense, e.g. stripping out user-specific paths or similar.
 2. Nested objects are flattened: `dataCollection: { http: { bodies: true } }` becomes
-   `"dataCollection.http.bodies": true`.
+   `sentry.sdk_config.option.dataCollection.http.bodies`.
 3. Functions become `"[Function]"`. SDKs MAY include the name (`"[Function: beforeSend]"`), but
    consumers must not rely on it.
-4. The `integrations` option is omitted; its data is in the `integrations` block.
-5. Other non-serializable values become type markers such as `"[SomeType]"`, following the SDK's
+4. The `integrations` option is omitted; its data is in the integration attributes.
+5. `null` and `undefined` values are omitted, since attributes have no null type.
+6. Other non-serializable values become type markers such as `"[SomeType]"`, following the SDK's
    existing normalization convention.
 
 **Initial normalization catalog**, maintained alongside Relay and expected to grow. `release`,
-`environment`, and `dist` are not included, because they are already in `meta`.
+`environment`, and `dist` are not included, because they already have their own attributes.
 
 | Canonical key             | Meaning                     | Native names (JS → Python)                          |
 | ------------------------- | --------------------------- | --------------------------------------------------- |
