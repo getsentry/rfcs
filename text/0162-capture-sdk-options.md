@@ -129,6 +129,10 @@ attribute in this example except `sentry.sdk_config.normalized.*`, which Relay a
 
 The key fields (see [Appendix A](#appendix-a-payload-details) for more details on serialization and normalization):
 
+- **`sentry.sdk.packages`:** the Sentry packages that make up the SDK, the same data as `sdk.packages`
+  on events today. Each entry is `<name>@<version>`, where `name` is prefixed with its package
+  registry as on events (`npm:@sentry/node@10.0.0`, `pypi:sentry-sdk@2.0.0`); consumers split on the
+  last `@`.
 - **`sentry.sdk_config.option.<key>`:** the **effective** configuration that the SDK runs with (after
   defaults, environment variables, and derived values), under native option names. Values are reduced
   to attribute types: nested objects become dot-notation keys, callbacks become `"[Function]"`, and
@@ -138,7 +142,7 @@ The key fields (see [Appendix A](#appendix-a-payload-details) for more details o
   `init()`, to tell actual usage apart from defaults. This should be best-effort - it MAY be
   incomplete if users add configuration in alternate paths or similar. If it is not possible to
   enumerate options automatically, SDKs MAY send a hand-picked subset of options here only.
-- **Integrations:** `sentry.sdk.integrations` lists every registered integration. Per integration,
+- **`sentry.sdk.integrations`:** lists every registered integration. Per integration,
   `sentry.sdk_config.integration.<name>.option.<key>` holds its serialized options, and an optional
   `sentry.sdk_config.integration.<name>.applied` records whether it took effect at runtime. For
   example, the Node SDK registers Express, Fastify, Koa, and more by default, but an app typically
