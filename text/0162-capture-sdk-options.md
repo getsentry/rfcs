@@ -170,13 +170,14 @@ New attributes to add to Sentry conventions:
 Reused as-is: `sentry.sdk.name`, `sentry.sdk.version`, `sentry.sdk.integrations`, `sentry.release`,
 `sentry.environment`, `sentry.dist`, `process.runtime.name`, `process.runtime.version`.
 
-The design keeps SDKs simple: they serialize their existing options object (e.g. JS
-`client.getOptions()`), diff its keys against the `init()` argument, and ship no name mapping. New options are captured
-automatically, one Relay implementation avoids inconsistent mappings across SDKs, and the catalog can
-change, including for stored data, without SDK releases. Sending two option trees or wrapping every
-value as `{ value, source }` would need more SDK bookkeeping. The cost is that converted values lose
-their original form: for example, we cannot tell whether `integrations` was passed as a function (in
-JS, only `integrations` and `stackParser` are affected).
+The design keeps SDKs simple: most SDKs can just serialize their existing finalized options object (e.g. JS
+`client.getOptions()`), new options are captured automatically.
+One Relay implementation avoids inconsistent mappings across SDKs, and the catalog can
+change, including for stored data, without SDK releases. 
+
+One downside of this is that converted values lose their original form: 
+for example, we cannot tell whether `integrations` was passed as a function - 
+this should generally only affect a small subset of options (e.g. in JS, only `integrations` and `stackParser` are affected).
 
 Sensitive data is scrubbed primarily server-side. SDKs MAY also scrub values that they know to be
 sensitive, but they do not guarantee fully scrubbed data.
