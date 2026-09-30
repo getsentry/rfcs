@@ -189,7 +189,7 @@ We propose to do this for all kindes of SDKs - while client SDKs will send more 
 the overall volume will still be low compared to e.g. metrics, spans or logs, and we'll server-side dedupe the records for storage.
 
 **Server SDKs** (Node, Python, Java, Go, …) MAY re-send it at a slow interval
-(e.g. hourly) in case a send was lost, and to account for data retention dropping old records for very long-lived processes. 
+(e.g. hourly) in case a send was lost, and to account for data retention dropping old records for very long-lived processes.
 
 ## Storage
 
@@ -289,7 +289,7 @@ deterministic and consistent across SDKs:
 - **Short-lived processes** (serverless, CLI) flush wherever they already flush events, and MAY reuse
   their client report flushing. If a process dies first, an equivalent instance will report.
 - **Periodic re-send:** Relay cannot guarantee that a `200` response means the payload was
-  persisted. To accomodate this, as well as retention period dropping config after longer time periods, 
+  persisted. To accomodate this, as well as retention period dropping config after longer time periods,
   a single lost send would leave a long-running server without stored configuration.
 - **Hash:** identical configurations produce identical hashes, and any change to the options, the
   registered integrations, their options, or `applied` changes the hash. Algorithms do not need to
@@ -297,9 +297,9 @@ deterministic and consistent across SDKs:
 - **Hash caveats:** it adds a field to every event. Because configuration settles after `init()`, the
   hash on events must match the reported configuration (e.g. by hashing only values that are stable
   from `init()`, or by stamping events only after settling), so early events may lack it. Payloads that
-  were sampled out leave hashes without a stored record. 
+  were sampled out leave hashes without a stored record.
   The current hash should be put on other telemetry items, even if the sdk_config has not been sent yet.
-  It is understood that this means that the final hash MAY differ from the one attached to early records. 
+  It is understood that this means that the final hash MAY differ from the one attached to early records.
   Those may be linked by fallback key only (see below).
 - **Fallback key:** `release` alone is insufficient, because configuration can differ by environment
   and build. The composite key is bounded, human-readable, and cheap, but `environment` defaults to
