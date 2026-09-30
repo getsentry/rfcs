@@ -142,7 +142,8 @@ The key fields (see [Appendix A](#appendix-a-payload-details) for all fields and
   the `integrations` block. Option names should reflect the names a user would use to set the values.
 - **`options_set_by_user`:** the keys that the user explicitly set in `init()`, to tell actual usage
   apart from defaults. This should be best-effort - it MAY be incomplete if users add configuration 
-  in alternate paths or similar.
+  in alternate paths or similar. If it is not possible to enumerate options automatically, SDKs MAY
+  send a hand-picked subset of options here only.
 - **`integrations`:** the serialized options of each registered integration, plus an optional
   `applied` flag that records whether the integration took effect at runtime. For example, the Node
   SDK registers Express, Fastify, Koa, and more by default, but an app typically uses only one.
