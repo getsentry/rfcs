@@ -146,8 +146,8 @@ The key fields (see [Appendix A](#appendix-a-payload-details) for more details o
   enumerate options automatically, SDKs MAY send a hand-picked subset of options here only.
 - **`sentry.sdk.integrations`:** lists every registered integration. Per integration,
   `sentry.sdk_config.integration.<name>.option.<key>` holds its serialized options (in dot-nested notation).
-- **`sentry.sdk.integrations.applied`:** This optional array attribute records all integrations that we 
-  specifically want to track for them having been applied at runtime. 
+- **`sentry.sdk.integrations.applied`:** This optional array attribute records all integrations that we
+  specifically want to track for them having been applied at runtime.
   For example, the Node SDK registers Express, Fastify, Koa, and more by default, but an app typically uses only one.
 - **`sentry.sdk_config.hash`:** a required hash of the configuration (see [Storage](#storage)).
 - **`sentry.sdk_config.normalized.<key>`:** a small catalog of options under canonical cross-SDK
@@ -175,10 +175,10 @@ Reused as-is: `sentry.sdk.name`, `sentry.sdk.version`, `sentry.sdk.integrations`
 The design keeps SDKs simple: most SDKs can just serialize their existing finalized options object (e.g. JS
 `client.getOptions()`), new options are captured automatically.
 One Relay implementation avoids inconsistent mappings across SDKs, and the catalog can
-change, including for stored data, without SDK releases. 
+change, including for stored data, without SDK releases.
 
-One downside of this is that converted values lose their original form: 
-for example, we cannot tell whether `integrations` was passed as a function - 
+One downside of this is that converted values lose their original form:
+for example, we cannot tell whether `integrations` was passed as a function -
 this should generally only affect a small subset of options (e.g. in JS, only `integrations` and `stackParser` are affected).
 
 Sensitive data is scrubbed primarily server-side. SDKs MAY also scrub values that they know to be
@@ -208,7 +208,7 @@ SDKs MUST compute the hash from the serialized option and integration attributes
 to every event: as the same `sentry.sdk_config.hash` attribute on spans, logs, and other items with
 attributes, and in a new `sdk_config.hash` context field on errors and transactions. The
 hash links each event to its exact configuration and keeps configurations that differ within one
-release separate. The hash MAY be generated based off the full `attributes` object (minus the `sentry.sdk_config.hash` attribute), 
+release separate. The hash MAY be generated based off the full `attributes` object (minus the `sentry.sdk_config.hash` attribute),
 or from a subset if that makes more sense for an SDK.
 
 If no stored record matches an event's hash (e.g. because the payload was lost or sampled out), or
@@ -216,9 +216,8 @@ the event has no hash, correlation falls back to `release` + `environment` + `di
 event already carries. The fallback resolves only to the records of that combination and is coarse
 when `release` is unset. It should use the newest matching config in this case.
 
-The new data type should be free to end users, we do not plan on billing for it. 
-The estimated amount of envelopes to be sent equals the amount of session envelopes we get today,
-as generally a session is sent per application startup.
+The new data type should be free to end users, we do not plan on billing for it.
+See [Appendix C](#appendix-c-volume-estimates) for estimations.
 
 # Drawbacks
 
@@ -318,3 +317,40 @@ deterministic and consistent across SDKs:
   and build. The composite key is bounded, human-readable, and cheap, but `environment` defaults to
   `production` and `dist` is usually absent, so the key depends on `release`, which is often unset. It
   resolves to the first-seen record or to the set of stored variants.
+
+# Appendix C: Volume Estimates
+
+We do not neatly track anything that proxies to number of `init()` calls, which would be the rough equivalent
+of volume we expect for this feature. We can approximate this a bit by looking at browser & mobile projects,
+where a session equals to an `init()` call, generally. The following data is for active projects in a single day:
+
+| Platform | Active projects | # Sessions | # Sessions / project |
+| -------- | --------------- | ---------- | -------------------- |
+| Browser  | 127k            | 29b        | 239k                 |
+| Mobile   | 80k             | 5b         | 64k                  |
+
+For the sake of estimation, we can scale both the mobile and browser averages up for server SDK active projects:
+
+| Platform   | Active projects | Est. lower bound # sessions | Est. upper bound # sessions |
+| ---------- | --------------- | --------------------------- | --------------------------- |
+| Server     | 82k             | 5b                          | 19b                         |
+| Desktop    | 2k              | 153m                        | 574m                        |
+| Serverless | 1k              | 72m                         | 271m                        |
+
+**Total Estimated init calls per day:** based on this, the estimate would be 40-54 billion/day.
+
+NOTE: This is likely a very high estimate, because many/most server projects will have considerably less init calls/release than client SDKs.
+
+Another data point to be used: # of releases per day:
+
+- Browser: ~886K
+- Mobile: ~825K
+- Unmapped SDK: ~406K
+- Server: ~204K
+- Desktop: ~38K
+- Browser+mobile (hybrid): ~27K
+- Serverless: ~2.7K
+
+For server SDKs, this may be closer to the number of init calls then the session estimation above.
+
+Combining these two datasets, a reasonable estimation for **init cals per day** could be _~35b_
