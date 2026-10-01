@@ -83,14 +83,7 @@ attribute in this example except `sentry.sdk_config.normalized.*`, which Relay a
         "sentry.sdk.name": { "type": "string", "value": "sentry.javascript.node" },
         "sentry.sdk.version": { "type": "string", "value": "10.0.0" },
         "sentry.sdk.packages": { "type": "array", "value": ["npm:@sentry/node@10.0.0"] },
-        "sentry.sdk.integrations": {
-          "type": "array",
-          "value": ["InboundFilters", "Express", "Fastify", "Koa", "MyIntegration"]
-        },
-        "sentry.sdk.integrations.applied": {
-          "type": "array",
-          "value": ["Express"]
-        },
+        
         "sentry.release": { "type": "string", "value": "my-app@1.2.3" },
         "sentry.environment": { "type": "string", "value": "production" },
         "sentry.dist": { "type": "string", "value": "42" },
@@ -112,8 +105,16 @@ attribute in this example except `sentry.sdk_config.normalized.*`, which Relay a
           "value": ["dsn", "tracesSampleRate", "sendDefaultPii", "beforeSend", "denyUrls"]
         },
 
-        "sentry.sdk_config.integration.MyIntegration.option.filter": { "type": "string", "value": "aaa" },
-        "sentry.sdk_config.integration.MyIntegration.option.shouldLog": { "type": "string", "value": "[Function]" },
+        "sentry.sdk.integrations": {
+          "type": "array",
+          "value": ["InboundFilters", "Express", "Fastify", "Koa", "MyIntegration"]
+        },
+        "sentry.sdk.integrations.applied": {
+          "type": "array",
+          "value": ["Express"]
+        },
+        "sentry.sdk.integrations.options.MyIntegration.filter": { "type": "string", "value": "aaa" },
+        "sentry.sdk.integrations.options.MyIntegration.shouldLog": { "type": "string", "value": "[Function]" },
 
         "sentry.sdk_config.normalized.sample_rate": { "type": "double", "value": 1.0 },
         "sentry.sdk_config.normalized.sample_rate.original": { "type": "string", "value": "sampleRate" },
@@ -144,11 +145,12 @@ The key fields (see [Appendix A](#appendix-a-payload-details) for more details o
   `init()`, to tell actual usage apart from defaults. This should be best-effort - it MAY be
   incomplete if users add configuration in alternate paths or similar. If it is not possible to
   enumerate options automatically, SDKs MAY send a hand-picked subset of options here only.
-- **`sentry.sdk.integrations`:** lists every registered integration. Per integration,
-  `sentry.sdk_config.integration.<name>.option.<key>` holds its serialized options (in dot-nested notation).
+- **`sentry.sdk.integrations`:** lists every registered integration. 
 - **`sentry.sdk.integrations.applied`:** This optional array attribute records all integrations that we
   specifically want to track for them having been applied at runtime.
   For example, the Node SDK registers Express, Fastify, Koa, and more by default, but an app typically uses only one.
+- **`sentry.sdk.integrations.options.<name>.<key>`:** Per integration, holds its serialized options (in dot-nested notation). 
+  This MAY be captured for some or all integration options. SDKs MAY decide which integration options are relevant to capture.
 - **`sentry.sdk_config.hash`:** a required hash of the configuration (see [Storage](#storage)).
 - **`sentry.sdk_config.normalized.<key>`:** a small catalog of options under canonical cross-SDK
   names (JS `tracesSampleRate` → `traces_sample_rate`), derived by Relay.
@@ -157,17 +159,17 @@ The key fields (see [Appendix A](#appendix-a-payload-details) for more details o
 
 New attributes to add to Sentry conventions:
 
-| Attribute                                           | Type     | Example                                                          |
-| --------------------------------------------------- | -------- | ---------------------------------------------------------------- |
-| `sentry.sdk.packages`                               | string[] | `["npm:@sentry/node@10.0.0"]`                                    |
-| `sentry.sdk.integrations.applied`                   | string[] | `["Express"]`                                                    |
-| `sentry.sdk_config.version`                         | integer  | `1`                                                              |
-| `sentry.sdk_config.hash`                            | string   | `"9f2c1a7e"`                                                     |
-| `sentry.sdk_config.option.<key>`                    | any      | `sentry.sdk_config.option.sampleRate=1.0`                        |
-| `sentry.sdk_config.options_set_by_user`             | string[] | `["dsn", "tracesSampleRate"]`                                    |
-| `sentry.sdk_config.integration.<name>.option.<key>` | any      | `...MyIntegration.option.filter="aaa"`                           |
-| `sentry.sdk_config.normalized.<key>`                | any      | `...normalized.traces_sample_rate=0.2`                           |
-| `sentry.sdk_config.normalized.<key>.original`       | string   | `sentry.sdk_config.normalized.sample_rate.original="sampleRate"` |
+| Attribute                                      | Type     | Example                                                          |
+| ---------------------------------------------- | -------- | ---------------------------------------------------------------- |
+| `sentry.sdk.packages`                          | string[] | `["npm:@sentry/node@10.0.0"]`                                    |
+| `sentry.sdk.integrations.applied`              | string[] | `["Express"]`                                                    |
+| `sentry.sdk.integrations.options.<name>.<key>` | any      | `...integrations.options.MyIntegration.filter="aaa"`             |
+| `sentry.sdk_config.version`                    | integer  | `1`                                                              |
+| `sentry.sdk_config.hash`                       | string   | `"9f2c1a7e"`                                                     |
+| `sentry.sdk_config.option.<key>`               | any      | `sentry.sdk_config.option.sampleRate=1.0`                        |
+| `sentry.sdk_config.options_set_by_user`        | string[] | `["dsn", "tracesSampleRate"]`                                    |
+| `sentry.sdk_config.normalized.<key>`           | any      | `...normalized.traces_sample_rate=0.2`                           |
+| `sentry.sdk_config.normalized.<key>.original`  | string   | `sentry.sdk_config.normalized.sample_rate.original="sampleRate"` |
 
 These should be added as internal attributes, with a note that they are only supposed to be used in the sdk_config item type.
 
