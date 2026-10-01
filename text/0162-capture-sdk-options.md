@@ -169,6 +169,8 @@ New attributes to add to Sentry conventions:
 | `sentry.sdk_config.normalized.<key>`                | any      | `...normalized.traces_sample_rate=0.2`                           |
 | `sentry.sdk_config.normalized.<key>.original`       | string   | `sentry.sdk_config.normalized.sample_rate.original="sampleRate"` |
 
+These should be added as internal attributes, with a note that they are only supposed to be used in the sdk_config item type.
+
 Reused as-is: `sentry.sdk.name`, `sentry.sdk.version`, `sentry.sdk.integrations`, `sentry.release`,
 `sentry.environment`, `sentry.dist`, `process.runtime.name`, `process.runtime.version`.
 
