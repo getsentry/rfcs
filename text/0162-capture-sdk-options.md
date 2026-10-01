@@ -87,6 +87,10 @@ attribute in this example except `sentry.sdk_config.normalized.*`, which Relay a
           "type": "array",
           "value": ["InboundFilters", "Express", "Fastify", "Koa", "MyIntegration"]
         },
+        "sentry.sdk.integrations.applied": {
+          "type": "array",
+          "value": ["Express"]
+        },
         "sentry.release": { "type": "string", "value": "my-app@1.2.3" },
         "sentry.environment": { "type": "string", "value": "production" },
         "sentry.dist": { "type": "string", "value": "42" },
@@ -108,8 +112,6 @@ attribute in this example except `sentry.sdk_config.normalized.*`, which Relay a
           "value": ["dsn", "tracesSampleRate", "sendDefaultPii", "beforeSend", "denyUrls"]
         },
 
-        "sentry.sdk_config.integration.Express.applied": { "type": "boolean", "value": true },
-        "sentry.sdk_config.integration.Fastify.applied": { "type": "boolean", "value": false },
         "sentry.sdk_config.integration.MyIntegration.option.filter": { "type": "string", "value": "aaa" },
         "sentry.sdk_config.integration.MyIntegration.option.shouldLog": { "type": "string", "value": "[Function]" },
 
@@ -143,10 +145,10 @@ The key fields (see [Appendix A](#appendix-a-payload-details) for more details o
   incomplete if users add configuration in alternate paths or similar. If it is not possible to
   enumerate options automatically, SDKs MAY send a hand-picked subset of options here only.
 - **`sentry.sdk.integrations`:** lists every registered integration. Per integration,
-  `sentry.sdk_config.integration.<name>.option.<key>` holds its serialized options, and an optional
-  `sentry.sdk_config.integration.<name>.applied` records whether it took effect at runtime. For
-  example, the Node SDK registers Express, Fastify, Koa, and more by default, but an app typically
-  uses only one.
+  `sentry.sdk_config.integration.<name>.option.<key>` holds its serialized options (in dot-nested notation).
+- **`sentry.sdk.integrations.applied`:** This optional array attribute records all integrations that we 
+  specifically want to track for them having been applied at runtime. 
+  For example, the Node SDK registers Express, Fastify, Koa, and more by default, but an app typically uses only one.
 - **`sentry.sdk_config.hash`:** a required hash of the configuration (see [Storage](#storage)).
 - **`sentry.sdk_config.normalized.<key>`:** a small catalog of options under canonical cross-SDK
   names (JS `tracesSampleRate` → `traces_sample_rate`), derived by Relay.
@@ -158,11 +160,11 @@ New attributes to add to Sentry conventions:
 | Attribute                                           | Type     | Example                                                          |
 | --------------------------------------------------- | -------- | ---------------------------------------------------------------- |
 | `sentry.sdk.packages`                               | string[] | `["npm:@sentry/node@10.0.0"]`                                    |
+| `sentry.sdk.integrations.applied`                   | string[] | `["Express"]`                                                    |
 | `sentry.sdk_config.version`                         | integer  | `1`                                                              |
 | `sentry.sdk_config.hash`                            | string   | `"9f2c1a7e"`                                                     |
 | `sentry.sdk_config.option.<key>`                    | any      | `sentry.sdk_config.option.sampleRate=1.0`                        |
 | `sentry.sdk_config.options_set_by_user`             | string[] | `["dsn", "tracesSampleRate"]`                                    |
-| `sentry.sdk_config.integration.<name>.applied`      | boolean  | `true`                                                           |
 | `sentry.sdk_config.integration.<name>.option.<key>` | any      | `...MyIntegration.option.filter="aaa"`                           |
 | `sentry.sdk_config.normalized.<key>`                | any      | `...normalized.traces_sample_rate=0.2`                           |
 | `sentry.sdk_config.normalized.<key>.original`       | string   | `sentry.sdk_config.normalized.sample_rate.original="sampleRate"` |
@@ -185,7 +187,7 @@ sensitive, but they do not guarantee fully scrubbed data.
 ## Sending
 
 We propose to send one payload per `init()` once the configuration has
-settled, because values such as `applied` are only known after `init()` returns. Each SDK MAY choose
+settled, because values such as `sentry.sdk.integrations.applied` are only known after `init()` returns. Each SDK MAY choose
 how to wait, for example with a short debounce (e.g. 5 seconds) or a lifecycle hook. Short-lived
 processes MAY flush the payload on shutdown. [Appendix B](#appendix-b-sending-and-storage-details) has the
 details.
@@ -206,13 +208,17 @@ SDKs MUST compute the hash from the serialized option and integration attributes
 to every event: as the same `sentry.sdk_config.hash` attribute on spans, logs, and other items with
 attributes, and in a new `sdk_config.hash` context field on errors and transactions. The
 hash links each event to its exact configuration and keeps configurations that differ within one
-release separate. The hash MAY be generated based off the full `attributes` hash (minus the `sentry.sdk_config.hash` attribute), 
+release separate. The hash MAY be generated based off the full `attributes` object (minus the `sentry.sdk_config.hash` attribute), 
 or from a subset if that makes more sense for an SDK.
 
 If no stored record matches an event's hash (e.g. because the payload was lost or sampled out), or
 the event has no hash, correlation falls back to `release` + `environment` + `dist`, which every
 event already carries. The fallback resolves only to the records of that combination and is coarse
 when `release` is unset. It should use the newest matching config in this case.
+
+The new data type should be free to end users, we do not plan on billing for it. 
+The estimated amount of envelopes to be sent equals the amount of session envelopes we get today,
+as generally a session is sent per application startup.
 
 # Drawbacks
 
@@ -224,7 +230,7 @@ when `release` is unset. It should use the newest matching config in this case.
   picture, for example when deciding whether an option "looks unused".
 - **Lossy callbacks:** `"[Function]"` shows that filtering is configured, not what it filters.
 - **Maintenance:** the normalization catalog must track options across all SDKs.
-- **SDK complexity:** delayed sending, flushing, `applied` tracking, serialization, and sampling add
+- **SDK complexity:** delayed sending, flushing, `sentry.sdk.integrations.applied` tracking, serialization, and sampling add
   code and runtime cost on every `init()`.
 - **Deduplication identity:** a poor hash or a missing `release` either stores too much or merges
   distinct configurations.
@@ -287,7 +293,7 @@ deterministic and consistent across SDKs:
 
 # Appendix B: Sending and storage details
 
-- **Waiting for settled configuration:** values known only after `init()` include `applied`, lazily
+- **Waiting for settled configuration:** values known only after `init()` include `sentry.sdk.integrations.applied`, lazily
   registered integrations, and an asynchronously detected release or environment. The debounce MAY be
   configurable for setups that settle later. A lifecycle hook that guarantees settled options (e.g.
   after the first request, a post-init hook, or the first idle event loop) is preferable. The goal is
@@ -299,7 +305,7 @@ deterministic and consistent across SDKs:
   persisted. To accomodate this, as well as retention period dropping config after longer time periods,
   a single lost send would leave a long-running server without stored configuration.
 - **Hash:** identical configurations produce identical hashes, and any change to the options, the
-  registered integrations, their options, or `applied` changes the hash. Algorithms do not need to
+  registered integrations, their options, or the applied integrations changes the hash. Algorithms do not need to
   match across SDKs. The hash is computed SDK-side so that events can carry it.
 - **Hash caveats:** it adds a field to every event. Because configuration settles after `init()`, the
   hash on events must match the reported configuration (e.g. by hashing only values that are stable
