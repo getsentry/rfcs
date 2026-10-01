@@ -215,6 +215,8 @@ hash links each event to its exact configuration and keeps configurations that d
 release separate. The hash MAY be generated based off the full `attributes` object (minus the `sentry.sdk_config.hash` attribute),
 or from a subset if that makes more sense for an SDK.
 
+The hash also MUST be part of the envelope item header and we MUST reject any item without a hash.
+
 If no stored record matches an event's hash (e.g. because the payload was lost or sampled out), or
 the event has no hash, correlation falls back to `release` + `environment` + `dist`, which every
 event already carries. The fallback resolves only to the records of that combination and is coarse
