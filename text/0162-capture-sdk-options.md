@@ -322,37 +322,9 @@ deterministic and consistent across SDKs:
 
 # Appendix C: Volume Estimates
 
-We do not neatly track anything that proxies to number of `init()` calls, which would be the rough equivalent
-of volume we expect for this feature. We can approximate this a bit by looking at browser & mobile projects,
-where a session equals to an `init()` call, generally. The following data is for active projects in a single day:
+We do not neatly track the number of `init()` calls, which would be the rough equivalent
+of volume we expect for this feature. We can approximate this by looking at session & session aggregates being sent.
+Based on this, a naive expectation would be about **50b** events being sent per day (before deduplication).
 
-| Platform | Active projects | # Sessions | # Sessions / project |
-| -------- | --------------- | ---------- | -------------------- |
-| Browser  | 127k            | 29b        | 239k                 |
-| Mobile   | 80k             | 5b         | 64k                  |
-
-For the sake of estimation, we can scale both the mobile and browser averages up for server SDK active projects:
-
-| Platform   | Active projects | Est. lower bound # sessions | Est. upper bound # sessions |
-| ---------- | --------------- | --------------------------- | --------------------------- |
-| Server     | 82k             | 5b                          | 19b                         |
-| Desktop    | 2k              | 153m                        | 574m                        |
-| Serverless | 1k              | 72m                         | 271m                        |
-
-**Total Estimated init calls per day:** based on this, the estimate would be 40-54 billion/day.
-
-NOTE: This is likely a very high estimate, because many/most server projects will have considerably less init calls/release than client SDKs.
-
-Another data point to be used: # of releases per day:
-
-- Browser: ~886K
-- Mobile: ~825K
-- Unmapped SDK: ~406K
-- Server: ~204K
-- Desktop: ~38K
-- Browser+mobile (hybrid): ~27K
-- Serverless: ~2.7K
-
-For server SDKs, this may be closer to the number of init calls then the session estimation above.
-
-Combining these two datasets, a reasonable estimation for **init cals per day** could be _~35b_
+In regard to storage, there are about **2.5m** releases per day, which could roughly translate to the number of
+_stored config payloads_.
