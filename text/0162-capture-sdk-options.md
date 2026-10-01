@@ -27,6 +27,8 @@ With it, we can support:
   settings.
 - **Discoverability of data sources:** show every `Sentry.init()` that sends data into a project, with
   its configuration over time, and eventually allow changing configuration from the UI.
+- **Onboarding**: We could leverage this information to make onboarding easier - we could then know with certainty 
+  if the SDK setup was successfull, no need to ask users to send logs/metrics/spans/errors to verify SDK setup.
 
 # Background
 
