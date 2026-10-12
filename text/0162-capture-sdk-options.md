@@ -64,6 +64,8 @@ grouping and storing it harder.
 
 ## Payload
 
+*TBD: Format will likely still change, if we do not store in EAP (which is likely but not fully decided yet).*
+
 The item type is tentatively named `sdk_config` (alternatives: `sdk_metadata`, `sdk_options`), with
 one language-agnostic schema for all SDKs, starting with JavaScript. Older Relay and self-hosted
 versions discard unknown item types without affecting the rest of the envelope, so SDKs can send
@@ -198,11 +200,17 @@ how to wait, for example with a short debounce (e.g. 5 seconds) or a lifecycle h
 processes MAY flush the payload on shutdown. [Appendix B](#appendix-b-sending-and-storage-details) has the
 details.
 
-We propose to do this for all kindes of SDKs - while client SDKs will send more redundant data than server SDKs,
-the overall volume will still be low compared to e.g. metrics, spans or logs, and we'll server-side dedupe the records for storage.
+We propose to do this for all kindes of SDKs, and we'll [server-side dedupe](#deduping) the records for storage.
 
 **Server SDKs** (Node, Python, Java, Go, …) MAY re-send it at a slow interval
 (e.g. hourly) in case a send was lost, and to account for data retention dropping old records for very long-lived processes.
+
+## Deduping
+
+While we will send a single payload per `init()`, the vast majority of these do not need to be stored,
+but can/should be deduped and discarded at ingestion time to avoid unnecessary processing cost.
+
+*TBD: How exactly we will do this.*
 
 ## Storage
 
@@ -220,12 +228,32 @@ or from a subset if that makes more sense for an SDK.
 The hash also MUST be part of the envelope item header and we MUST reject any item without a hash.
 
 If no stored record matches an event's hash (e.g. because the payload was lost or sampled out), or
-the event has no hash, correlation falls back to `release` + `environment` + `dist`, which every
+the event has no hash, correlation MAY fall back to `release` + `environment` + `dist`, which every
 event already carries. The fallback resolves only to the records of that combination and is coarse
 when `release` is unset. It should use the newest matching config in this case.
 
 The new data type should be free to end users, we do not plan on billing for it.
 See [Appendix C](#appendix-c-volume-estimates) for estimations.
+
+### Where to store
+
+Following are the access needs we'll have for the data, which should inform the decision on how/where to store this:
+
+* Config is immutable. It will never be updated.
+* Config should have a retention similar to other telemetry, so e.g. 30-90 days.
+* In product, config may be queried as follows:
+  * By hash key: When looking at telemetry (e.g. an issue), find the associated config for it.
+  * By project/org: Find the latest config(s) for a given project (e.g. for onboarding)
+  * By release/environment: Show config changes over time
+* Analytics/in hex, we'd like to be able to answer questions such as:
+  * How many projects configure a given option?
+  * What are average configured values (e.g. average sample rates, ...)
+  * How many projects use the integration Y?
+  * For projects using X/configuring Y, how many <do Z> (e.g. send spans, ...)
+
+TBD: 
+* Where should we store data (e.g. object store?)
+* How/when to move data to BigQuery for hex?
 
 # Drawbacks
 
@@ -233,8 +261,6 @@ See [Appendix C](#appendix-c-volume-estimates) for estimations.
   options, tunnel URLs, `denyUrls`, `initialScope`, `serverName`), and redaction is imperfect.
 - **Overhead:** a new, potentially high-volume item (every `init()` for client and serverless
   traffic), a new storage model, and new server-side processing.
-- **Incomplete or misleading data:** sampling and fallback correlation can give a non-representative
-  picture, for example when deciding whether an option "looks unused".
 - **Lossy callbacks:** `"[Function]"` shows that filtering is configured, not what it filters.
 - **Maintenance:** the normalization catalog must track options across all SDKs.
 - **SDK complexity:** delayed sending, flushing, `sentry.sdk.integrations.applied` tracking, serialization, and sampling add
