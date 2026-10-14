@@ -233,7 +233,7 @@ Redis MAY track the set of config hashes per project for this, or we MAY use ano
 
 Storing every payload (**Option 1**) keeps a complete history, but mostly stores duplicates at a very
 high cost. The recommended approach is **Option 2: store one record per distinct configuration**, deduplicated by
-**`sentry.sdk_config.hash` (primary) + `release` + `environment` + `dist` (fallback)**.
+**`sentry.sdk_config.hash`.
 
 SDKs MUST compute the hash from the serialized option and integration attributes, and MUST attach it
 to every event: as the same `sentry.sdk_config.hash` attribute on spans, logs, and other items with
@@ -243,7 +243,8 @@ release separate. The hash MAY be generated based off the full `attributes` obje
 or from a subset if that makes more sense for an SDK.
 
 The hash MUST NOT be put on other telemetry types if it has not yet stablized - 
-only a hash that matches a sent SDK config record MAY be attached to other events.
+only a hash that matches a sent SDK config record MAY be attached to other events. 
+The hash MUST NOT change for a given client after it has been sent (even if options are changed later).
 
 The hash also MUST be part of the envelope item header and Relay MUST reject any item without a hash.
 
@@ -253,7 +254,7 @@ event already carries. The fallback resolves only to the records of that combina
 when `release` is unset. It should use the newest matching config in this case.
 
 The time a config entry was last seen must be kept in order to enable retention calculation.
-This should be updated when a config is sent, but not on every sent record, but e.g. every 24h
+This should be updated when a config is sent - not on every sent record, but e.g. every 24h,
 to avoid unnecessary load on the database.
 
 The new data type is free for end users and is not billed.
@@ -293,13 +294,14 @@ Options for storage are:
 
 - Pro: Easy to query
 - Pro: Well suited for the expected sizes
-- Con: Config is not really trace connected, so not ideally suitable
+- Pro: Cheaper than Postgres
+- Con: Config is not really trace connected, so not a perfect match
 
 **Postgres**:
 
 - Pro: Easy to set up
 - Pro: Easy to query
-- Con: Expected size (e.g. 3kb config payloads)
+- Con: Payload sizes (~3kb configs) not a perfect match
 
 **Postgres + Object Store**:
 
@@ -418,7 +420,7 @@ deterministic and consistent across SDKs:
 - **50b** sessions per day
   - May map roughly to **50b** SDK config envelopes sent per day.
 - **300k** projects get data sent any given hour
-  - This could be extrapolated to **3m** SDK configs being active per hour.
+  - This could be extrapolated to **3m** SDK configs being active per hour, if ~10 config/project is assumed.
 - SDK config size examples:
   - JS Browser: ~1-3 KB
   - JS Node: ~1-4 KB
