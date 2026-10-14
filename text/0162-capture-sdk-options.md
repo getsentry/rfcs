@@ -210,7 +210,25 @@ We propose to do this for all kindes of SDKs, and we'll [server-side dedupe](#de
 While we will send a single payload per `init()`, the vast majority of these do not need to be stored,
 but can/should be deduped and discarded at ingestion time to avoid unnecessary processing cost.
 
-*TBD: How exactly we will do this.*
+While this has to be deduped at a storage/business logic layer, we need to make sure to keep the load on the DB as low as possible, 
+and thus avoid any unnecessary read/write operations. For this, we need to either dedupe somewhere. Some options for this are:
+
+**Relay**: We may dedupe in relay. We would leverage either a redis cache or a memcached cache to keep cache keys + last seen,
+and would only delegate to actually create or update records when appropriate. 
+
+**Kafka log compaction**: We may also look into deduping via Kafka.
+
+## Rate Limiting
+
+We need to limit ingested configs to avoid an unexpected explosion of records. For example, what happens if, for whatever reasons,
+a client generates unique hashes for each instance (e.g. some randomness in some config value), thus sending thousands or millions of unique 
+configs in an hour?
+
+We propose to put a rate limit in place that looks at # of unique configs per hour/project. 
+We will reject to create/update config records exceeding some limit, for example **1000 configs/h**.
+
+We may leverage redis for the rate limiting by keeping track of the set of config hashes per project, or similar approaches. 
+Rate limiting will be applied by Relay.
 
 ## Storage
 
@@ -232,28 +250,67 @@ the event has no hash, correlation MAY fall back to `release` + `environment` + 
 event already carries. The fallback resolves only to the records of that combination and is coarse
 when `release` is unset. It should use the newest matching config in this case.
 
+The time a config entry was last seen must be kept in order to enable retention calculation.
+This should be updated when a config is sent, but not on every sent record, but e.g. every 24h
+to avoid unnecessary load on the database.
+
 The new data type should be free to end users, we do not plan on billing for it.
 See [Appendix C](#appendix-c-volume-estimates) for estimations.
+
+### What to store
+
+In addition to the config itself (either as JSON or in dot-notated attributes), the following queryable (meta-)data needs to be stored:
+
+* `first_seen`: The date this config has been first sent.
+* `last_seen`: The date this config has been last sent. 
+* `release`: The release associated with this config.
+* `environment`: The environment associated with this config.
+* `hash`: The hash/ID associated with this config (unique per project).
 
 ### Where to store
 
 Following are the access needs we'll have for the data, which should inform the decision on how/where to store this:
 
-* Config is immutable. It will never be updated.
-* Config should have a retention similar to other telemetry, so e.g. 30-90 days.
+* Config itself is immutable. It will never be updated.
+* Config should have a retention similar to other telemetry, so e.g. 30-90 days. 
+  * The retention needs to be measured based on when the config was last seen.
 * In product, config may be queried as follows:
   * By hash key: When looking at telemetry (e.g. an issue), find the associated config for it.
   * By project/org: Find the latest config(s) for a given project (e.g. for onboarding)
   * By release/environment: Show config changes over time
+  * By first_seen/last_seen dates
 * Analytics/in hex, we'd like to be able to answer questions such as:
   * How many projects configure a given option?
   * What are average configured values (e.g. average sample rates, ...)
   * How many projects use the integration Y?
   * For projects using X/configuring Y, how many <do Z> (e.g. send spans, ...)
 
-TBD: 
-* Where should we store data (e.g. object store?)
-* How/when to move data to BigQuery for hex?
+Options for storage are:
+
+**EAP**:
+
++ Easy to query
++ Should be well suited for the sizes we are thinking of
+- Config is not really trace connected, so not ideally suitable
+
+**Postgres**:
+
++ Easy to setup
++ Easy to query
+- Expected size (e.g. 3kb config payloads)
+
+**Postgres + Object Store**:
+
++ Query via postgres, keep full config in Object Store
++ Should be well suited for the sizes we are thinking of
+- Additional complexity in keeping postgres/object store in sync
+
+**BigQuery**:
+
+* No matter where we store data for in-product use, we'll need to also get it into BigQuery to be able to access it in hex etc.
+* *TBD: How/when to move data over?** It does not need to be live, e.g. 24h delay or similar would be fine.
+
+See [Appendix C](#appendix-c-volume-estimates) for volume & cost estimates.
 
 # Drawbacks
 
@@ -354,9 +411,21 @@ deterministic and consistent across SDKs:
 
 # Appendix C: Volume Estimates
 
-We do not neatly track the number of `init()` calls, which would be the rough equivalent
-of volume we expect for this feature. We can approximate this by looking at session & session aggregates being sent.
-Based on this, a naive expectation would be about **50b** events being sent per day (before deduplication).
-
-In regard to storage, there are about **2.5m** releases per day, which could roughly translate to the number of
-_stored config payloads_.
+* **2-3m** releases per day
+  * We may expect about **5-10m** distinct SDK config per day.
+* **50b** sessions per day
+  * May map roughly to **50b** SDK config envelopes sent per day.
+* **300k** projects get data sent any given hour
+  * This could be extrapolated to **3m** SDK configs being active per hour.
+* SDK config size examples:
+  * JS Browser: ~1-3 KB
+  * JS Node: ~1-4 KB
+  * Based on this, if we expect 10m config per day which are active for 30 days, we'd store about **900 GB** of SDK config
+* Relay redis clusters currently cost ~5k USD/month (US region only), for project configs and rate limits. 
+  * We may expect roughly the same cost to run an additional redis instance for hash bookkeeping
+* EAP costs about **0.016 USD** per GB og logs storage, or **0.10 USD** per 1M spans
+  * Based on this, EAP storage cost may be very low (<100 USD)
+* Postgres cost about **51k USD/m** total, for about **60 TB** of data
+  * Based on this, Postgres storage may be **~800 USD/m**
+* Memcached cost is about **5K USD/m**
+  * Cost of hash bookeeping would thus be estimated to be low here too
