@@ -242,6 +242,9 @@ hash links each event to its exact configuration and keeps configurations that d
 release separate. The hash MAY be generated based off the full `attributes` object (minus the `sentry.sdk_config.hash` attribute),
 or from a subset if that makes more sense for an SDK.
 
+The hash MUST NOT be put on other telemetry types if it has not yet stablized - 
+only a hash that matches a sent SDK config record MAY be attached to other events.
+
 The hash also MUST be part of the envelope item header and Relay MUST reject any item without a hash.
 
 If no stored record matches an event's hash (e.g. because the payload was lost or sampled out), or
@@ -428,3 +431,11 @@ deterministic and consistent across SDKs:
   - Based on this, Postgres storage may be **~800 USD/m**
 - Memcached cost is about **5K USD/m**
   - Cost of hash bookkeeping would thus be estimated to be low here too
+
+# Appendix D: Edge Cases
+
+There are some edge cases to consider. Some may be resolved and others may be conciously not solved.
+
+- SDK Config may be dropped when sent, thus telemetry may exist that has no corresponding config entry.
+  - The product must work with missing data. It can differentiate between "old SDK, no config sent" and "config should exist, but is missing" 
+    via the existence of the hash attribute. 
