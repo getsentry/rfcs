@@ -211,12 +211,12 @@ Because every `init()` sends a payload, most payloads do not need to be stored. 
 deduplicated and discarded at ingestion time to avoid unnecessary processing cost.
 
 Deduplication must keep database load as low as possible and avoid unnecessary reads and writes, so
-it has to happen before storage. Options:
+it has to happen before storage. This could happen in different places:
 
 **Relay**: Relay keeps hash keys and last-seen timestamps in a Redis or Memcached cache, and only
 creates or updates records when needed.
 
-**Kafka log compaction**: an alternative way to deduplicate.
+**Kafka log compaction**: Alternatively, Relay pushes every config to Kafka and lets it handle deduplication.
 
 ## Rate Limiting
 
