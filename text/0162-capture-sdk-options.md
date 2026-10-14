@@ -64,7 +64,7 @@ grouping and storing it harder.
 
 ## Payload
 
-_TBD: Format will likely still change if the data is not stored in EAP (which is likely but not fully decided yet)._
+_TBD: This format is modeled on EAP. If we store data differently, we likely will choose a different format, as there is then no need for flattening attributes._
 
 The item type is tentatively named `sdk_config` (alternatives: `sdk_metadata`, `sdk_options`), with
 one language-agnostic schema for all SDKs, starting with JavaScript. Older Relay and self-hosted
