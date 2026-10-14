@@ -7,7 +7,7 @@
 
 # Summary
 
-Today, we have very little visibility into which options a given Sentry SDK instance was configured
+Sentry currently has very little visibility into which options a given SDK instance was configured
 with. This RFC proposes that SDKs report their configuration (the options passed to `Sentry.init()`,
 plus relevant derived and effective values) in a new `sdk_config` envelope item, so that Sentry can
 store, surface, and act on it. Product features built on this data are future work.
@@ -15,8 +15,8 @@ store, surface, and act on it. Product features built on this data are future wo
 # Motivation
 
 A user reports missing transactions. Was tracing never enabled? Did a sample rate or
-`beforeSendTransaction` drop them? Did something fail? Without the SDK configuration, we cannot tell.
-With it, we can support:
+`beforeSendTransaction` drop them? Did something fail? Without the SDK configuration, there is no way to tell.
+With it, Sentry can support:
 
 - **Self-healing and support:** distinguish "never enabled", "enabled but filtered", and "failed".
 - **Analytics and product decisions:** learn which options are used and which matter most, to guide
@@ -27,8 +27,8 @@ With it, we can support:
   settings.
 - **Discoverability of data sources:** show every `Sentry.init()` that sends data into a project, with
   its configuration over time, and eventually allow changing configuration from the UI.
-- **Onboarding**: We could leverage this information to make onboarding easier - we could then know with certainty 
-  if the SDK setup was successfull, no need to ask users to send logs/metrics/spans/errors to verify SDK setup.
+- **Onboarding:** confirm with certainty that the SDK setup succeeded, without asking users to send
+  logs/metrics/spans/errors to verify it.
 
 # Background
 
@@ -50,8 +50,8 @@ https://linear.app/getsentry/project/capture-sdk-options-js-08e8a89c71c9/overvie
 ## Option A (preferred): A dedicated envelope item
 
 SDKs send the configuration in a standalone `sdk_config` envelope item, like client reports. This
-decouples "how is this instance configured?" from "did it send an event?", and gives us a payload
-that we can version, store, and analyze independently.
+decouples "how is this instance configured?" from "did it send an event?", and yields a payload
+that can be versioned, stored, and analyzed independently.
 
 ## Option B: Add the options to error events
 
@@ -64,7 +64,7 @@ grouping and storing it harder.
 
 ## Payload
 
-*TBD: Format will likely still change, if we do not store in EAP (which is likely but not fully decided yet).*
+_TBD: Format will likely still change if the data is not stored in EAP (which is likely but not fully decided yet)._
 
 The item type is tentatively named `sdk_config` (alternatives: `sdk_metadata`, `sdk_options`), with
 one language-agnostic schema for all SDKs, starting with JavaScript. Older Relay and self-hosted
@@ -87,7 +87,7 @@ attribute in this example except `sentry.sdk_config.normalized.*`, which Relay a
         "sentry.sdk.name": { "type": "string", "value": "sentry.javascript.node" },
         "sentry.sdk.version": { "type": "string", "value": "10.0.0" },
         "sentry.sdk.packages": { "type": "array", "value": ["npm:@sentry/node@10.0.0"] },
-        
+
         "sentry.release": { "type": "string", "value": "my-app@1.2.3" },
         "sentry.environment": { "type": "string", "value": "production" },
         "sentry.dist": { "type": "string", "value": "42" },
@@ -149,11 +149,11 @@ The key fields (see [Appendix A](#appendix-a-payload-details) for more details o
   `init()`, to tell actual usage apart from defaults. This should be best-effort - it MAY be
   incomplete if users add configuration in alternate paths or similar. If it is not possible to
   enumerate options automatically, SDKs MAY send a hand-picked subset of options here only.
-- **`sentry.sdk.integrations`:** lists every registered integration. 
-- **`sentry.sdk.integrations.applied`:** This optional array attribute records all integrations that we
-  specifically want to track for them having been applied at runtime.
+- **`sentry.sdk.integrations`:** lists every registered integration.
+- **`sentry.sdk.integrations.applied`:** This optional array attribute lists the integrations that the SDK
+  tracks as actually applied at runtime.
   For example, the Node SDK registers Express, Fastify, Koa, and more by default, but an app typically uses only one.
-- **`sentry.sdk.integrations.options.<name>.<key>`:** Per integration, holds its serialized options (in dot-nested notation). 
+- **`sentry.sdk.integrations.options.<name>.<key>`:** Per integration, holds its serialized options (in dot-nested notation).
   This MAY be captured for some or all integration options. SDKs MAY decide which integration options are relevant to capture.
 - **`sentry.sdk_config.hash`:** a required hash of the configuration (see [Storage](#storage)).
 - **`sentry.sdk_config.normalized.<key>`:** a small catalog of options under canonical cross-SDK
@@ -186,7 +186,7 @@ One Relay implementation avoids inconsistent mappings across SDKs, and the catal
 change, including for stored data, without SDK releases.
 
 One downside of this is that converted values lose their original form:
-for example, we cannot tell whether `integrations` was passed as a function -
+for example, it is not possible to tell whether `integrations` was passed as a function -
 this should generally only affect a small subset of options (e.g. in JS, only `integrations` and `stackParser` are affected).
 
 Sensitive data is scrubbed primarily server-side. SDKs MAY also scrub values that they know to be
@@ -194,46 +194,45 @@ sensitive, but they do not guarantee fully scrubbed data.
 
 ## Sending
 
-We propose to send one payload per `init()` once the configuration has
+SDKs send one payload per `init()` once the configuration has
 settled, because values such as `sentry.sdk.integrations.applied` are only known after `init()` returns. Each SDK MAY choose
 how to wait, for example with a short debounce (e.g. 5 seconds) or a lifecycle hook. Short-lived
 processes MAY flush the payload on shutdown. [Appendix B](#appendix-b-sending-and-storage-details) has the
 details.
 
-We propose to do this for all kindes of SDKs, and we'll [server-side dedupe](#deduping) the records for storage.
+This applies to all kinds of SDKs. Records are [deduplicated server-side](#deduping) before storage.
 
 **Server SDKs** (Node, Python, Java, Go, …) MAY re-send it at a slow interval
 (e.g. hourly) in case a send was lost, and to account for data retention dropping old records for very long-lived processes.
 
 ## Deduping
 
-While we will send a single payload per `init()`, the vast majority of these do not need to be stored,
-but can/should be deduped and discarded at ingestion time to avoid unnecessary processing cost.
+Because every `init()` sends a payload, most payloads do not need to be stored. They should be
+deduplicated and discarded at ingestion time to avoid unnecessary processing cost.
 
-While this has to be deduped at a storage/business logic layer, we need to make sure to keep the load on the DB as low as possible, 
-and thus avoid any unnecessary read/write operations. For this, we need to either dedupe somewhere. Some options for this are:
+Deduplication must keep database load as low as possible and avoid unnecessary reads and writes, so
+it has to happen before storage. Options:
 
-**Relay**: We may dedupe in relay. We would leverage either a redis cache or a memcached cache to keep cache keys + last seen,
-and would only delegate to actually create or update records when appropriate. 
+**Relay**: Relay keeps hash keys and last-seen timestamps in a Redis or Memcached cache, and only
+creates or updates records when needed.
 
-**Kafka log compaction**: We may also look into deduping via Kafka.
+**Kafka log compaction**: an alternative way to deduplicate.
 
 ## Rate Limiting
 
-We need to limit ingested configs to avoid an unexpected explosion of records. For example, what happens if, for whatever reasons,
-a client generates unique hashes for each instance (e.g. some randomness in some config value), thus sending thousands or millions of unique 
+Ingested configs MUST be limited to avoid an unexpected explosion of records. For example, what happens if, for whatever reasons,
+a client generates unique hashes for each instance (e.g. some randomness in some config value), thus sending thousands or millions of unique
 configs in an hour?
 
-We propose to put a rate limit in place that looks at # of unique configs per hour/project. 
-We will reject to create/update config records exceeding some limit, for example **1000 configs/h**.
+Relay SHOULD apply a rate limit on the number of unique configs per project per hour. Config records above
+the limit (e.g. **1000 configs/h**) are not created or updated.
 
-We may leverage redis for the rate limiting by keeping track of the set of config hashes per project, or similar approaches. 
-Rate limiting will be applied by Relay.
+Redis MAY track the set of config hashes per project for this, or we MAY use another mechanism to handle this.
 
 ## Storage
 
 Storing every payload (**Option 1**) keeps a complete history, but mostly stores duplicates at a very
-high cost. We recommend **Option 2: store one record per distinct configuration**, deduplicated by
+high cost. The recommended approach is **Option 2: store one record per distinct configuration**, deduplicated by
 **`sentry.sdk_config.hash` (primary) + `release` + `environment` + `dist` (fallback)**.
 
 SDKs MUST compute the hash from the serialized option and integration attributes, and MUST attach it
@@ -243,7 +242,7 @@ hash links each event to its exact configuration and keeps configurations that d
 release separate. The hash MAY be generated based off the full `attributes` object (minus the `sentry.sdk_config.hash` attribute),
 or from a subset if that makes more sense for an SDK.
 
-The hash also MUST be part of the envelope item header and we MUST reject any item without a hash.
+The hash also MUST be part of the envelope item header and Relay MUST reject any item without a hash.
 
 If no stored record matches an event's hash (e.g. because the payload was lost or sampled out), or
 the event has no hash, correlation MAY fall back to `release` + `environment` + `dist`, which every
@@ -254,61 +253,61 @@ The time a config entry was last seen must be kept in order to enable retention 
 This should be updated when a config is sent, but not on every sent record, but e.g. every 24h
 to avoid unnecessary load on the database.
 
-The new data type should be free to end users, we do not plan on billing for it.
+The new data type is free for end users and is not billed.
 See [Appendix C](#appendix-c-volume-estimates) for estimations.
 
 ### What to store
 
 In addition to the config itself (either as JSON or in dot-notated attributes), the following queryable (meta-)data needs to be stored:
 
-* `first_seen`: The date this config has been first sent.
-* `last_seen`: The date this config has been last sent. 
-* `release`: The release associated with this config.
-* `environment`: The environment associated with this config.
-* `hash`: The hash/ID associated with this config (unique per project).
+- `first_seen`: The date this config has been first sent.
+- `last_seen`: The date this config has been last sent.
+- `release`: The release associated with this config.
+- `environment`: The environment associated with this config.
+- `hash`: The hash/ID associated with this config (unique per project).
 
 ### Where to store
 
-Following are the access needs we'll have for the data, which should inform the decision on how/where to store this:
+The data has the following access needs, which determine how and where to store it:
 
-* Config itself is immutable. It will never be updated.
-* Config should have a retention similar to other telemetry, so e.g. 30-90 days. 
-  * The retention needs to be measured based on when the config was last seen.
-* In product, config may be queried as follows:
-  * By hash key: When looking at telemetry (e.g. an issue), find the associated config for it.
-  * By project/org: Find the latest config(s) for a given project (e.g. for onboarding)
-  * By release/environment: Show config changes over time
-  * By first_seen/last_seen dates
-* Analytics/in hex, we'd like to be able to answer questions such as:
-  * How many projects configure a given option?
-  * What are average configured values (e.g. average sample rates, ...)
-  * How many projects use the integration Y?
-  * For projects using X/configuring Y, how many <do Z> (e.g. send spans, ...)
+- Config itself is immutable. It will never be updated.
+- Config should have a retention similar to other telemetry, so e.g. 30-90 days.
+  - The retention needs to be measured based on when the config was last seen.
+- In product, config may be queried as follows:
+  - By hash key: When looking at telemetry (e.g. an issue), find the associated config for it.
+  - By project/org: Find the latest config(s) for a given project (e.g. for onboarding)
+  - By release/environment: Show config changes over time
+  - By first_seen/last_seen dates
+- Analytics (e.g. in Hex) should be able to answer questions such as:
+  - How many projects configure a given option?
+  - What are average configured values (e.g. average sample rates, ...)
+  - How many projects use the integration Y?
+  - For projects using X/configuring Y, how many <do Z> (e.g. send spans, ...)
 
 Options for storage are:
 
 **EAP**:
 
-+ Easy to query
-+ Should be well suited for the sizes we are thinking of
-- Config is not really trace connected, so not ideally suitable
+- Pro: Easy to query
+- Pro: Well suited for the expected sizes
+- Con: Config is not really trace connected, so not ideally suitable
 
 **Postgres**:
 
-+ Easy to setup
-+ Easy to query
-- Expected size (e.g. 3kb config payloads)
+- Pro: Easy to set up
+- Pro: Easy to query
+- Con: Expected size (e.g. 3kb config payloads)
 
 **Postgres + Object Store**:
 
-+ Query via postgres, keep full config in Object Store
-+ Should be well suited for the sizes we are thinking of
-- Additional complexity in keeping postgres/object store in sync
+- Pro: Query via Postgres, keep full config in Object Store
+- Pro: Well suited for the expected sizes
+- Con: Additional complexity in keeping postgres/object store in sync
 
 **BigQuery**:
 
-* No matter where we store data for in-product use, we'll need to also get it into BigQuery to be able to access it in hex etc.
-* *TBD: How/when to move data over?** It does not need to be live, e.g. 24h delay or similar would be fine.
+- Regardless of where data is stored for in-product use, it also needs to reach BigQuery so it can be accessed in Hex and similar tools.
+- _TBD: How/when to move data over?_ It does not need to be live, e.g. 24h delay or similar would be fine.
 
 See [Appendix C](#appendix-c-volume-estimates) for volume & cost estimates.
 
@@ -335,7 +334,7 @@ See [Appendix C](#appendix-c-volume-estimates) for volume & cost estimates.
   expire after their retention period, so long-running processes must re-send within it. EAP could
   deduplicate via a deterministic `item_id` from the hash plus a bucketed `timestamp` (as preprod
   does), to be confirmed with the EAP team. Limits on attribute count and size per item.
-- **Custom filtering:** do we need SDK side filtering, e.g. `beforeSendSdkConfig`, to allow manual PII stripping?
+- **Custom filtering:** Is SDK-side filtering (e.g. `beforeSendSdkConfig`) needed to allow manual PII stripping?
 
 ## Out of scope
 
@@ -392,7 +391,7 @@ deterministic and consistent across SDKs:
 - **Short-lived processes** (serverless, CLI) flush wherever they already flush events, and MAY reuse
   their client report flushing. If a process dies first, an equivalent instance will report.
 - **Periodic re-send:** Relay cannot guarantee that a `200` response means the payload was
-  persisted. To accomodate this, as well as retention period dropping config after longer time periods,
+  persisted. To accommodate this, as well as retention period dropping config after longer time periods,
   a single lost send would leave a long-running server without stored configuration.
 - **Hash:** identical configurations produce identical hashes, and any change to the options, the
   registered integrations, their options, or the applied integrations changes the hash. Algorithms do not need to
@@ -411,21 +410,21 @@ deterministic and consistent across SDKs:
 
 # Appendix C: Volume Estimates
 
-* **2-3m** releases per day
-  * We may expect about **5-10m** distinct SDK config per day.
-* **50b** sessions per day
-  * May map roughly to **50b** SDK config envelopes sent per day.
-* **300k** projects get data sent any given hour
-  * This could be extrapolated to **3m** SDK configs being active per hour.
-* SDK config size examples:
-  * JS Browser: ~1-3 KB
-  * JS Node: ~1-4 KB
-  * Based on this, if we expect 10m config per day which are active for 30 days, we'd store about **900 GB** of SDK config
-* Relay redis clusters currently cost ~5k USD/month (US region only), for project configs and rate limits. 
-  * We may expect roughly the same cost to run an additional redis instance for hash bookkeeping
-* EAP costs about **0.016 USD** per GB og logs storage, or **0.10 USD** per 1M spans
-  * Based on this, EAP storage cost may be very low (<100 USD)
-* Postgres cost about **51k USD/m** total, for about **60 TB** of data
-  * Based on this, Postgres storage may be **~800 USD/m**
-* Memcached cost is about **5K USD/m**
-  * Cost of hash bookeeping would thus be estimated to be low here too
+- **2-3m** releases per day
+  - Expected: about **5-10m** distinct SDK configs per day.
+- **50b** sessions per day
+  - May map roughly to **50b** SDK config envelopes sent per day.
+- **300k** projects get data sent any given hour
+  - This could be extrapolated to **3m** SDK configs being active per hour.
+- SDK config size examples:
+  - JS Browser: ~1-3 KB
+  - JS Node: ~1-4 KB
+  - Based on this, 10m configs per day, each active for 30 days, would require storing about **900 GB** of SDK config
+- Relay redis clusters currently cost ~5k USD/month (US region only), for project configs and rate limits.
+  - An additional Redis instance for hash bookkeeping would cost about the same.
+- EAP costs about **0.016 USD** per GB of logs storage, or **0.10 USD** per 1M spans
+  - Based on this, EAP storage cost may be very low (<100 USD)
+- Postgres cost about **51k USD/m** total, for about **60 TB** of data
+  - Based on this, Postgres storage may be **~800 USD/m**
+- Memcached cost is about **5K USD/m**
+  - Cost of hash bookkeeping would thus be estimated to be low here too
