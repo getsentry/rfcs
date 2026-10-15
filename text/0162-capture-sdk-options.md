@@ -420,7 +420,9 @@ deterministic and consistent across SDKs:
 - **50b** sessions per day
   - May map roughly to **50b** SDK config envelopes sent per day.
 - **300k** projects get data sent any given hour
-  - This could be extrapolated to **3m** SDK configs being active per hour, if ~10 config/project is assumed.
+  - For mobile, it is estimated that about **15-40** release/environment pairs are active per project at any given time
+  - For JS, it is estimated to be **1-10** on average, as most users get upgraded to the latest version on reload.
+  - Based on this, assuming an overall average of **20 active configs** per project, there would be **6m** SDK configs active per hour
 - SDK config size examples:
   - JS Browser: ~1-3 KB
   - JS Node: ~1-4 KB
