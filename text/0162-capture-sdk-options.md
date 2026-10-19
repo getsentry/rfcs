@@ -203,7 +203,7 @@ details.
 This applies to all kinds of SDKs. Records are [deduplicated server-side](#deduping) before storage.
 
 **Server SDKs** (Node, Python, Java, Go, …) MAY re-send it at a slow interval
-(e.g. hourly) in case a send was lost, and to account for data retention dropping old records for very long-lived processes.
+(e.g. hourly) in case a send was lost.
 
 ## Deduping
 
@@ -217,6 +217,13 @@ it has to happen before storage. This could happen in different places:
 creates or updates records when needed.
 
 **Kafka log compaction**: Alternatively, Relay pushes every config to Kafka and lets it handle deduplication.
+
+## Retention
+
+SDK config data should be kept for as long as the standard telemetry retention for a given project is (e.g. 30-90 days). 
+Importantly, data needs to be kept for 30-90 days _after it was last seen_, not after it was first seen. 
+For this purpose, we need to keep track of the `last_seen` field for all SDK config. It has to be updated e.g. once
+every 24 hours - it does not have to be 100% accurate, only accurate enough to handle retention effectively.
 
 ## Rate Limiting
 
