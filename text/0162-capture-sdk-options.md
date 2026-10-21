@@ -289,6 +289,10 @@ The data has the following access needs, which determine how and where to store 
   - By project/org: Find the latest config(s) for a given project (e.g. for onboarding)
   - By release/environment: Show config changes over time
   - By first_seen/last_seen dates
+- Read patterns:
+  - Config MAY be fetched for each issue/trace detail view (e.g. "Config that produced this error")
+  - Config MAY be lazy-loaded on demand or MAY be eager loader for each detail view
+  - Config MAY be queried on empty pages/during onboarding
 - Analytics (e.g. in Hex) should be able to answer questions such as:
   - How many projects configure a given option?
   - What are average configured values (e.g. average sample rates, ...)
@@ -299,10 +303,11 @@ Options for storage are:
 
 **EAP**:
 
-- Pro: Easy to query
+- Pro: Easy to query (but trace_id could make it harder)
 - Pro: Well suited for the expected sizes
 - Pro: Cheaper than Postgres
-- Con: Config is not really trace connected, so not a perfect match
+- Con: Config is not really trace connected, which would lead to problems
+- See [Appendix E](#appendix-e-eap-requirements) for more details on EAP requirements
 
 **Postgres**:
 
@@ -316,12 +321,24 @@ Options for storage are:
 - Pro: Well suited for the expected sizes
 - Con: Additional complexity in keeping postgres/object store in sync
 
+**Dedicated ClickHouse table**:
+
+A dedicated table keyed on (project, hash) with TTL on last_seen. 
+
+- Pro: Handles dedup and retention natively
+- Pro: Fast lookups
+- Con: One-off tables (outside of EAP) is a de-emphasized pattern
+
 **BigQuery**:
 
 - Regardless of where data is stored for in-product use, it also needs to reach BigQuery so it can be accessed in Hex and similar tools.
 - _TBD: How/when to move data over?_ It does not need to be live, e.g. 24h delay or similar would be fine.
 
 See [Appendix C](#appendix-c-volume-estimates) for volume & cost estimates.
+
+## Recommendation for Storage
+
+Based on the reasearch and options above, the recommended solution is to store in **Postgres + Object Store**.
 
 # Drawbacks
 
@@ -442,6 +459,8 @@ deterministic and consistent across SDKs:
   - Based on this, Postgres storage may be **~800 USD/m**
 - Memcached cost is about **5K USD/m**
   - Cost of hash bookkeeping would thus be estimated to be low here too
+- **200k** issue detail page views per day.
+  - SDK config may be fetched **500k** times per day, if inflected to accomodate e.g. onboarding, other detail pages etc.
 
 # Appendix D: Edge Cases
 
@@ -450,3 +469,15 @@ There are some edge cases to consider. Some may be resolved and others may be co
 - SDK Config may be dropped when sent, thus telemetry may exist that has no corresponding config entry.
   - The product must work with missing data. It can differentiate between "old SDK, no config sent" and "config should exist, but is missing" 
     via the existence of the hash attribute. 
+
+# Appendix E: EAP Requirements
+
+If it is decided to use EAP for storage, here are some requirements this would entail:
+
+- A new item type (protos, Relay, snuba, search)
+- Daily re-sends from Relay to fake last-seen retention
+- Newest-row dedup on every read
+- First/last seen computed per query
+- Hacking the trace_id so lookups don't turn into large scans (like it's not trace connected data, but we index on trace_id so that's our only lever to index)
+
+Perf-wise, the closest analog today is `TraceItemDetails` which has single item lookup time of ~200ms p50 / 1.25s p99 with an index and a narrow window, so this would be similar or worse for larger windows. At the initial query volume that's fine, but if we ever wanted to query this heavily it could become real load.
