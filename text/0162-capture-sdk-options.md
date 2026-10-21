@@ -77,6 +77,7 @@ as-is. SDKs send everything in this example except `normalized`, which Relay add
 {"type":"sdk_config","content_type":"application/json","hash":"9f2c1a7e"}
 {
   "version": 1,
+  "timestamp": 1790000000.0,
   "release": "my-app@1.2.3",
   "environment": "production",
   "dist": "42",
@@ -115,6 +116,9 @@ The fields (see [Appendix A](#appendix-a-payload-details) for serialization and 
 
 - **`hash`** (item header): a required hash of the configuration (see [Storage](#storage)).
 - **`version`:** the payload schema version.
+- **`timestamp`:** when the configuration was captured, in seconds since the Unix epoch. Relay
+  applies clock drift correction as for events, falls back to the receive time if it is missing or
+  invalid, and uses it to set `first_seen` and `last_seen`.
 - **`release`, `environment`, `dist`:** same as on events. Relay stores these as queryable columns.
 - **`sdk`:** same shape as the `sdk` object on events (`name`, `version`, `packages`). Relay stores
   `name` and `version` as queryable columns.
@@ -235,8 +239,8 @@ See [Appendix C](#appendix-c-volume-estimates) for estimations.
 
 In addition to the config itself (as JSON), the following queryable (meta-)data needs to be stored:
 
-- `first_seen`: The date this config has been first sent.
-- `last_seen`: The date this config has been last sent.
+- `first_seen`: The date this config has been first sent (from `timestamp`).
+- `last_seen`: The date this config has been last sent (from `timestamp`).
 - `release`: The release associated with this config.
 - `environment`: The environment associated with this config.
 - `sdk_name`: The SDK name associated with this config.
