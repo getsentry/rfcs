@@ -1,9 +1,9 @@
 - Start Date: 2026-09-21
 - RFC Type: feature
 - RFC PR: https://github.com/getsentry/rfcs/pull/162
-- RFC Status: draft
+- RFC Status: approved
 - RFC Author: @mydea
-- RFC Approver:
+- RFC Approver: @mydea
 
 # Summary
 
