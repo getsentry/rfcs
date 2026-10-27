@@ -191,7 +191,6 @@ Describes tool executions.
 | `gen_ai.tool.call.id` | Required if present |
 | `gen_ai.tool.name` | Required |
 | `gen_ai.tool.description` | Required if provided |
-| `gen_ai.tool.type` | Required |
 | `gen_ai.tool.call.arguments` | Required |
 | `gen_ai.tool.call.result` | Required |
 
@@ -338,7 +337,6 @@ Sensitive attributes can be controlled by either the `record_inputs` or the `rec
 | `gen_ai.tool.call.id` | string | - |
 | `gen_ai.tool.name` | string | - |
 | `gen_ai.tool.description` | string | - |
-| `gen_ai.tool.type` | string | - |
 | `gen_ai.tool.call.arguments` | object | `record_outputs` |
 | `gen_ai.tool.call.result` | object | `record_outputs` |
 
@@ -410,16 +408,15 @@ Finally, if the type is "token_batches", then the value is a 2-dimensional array
 
 ## gen_ai.tool.definitions
 
-Tool definitions are represented as a JSON array with objects whose "name", "description" and "type" properties correspond to the attributes on Execute Tool Spans. The objects also have a "parameters" property, whose format is given by [JSON Schema draft-07](https://json-schema.org/draft-07/schema#).
+Tool definitions are represented as a JSON array with objects whose "name" and "description" properties correspond to the attributes on Execute Tool Spans. The objects also have a "parameters" property, whose format is given by [JSON Schema draft-07](https://json-schema.org/draft-07/schema#).
 
-Each tool definition has a name, a type, optionally parameters, and an optional description:
+Each tool definition has a name, optionally parameters, and an optional description:
 
 ```json
 [
     {
         "name": "get_weather",
         "description": "Get the current weather for a given location.",
-        "type": "function",
         "parameters": {
             "type": "object",
             "properties": {
