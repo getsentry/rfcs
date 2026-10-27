@@ -234,30 +234,7 @@ Agent creation spans are currently emitted when instrumenting LangGraph with eit
 
 Handoff spans are only created by the Python SDK's instrumentation for OpenAI Agents. In the `openai-agents` package, handoffs are implemented by responding to a tool call request in the model's output. The dedicated handoff span will be replaced by an Execute Tool Span.
 
-Workflow spans are not documented by either OpenTelemetry or the [AI Agents Insights module development guide](https://github.com/getsentry/sentry-docs/blob/master/develop-docs/sdk/telemetry/traces/modules/ai-agents.mdx), and only captured by the OpenAI Agents Python instrumentation. The span currently associates multiple agents running in the same workflow together. In the future, an agent that performs a handoff will appear as the parent of an Execute Tool Span, which itself will be the parent of the Invoke Agent Span for the agent which is handed off to.
-
-The current `openai-agents` span tree of the form
-
-```
-transaction: "{entry_agent.name} workflow" (e.g. "primary_agent workflow")
-└── Invoke Agent "invoke_agent primary_agent"
-    ├── AI Client
-    └── gen_ai.handoff
-└── Invoke Agent "invoke_agent secondary_agent"
-    └── AI Client
-```
-
-will change to
-
-```
-Invoke Agent "invoke_agent primary_agent"
-├── AI Client
-└── Execute Tool
-    └── Invoke Agent "invoke_agent secondary_agent"
-        └── AI Client
-```
-
-where the secondary agent's Invoke Agent Span continues after the primary agent's Invoke Agent Span has finished.
+Workflow spans are not documented by either OpenTelemetry or the [AI Agents Insights module development guide](https://github.com/getsentry/sentry-docs/blob/master/develop-docs/sdk/telemetry/traces/modules/ai-agents.mdx), and only captured by the OpenAI Agents Python instrumentation.
 
 # Proposed Attributes
 
