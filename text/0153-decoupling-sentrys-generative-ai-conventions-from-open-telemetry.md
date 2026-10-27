@@ -368,15 +368,6 @@ If the user provides an input item with an unexpected role, the SDK will not per
 
 Allowed input part types will be recorded in the [AI Agents Insights module development guide](https://github.com/getsentry/sentry-docs/blob/master/develop-docs/sdk/telemetry/traces/modules/ai-agents.mdx).
 
-Any content which will not be searched, such as binary image data, must be added as span attachments.
-
-**Note**: SDKs currently truncate various Generative AI attributes and redact binary content. When Generative AI spans are emitted using the V2 span protocol, all truncation or redaction must have been removed. The V2 protocol is used by span-first SDKs.
-
-Automatic instrumentation should avoid destructively trimming information, i.e., removing information that is not present on any other span. Instrumentation should also not unnecessarily duplicate the message history between successive model calls.
-SDKs will therefore keep all input items starting with the **last** assistant message in the model input.
-
-**Note**: There is no guarantee that the input items passed to a model that were not present in preceding model calls are the items starting with the last assistant message passed to a model. In a typical agent loop the invariant holds, as the history is updated and fed into subsequent model calls.
-
 ## gen_ai.embeddings.input
 
 The attribute is a union discriminated by the type property. The type property is one of "text", "texts", "tokens", or "token_batches".
