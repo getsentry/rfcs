@@ -375,13 +375,14 @@ Finally, if the type is "token_batches", then the value is a 2-dimensional array
 
 Tool definitions are represented as a JSON array with objects whose "name" and "description" properties correspond to the attributes on Execute Tool Spans. The objects also have a "parameters" property, whose format is given by [JSON Schema draft-07](https://json-schema.org/draft-07/schema#).
 
-Each tool definition has a name, optionally parameters, and an optional description:
+Each tool definition has a type and may include a name, parameters, and a description:
 
 ```json
 [
     {
         "name": "get_weather",
         "description": "Get the current weather for a given location.",
+        "type": "function",
         "parameters": {
             "type": "object",
             "properties": {
