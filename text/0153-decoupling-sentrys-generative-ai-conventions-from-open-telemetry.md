@@ -188,7 +188,6 @@ Describes tool executions.
 
 | Attribute | Required |
 |---|---|
-| `gen_ai.tool.call.id` | Required if present |
 | `gen_ai.tool.name` | Required |
 | `gen_ai.tool.description` | Required if provided |
 | `gen_ai.tool.call.arguments` | Required |
@@ -311,7 +310,6 @@ Sensitive attributes can be controlled by either the `record_inputs` or the `rec
 
 | Attribute | Type | Gated by |
 |---|---|---|
-| `gen_ai.tool.call.id` | string | - |
 | `gen_ai.tool.name` | string | - |
 | `gen_ai.tool.description` | string | - |
 | `gen_ai.tool.call.arguments` | object | `record_outputs` |
