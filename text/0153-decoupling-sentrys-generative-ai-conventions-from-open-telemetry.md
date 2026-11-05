@@ -144,28 +144,18 @@ Embedding Spans represent one request to a provider to encode input into numeric
 | `gen_ai.operation.name` | Required |
 | `gen_ai.provider.name` | Required |
 
-#### Agent Attributes
-
-| Attribute | Required |
-|---|---|
-| `gen_ai.agent.name` | Required if provided |
-| `gen_ai.pipeline.name` | Required if provided |
-
 #### Input Attributes
 
 | Attribute | Required |
 |---|---|
 | `gen_ai.embeddings.input` | Required |
 | `gen_ai.request.model` | Required if provided |
-| `gen_ai.request.encoding_formats` | Required if provided |
 
 #### Output Attributes
 
 | Attribute | Required |
 |---|---|
-| `gen_ai.response.id` | Required if in the model response |
 | `gen_ai.response.model` | Required if in the model response |
-| `gen_ai.embeddings.dimension.count` | Required |
 
 #### Token Usage Attributes
 
