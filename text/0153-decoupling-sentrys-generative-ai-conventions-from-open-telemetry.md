@@ -320,12 +320,14 @@ The input array contains items with a role, parts, and an optional name of the e
     ...
 ]
 ```
-The role should be "user", "assistant", or "tool". Assistant messages are model outputs, including tool call requests. The "tool" role is used for tool execution results passed back to a model. All other items that are not system instructions must use the "user" role.
+The role should be "system", "user", "assistant", or "tool". Assistant messages are model outputs, including tool call requests. The "tool" role is used for tool execution results passed back to a model, and "system" for system instructions. All other items must use the "user" role.
 
-The SDKs will map the provider's role names to the above set when the provider uses different names for roles that correspond to "user", "assistant", or "tool".
+The SDKs will map the provider's role names to the above set when the provider uses different names for roles that correspond to "system", "user", "assistant", or "tool".
 If the user provides an input item with an unexpected role, the SDK will not perform any conversion, and set the user-provided string as the role.
 
-**Note**: Not all items will have a "user", "assistant", or "tool" role. SDKs must emit unexpected user-provided roles.
+**Note**: Only those system instructions that are part of the chat history, i.e., in the same variable or field as user, assistant, and tool messages, are included in `gen_ai.input.messages`. Instructions provided separately constitute `gen_ai.system_instructions`.
+
+**Note**: Not all items will have a "system", "user", "assistant", or "tool" role. SDKs must emit unexpected user-provided roles.
 
 **Note**: Input to legacy text completion APIs are not assigned a role by the user. The SDK must assign the role "user" for these inputs.
 
@@ -437,7 +439,8 @@ System instructions are a flat list of parts identified by a "type" key:
     ...
 ]
 ```
-System instructions can be represented with the same input part types as `gen_ai.input.messages`.
+
+**Note**: System instructions provided as part of the chat history must be included in `gen_ai.input.messages`. Only instructions provided separately from that chat history are included in `gen_ai.system_instructions`. System instructions are part of the chat history if they appear in the same variable or field as user, assistant, and tool messages.
 
 ## gen_ai.output.messages
 
