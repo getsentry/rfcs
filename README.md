@@ -74,3 +74,5 @@ This repository contains RFCs and DACIs. Lost?
 - [0152-sdk-symbolicated-frames](text/0152-sdk-symbolicated-frames.md): This RFC proposes a mechanism for SDKs to mark stack frames as already symbolicated on the client side, so that the backend (processing/symbolicator) can skip symbolication for those frames
 - [0153-decoupling-sentrys-generative-ai-conventions-from-open-telemetry](text/0153-decoupling-sentrys-generative-ai-conventions-from-open-telemetry.md): Decoupling Sentry's Generative AI conventions from OpenTelemetry
 - [0154-web-vitals-as-trace-metrics](text/0154-web-vitals-as-trace-metrics.md): Migrate web vitals (LCP, CLS, INP, FCP, TTFB) from spans to trace metrics in the Sentry JavaScript SDK
+- [0157-distroless-base-images](text/0157-distroless-base-images.md): Distroless base images
+- [0162-capture-sdk-options](text/0162-capture-sdk-options.md): Capture SDK options

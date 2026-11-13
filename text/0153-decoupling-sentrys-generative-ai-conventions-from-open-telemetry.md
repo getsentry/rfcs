@@ -120,17 +120,17 @@ AI Client Spans represent one request to a provider handled by a single model wi
 | `gen_ai.response.model` | Required if in the model response |
 | `gen_ai.response.finish_reasons` | Required if in the model response |
 | `gen_ai.response.streaming` | Required |
-| `gen_ai.response.time_to_first_token` | Required if streaming response |
+| `gen_ai.response.time_to_first_chunk` | Required if streaming response |
 
 #### Token Usage Attribute
 
 | Attribute | Required |
 |---|---|
 | `gen_ai.usage.input_tokens` | Required if in the model response |
-| `gen_ai.usage.input_tokens.cached` | Required if in the model response |
-| `gen_ai.usage.input_tokens.cache_write` | Required if in the model response |
+| `gen_ai.usage.cache_read.input_tokens` | Required if in the model response |
+| `gen_ai.usage.cache_creation.input_tokens` | Required if in the model response |
 | `gen_ai.usage.output_tokens` | Required if in the model response |
-| `gen_ai.usage.output_tokens.reasoning` | Required if in the model response |
+| `gen_ai.usage.reasoning.output_tokens` | Required if in the model response |
 | `gen_ai.usage.total_tokens` | Required if in the model response |
 
 ## Embedding Span
@@ -144,28 +144,18 @@ Embedding Spans represent one request to a provider to encode input into numeric
 | `gen_ai.operation.name` | Required |
 | `gen_ai.provider.name` | Required |
 
-#### Agent Attributes
-
-| Attribute | Required |
-|---|---|
-| `gen_ai.agent.name` | Required if provided |
-| `gen_ai.pipeline.name` | Required if provided |
-
 #### Input Attributes
 
 | Attribute | Required |
 |---|---|
 | `gen_ai.embeddings.input` | Required |
 | `gen_ai.request.model` | Required if provided |
-| `gen_ai.request.encoding_formats` | Required if provided |
 
 #### Output Attributes
 
 | Attribute | Required |
 |---|---|
-| `gen_ai.response.id` | Required if in the model response |
 | `gen_ai.response.model` | Required if in the model response |
-| `gen_ai.embeddings.dimension.count` | Required |
 
 #### Token Usage Attributes
 
@@ -188,10 +178,8 @@ Describes tool executions.
 
 | Attribute | Required |
 |---|---|
-| `gen_ai.tool.call.id` | Required if present |
 | `gen_ai.tool.name` | Required |
 | `gen_ai.tool.description` | Required if provided |
-| `gen_ai.tool.type` | Required |
 | `gen_ai.tool.call.arguments` | Required |
 | `gen_ai.tool.call.result` | Required |
 
@@ -235,30 +223,7 @@ Agent creation spans are currently emitted when instrumenting LangGraph with eit
 
 Handoff spans are only created by the Python SDK's instrumentation for OpenAI Agents. In the `openai-agents` package, handoffs are implemented by responding to a tool call request in the model's output. The dedicated handoff span will be replaced by an Execute Tool Span.
 
-Workflow spans are not documented by either OpenTelemetry or the [AI Agents Insights module development guide](https://github.com/getsentry/sentry-docs/blob/master/develop-docs/sdk/telemetry/traces/modules/ai-agents.mdx), and only captured by the OpenAI Agents Python instrumentation. The span currently associates multiple agents running in the same workflow together. In the future, an agent that performs a handoff will appear as the parent of an Execute Tool Span, which itself will be the parent of the Invoke Agent Span for the agent which is handed off to.
-
-The current `openai-agents` span tree of the form
-
-```
-transaction: "{entry_agent.name} workflow" (e.g. "primary_agent workflow")
-└── Invoke Agent "invoke_agent primary_agent"
-    ├── AI Client
-    └── gen_ai.handoff
-└── Invoke Agent "invoke_agent secondary_agent"
-    └── AI Client
-```
-
-will change to
-
-```
-Invoke Agent "invoke_agent primary_agent"
-├── AI Client
-└── Execute Tool
-    └── Invoke Agent "invoke_agent secondary_agent"
-        └── AI Client
-```
-
-where the secondary agent's Invoke Agent Span continues after the primary agent's Invoke Agent Span has finished.
+Workflow spans are not documented by either OpenTelemetry or the [AI Agents Insights module development guide](https://github.com/getsentry/sentry-docs/blob/master/develop-docs/sdk/telemetry/traces/modules/ai-agents.mdx), and only captured by the OpenAI Agents Python instrumentation.
 
 # Proposed Attributes
 
@@ -318,27 +283,25 @@ Sensitive attributes can be controlled by either the `record_inputs` or the `rec
 | `gen_ai.response.finish_reasons` | string[] | - |
 | `gen_ai.response.id` | string | - |
 | `gen_ai.response.streaming` | boolean | - |
-| `gen_ai.response.time_to_first_token` | double | - |
+| `gen_ai.response.time_to_first_chunk` | double | - |
 
 #### Token Usage Attributes
 
 | Attribute | Type | Gated by |
 |---|---|---|
 | `gen_ai.usage.input_tokens` | integer | - |
-| `gen_ai.usage.input_tokens.cached` | integer | - |
-| `gen_ai.usage.input_tokens.cache_write` | integer | - |
+| `gen_ai.usage.cache_read.input_tokens` | integer | - |
+| `gen_ai.usage.cache_creation.input_tokens` | integer | - |
 | `gen_ai.usage.output_tokens` | integer | - |
-| `gen_ai.usage.output_tokens.reasoning` | integer | - |
+| `gen_ai.usage.reasoning.output_tokens` | integer | - |
 | `gen_ai.usage.total_tokens` | integer | - |
 
 #### Tool Attributes
 
 | Attribute | Type | Gated by |
 |---|---|---|
-| `gen_ai.tool.call.id` | string | - |
 | `gen_ai.tool.name` | string | - |
 | `gen_ai.tool.description` | string | - |
-| `gen_ai.tool.type` | string | - |
 | `gen_ai.tool.call.arguments` | object | `record_outputs` |
 | `gen_ai.tool.call.result` | object | `record_outputs` |
 
@@ -357,25 +320,18 @@ The input array contains items with a role, parts, and an optional name of the e
     ...
 ]
 ```
-The role should be "user", "assistant", or "tool". Assistant messages are model outputs, including tool call requests. The "tool" role is used for tool execution results passed back to a model. All other items that are not system instructions must use the "user" role.
+The role should be "system", "user", "assistant", or "tool". Assistant messages are model outputs, including tool call requests. The "tool" role is used for tool execution results passed back to a model, and "system" for system instructions. All other items must use the "user" role.
 
-The SDKs will map the provider's role names to the above set when the provider uses different names for roles that correspond to "user", "assistant", or "tool".
+The SDKs will map the provider's role names to the above set when the provider uses different names for roles that correspond to "system", "user", "assistant", or "tool".
 If the user provides an input item with an unexpected role, the SDK will not perform any conversion, and set the user-provided string as the role.
 
-**Note**: Not all items will have a "user", "assistant", or "tool" role. SDKs must emit unexpected user-provided roles.
+**Note**: Only those system instructions that are part of the chat history, i.e., in the same variable or field as user, assistant, and tool messages, are included in `gen_ai.input.messages`. Instructions provided separately constitute `gen_ai.system_instructions`.
+
+**Note**: Not all items will have a "system", "user", "assistant", or "tool" role. SDKs must emit unexpected user-provided roles.
 
 **Note**: Input to legacy text completion APIs are not assigned a role by the user. The SDK must assign the role "user" for these inputs.
 
 Allowed input part types will be recorded in the [AI Agents Insights module development guide](https://github.com/getsentry/sentry-docs/blob/master/develop-docs/sdk/telemetry/traces/modules/ai-agents.mdx).
-
-Any content which will not be searched, such as binary image data, must be added as span attachments.
-
-**Note**: SDKs currently truncate various Generative AI attributes and redact binary content. When Generative AI spans are emitted using the V2 span protocol, all truncation or redaction must have been removed. The V2 protocol is used by span-first SDKs.
-
-Automatic instrumentation should avoid destructively trimming information, i.e., removing information that is not present on any other span. Instrumentation should also not unnecessarily duplicate the message history between successive model calls.
-SDKs will therefore keep all input items starting with the **last** assistant message in the model input.
-
-**Note**: There is no guarantee that the input items passed to a model that were not present in preceding model calls are the items starting with the last assistant message passed to a model. In a typical agent loop the invariant holds, as the history is updated and fed into subsequent model calls.
 
 ## gen_ai.embeddings.input
 
@@ -419,9 +375,9 @@ Finally, if the type is "token_batches", then the value is a 2-dimensional array
 
 ## gen_ai.tool.definitions
 
-Tool definitions are represented as a JSON array with objects whose "name", "description" and "type" properties correspond to the attributes on Execute Tool Spans. The objects also have a "parameters" property, which maps parameter names to their type.
+Tool definitions are represented as a JSON array with objects whose "name" and "description" properties correspond to the attributes on Execute Tool Spans. The objects also have a "parameters" property, whose format is given by [JSON Schema draft-07](https://json-schema.org/draft-07/schema#).
 
-Each tool definition has a name, type, parameters, and an optional description:
+Each tool definition has a type and may include a name, parameters, and a description:
 
 ```json
 [
@@ -430,7 +386,41 @@ Each tool definition has a name, type, parameters, and an optional description:
         "description": "Get the current weather for a given location.",
         "type": "function",
         "parameters": {
-            "location": "string"
+            "type": "object",
+            "properties": {
+                "productId": {
+                    "description": "The unique identifier for a product",
+                    "type": "integer"
+                },
+                "productName": {
+                    "description": "Name of the product",
+                    "type": "string"
+                },
+                "price": {
+                    "description": "The price of the product",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                },
+                "tags": {
+                    "description": "Tags for the product",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true
+                },
+                "dimensions": {
+                    "type": "object",
+                    "properties": {
+                        "length": { "type": "number" },
+                        "width": { "type": "number" },
+                        "height": { "type": "number" }
+                    },
+                    "required": ["length", "width", "height"]
+                }
+            },
+            "required": ["productId", "productName", "price"]
         }
     },
     ...
@@ -449,7 +439,8 @@ System instructions are a flat list of parts identified by a "type" key:
     ...
 ]
 ```
-System instructions can be represented with the same input part types as `gen_ai.input.messages`.
+
+**Note**: System instructions provided as part of the chat history must be included in `gen_ai.input.messages`. Only instructions provided separately from that chat history are included in `gen_ai.system_instructions`. System instructions are part of the chat history if they appear in the same variable or field as user, assistant, and tool messages.
 
 ## gen_ai.output.messages
 
