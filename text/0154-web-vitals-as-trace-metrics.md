@@ -321,7 +321,7 @@ Sentry.init({
 });
 ```
 
-The metrics integration is the one our docs lead with. The span integration exists for customers who already have span volume allocated and would rather keep web vitals there. Either way the user makes an explicit choice when upgrading, so nobody moves to metrics billing without knowing it.
+The metrics integration is the one our docs lead with. The span integration exists for customers who already have span volume allocated and would rather keep web vitals there. It's discouraged, and we decide how long it stays around. Either way the user makes an explicit choice when upgrading, so nobody moves to metrics billing without knowing it.
 
 This doesn't change the double-write duration, but it reduces the cost we absorb during the double-write period. Customers on the metrics integration pay for web vitals as metrics (`DataCategory::TraceMetric`) as soon as they upgrade. Customers on the span integration keep paying for spans, and their spans are double-written like any older SDK's. How that traffic is billed once we move to single-write is decided at that point.
 
