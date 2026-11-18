@@ -170,7 +170,7 @@ We follow a phased rollout approach to lazily migrate web vitals to trace metric
 
 Relay converts incoming web vital spans to trace metrics. Both the original span and the derived metric are written. Those metrics are **free** (not billed) during this phase. This builds a metrics backlog for the dashboard cutover and allows validation.
 
-During that period, the team validates that metrics and spans agree and that they can drive the same insights and dashboards over the same period.
+During that period, the team validates that metrics and spans agree and that they can drive the same insights and dashboards over the same period. That includes volume: extrapolated metric counts should match extrapolated span counts for the same vital.
 
 ### How long to double-write?
 
@@ -219,6 +219,8 @@ TraceMetric {
   trace_id: span.trace_id,
   span_id: span.span_id,
   timestamp: span.timestamp,
+  client_sample_rate: span.client_sample_rate,  // inherited from the source span
+  server_sample_rate: span.server_sample_rate,  // inherited from the source span
   attributes: {
     "sentry.transaction": ...,
     "user_agent.original": ...,
@@ -230,6 +232,8 @@ TraceMetric {
   }
 }
 ```
+
+Derived metrics are only produced for spans that survived sampling, so they inherit the source span's client and server sample rates. This lets EAP extrapolate them the same way it extrapolates the spans. Natively emitted metrics keep reading their client sample rate from attributes, with a server sample rate of 1.0. Implemented in [getsentry/relay#6643](https://github.com/getsentry/relay/pull/6643).
 
 > [!NOTE]
 > **Full Attributes Reference:** [web-vitals-metrics-emit / ATTRIBUTES.md](https://github.com/logaretm/web-vitals-metrics-emit/blob/main/ATTRIBUTES.md)
@@ -245,6 +249,8 @@ Whether these metrics are queryable by the customer during the migration is not 
 ## Dashboard cutover
 
 Product should switch to metrics-only queries when ready. Given enough metrics has been collected from the double-write period.
+
+After cutover the metrics dataset holds two populations: metrics derived from older SDKs' spans, which are sampled and carry their inherited sample rates, and native metrics from newer SDKs, which are unsampled. EAP extrapolates each row by its own sample rates, so queries don't need to tell them apart.
 
 **Areas that web vitals are present:**
 
@@ -299,29 +305,27 @@ After the double-write period, we can either keep them free if the cost is not t
 
 This work item is independent of the double-write period. At somepoint the SDK will switch over to emitting web vitals as native metrics. The exact version depends on the product readiness for this switch.
 
-The SDK will split the web vitals feature into its own integration, meaning the user has to specifically opt-in again for web vitals after the upgrade.
+The SDK can't send metrics by default, so web vitals are split out of `browserTracingIntegration` into their own integrations. Web vitals become opt-in, and the user picks one of two:
 
 ```js
 import * as Sentry from "@sentry/browser";
 
 Sentry.init({
   // ...
-  integrations: [webVitalsIntegration()],
+  integrations: [
+    // Recommended: web vitals as trace metrics, billed as metrics
+    Sentry.webVitalsIntegration(),
+    // Alternative: web vitals as spans, billed against the span quota
+    // Sentry.legacyWebVitalSpansIntegration(),
+  ],
 });
 ```
 
-This means the user is aware of the breaking change, and is making an explicit decision to opt-in to the new behavior.
+The metrics integration is the one our docs lead with. The span integration exists for customers who already have span volume allocated and would rather keep web vitals there. Either way the user makes an explicit choice when upgrading, so nobody moves to metrics billing without knowing it.
 
-Ideally we would prefer to make in time to switch to metrics natively by default to avoid fragmenting the user-base, but we don't want to block or delay releases for this change.
+This doesn't change the double-write duration, but it reduces the cost we absorb during the double-write period. Customers on the metrics integration pay for web vitals as metrics (`DataCategory::TraceMetric`) as soon as they upgrade. Customers on the span integration keep paying for spans, and their spans are double-written like any older SDK's. How that traffic is billed once we move to single-write is decided at that point.
 
-This doesn't change the double-write duration, but it will reduce the cost we absorb during the double-write period. Customers upgrading to metrics natively will start paying for web vitals as metrics (billed as `DataCategory::TraceMetric`) once the metrics-native SDK behavior ships.
-
-If the cutover date does not align with the SDK's next major release, we will have to handle it in one of two ways:
-
-- Provide a fallback web vital integration that sends web vitals as spans (opt-out).
-- Wait for a next major cycle to produce yet another breaking change.
-
-Ideally it would be great if we can offer something temporary in the product that adapts the metric queries so that we can make the breaking change once in the next major release (v11) so we don't have to do it again or change behavior mid-release if we absolutely must.
+Ideally the product can adapt its web vitals queries to native metrics before the dashboard cutover, so that customers who upgrade early don't lose their dashboards and the breaking change only happens once, in the next major (v11).
 
 # Alternatives considered
 
@@ -382,6 +386,7 @@ Keep web vitals as spans. No migration, no metrics conversion.
 # Unresolved questions
 
 - **Downsampling model.** How does the metrics backend downsample beyond 30 days? Pre-aggregated percentile rollups (lossy for cross-window percentile queries) or retained distributions at lower time granularity (lossless)? This determines whether "p75 LCP over 90 days" on the metrics dashboard is accurate or approximate.
+- **Span integration billing after single-write.** Web vitals from the span integration are stored as metrics once Relay stops writing the original spans. Whether they stay billed as spans is decided when we move to single-write.
 - **Early adopters of v11.** How do we handle the early adopters of v11? Is it possible to show them something until we can have a full cut over? This can help us make the permanant change in the next major.
 
 # Appendix
