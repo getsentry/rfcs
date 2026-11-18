@@ -2,7 +2,7 @@
 - RFC Type: decision
 - RFC PR: TBD
 - RFC Status: draft
-- RFC Driver: [Abdelrahman Awad](https://github.com/logaretm), [Dominik Buszowiecki](https://github.com/DominikB2014)
+- RFC Driver: [Abdelrahman Awad](https://github.com/logaretm), [Edward Gou](https://github.com/edwardgou-sentry), [Dominik Buszowiecki](https://github.com/DominikB2014)
 - RFC Approver: TBD
 
 # Summary
