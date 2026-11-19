@@ -302,7 +302,7 @@ Sensitive attributes can be controlled by either the `record_inputs` or the `rec
 |---|---|---|
 | `gen_ai.tool.name` | string | - |
 | `gen_ai.tool.description` | string | - |
-| `gen_ai.tool.call.arguments` | object | `record_outputs` |
+| `gen_ai.tool.call.arguments` | object or string | `record_outputs` |
 | `gen_ai.tool.call.result` | object | `record_outputs` |
 
 # JSON Attributes
@@ -464,7 +464,7 @@ Allowed output part types will be recorded in the [AI Agents Insights module dev
 
 ## gen_ai.tool.call.arguments
 
-Arguments are represented as a JSON object. Top-level keys correspond to tool call parameter names, and top-level values are the corresponding arguments. The arguments must be serialized as a primitive JSON value, JSON object, or JSON array:
+Arguments are represented as a JSON object or a string. In the object form, top-level keys correspond to tool call parameter names, and top-level values are the corresponding arguments. These arguments must be serialized as a primitive JSON value, JSON object, or JSON array:
 
 ```json
 {
@@ -472,6 +472,8 @@ Arguments are represented as a JSON object. Top-level keys correspond to tool ca
     "complex_input": {...}
 }
 ```
+
+The string variant is allowed because some library hooks only expose the raw tool call arguments from the LLM response, which may not be valid JSON.
 
 ## gen_ai.tool.call.result
 
