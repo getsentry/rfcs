@@ -1,9 +1,9 @@
 - Start Date: 2026-04-28
 - RFC Type: decision
-- RFC PR: TBD
-- RFC Status: draft
+- RFC PR: https://github.com/getsentry/rfcs/pull/158
+- RFC Status: approved
 - RFC Driver: [Abdelrahman Awad](https://github.com/logaretm), [Edward Gou](https://github.com/edwardgou-sentry), [Dominik Buszowiecki](https://github.com/DominikB2014)
-- RFC Approver: TBD
+- RFC Approver: [Francesco Gringl-Novy](https://github.com/mydea)
 
 # Summary
 
